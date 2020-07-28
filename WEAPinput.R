@@ -763,10 +763,6 @@ climateir <- function(climate1)
 }
 climate.ir <- climateir(climate)
 
-
-
-
-
 #----------------------------------------------------------------------------------------------------
 
 #bring in water inputs, population, and income
@@ -951,21 +947,13 @@ ic.ssp3 <- linapprox(ic.ssp3)
 ic.ssp4 <- linapprox(ic.ssp4)
 ic.ssp5 <- linapprox(ic.ssp5)
 
-
-
-
-
-
 #----------------------------------------------------------------------------------------------------------------------
 #Calculating aquaculture and livestock withdrawal per unit for every 5 years. This section also creates linear apprximations in between those 5 years.
 #First, we calculate WRR population, and WRR aquaculture and livestock withdrawal per unit. Growth and Decay rates are at the WRR level, so 
 #we project at the WRR level and then convert it to county level.
 #----------------------------------------------------------------------------------------------------------------------
 
-
 #SSP1
-
-
 
 #calculate proportion of FIPS in each WRR
 df<-cntypercent
@@ -991,8 +979,6 @@ water1$AQ.perUnit <- water1$AQ.perUnit*water1$pop
 water1$LS.perUnit <- water1$LS.perUnit*water1$pop
 colnames(water1)[colnames(water1)=="AQ.perUnit"] <- "AQ.wd.tot"
 colnames(water1)[colnames(water1)=="LS.perUnit"] <- "LS.wd.tot"
-
-
 
 #first, we calculate population and wpu at the WRR level
 
@@ -1107,8 +1093,6 @@ df<-df %>% mutate(wrr.ls.wd.2060 = wrr.ls.wd.2060*pr_pop_2060 )
 df<-df %>% mutate(wrr.ls.wd.2065 = wrr.ls.wd.2065*pr_pop_2065 )
 df<-df %>% mutate(wrr.ls.wd.2070 = wrr.ls.wd.2070*pr_pop_2070 )
 
-
-
 proj <- merge(proj,water1,by='fips')
 proj <- merge(proj,df, by='WRR')
 
@@ -1165,7 +1149,6 @@ df<- df[,c(1,2,5)]
 colnames(df)[colnames(df)=="FIPS"] <- "fips"
 proj <-df
 
-
 #input water use data from "WaterUsedatacleanup.R"
 
 water1 <- read.csv(file="inputs_ssp2.csv")
@@ -1174,8 +1157,6 @@ water1$AQ.perUnit <- water1$AQ.perUnit*water1$pop
 water1$LS.perUnit <- water1$LS.perUnit*water1$pop
 colnames(water1)[colnames(water1)=="AQ.perUnit"] <- "AQ.wd.tot"
 colnames(water1)[colnames(water1)=="LS.perUnit"] <- "LS.wd.tot"
-
-
 
 #calculate WRR population and wpu for LS and AQ
 
@@ -1326,7 +1307,6 @@ proj <- proj %>% group_by(fips.x) %>% summarize_all(funs(sum))
 proj <-proj[,c(1,5,96:106,6,107:117)]
 
 proj.ssp2 <- proj
-
 
 
 #---------------------------------------------------------------------------------------------------------------------------
@@ -1940,10 +1920,6 @@ names(ls.ssp5) <- c("fips","sector","Y2015","Y2020","Y2025","Y2030","Y2035","Y20
 ls.ssp5 <- linapprox(ls.ssp5)
 
 
-
-
-
-
 #---------------------------------------------------------------------
 #THERMO - uses appendix data from Diehl and Harris (2014) and EIA to project water use at the county level
 
@@ -2112,14 +2088,9 @@ energyproj.ssp3 <- driver(countyinc.ssp3,df)
 energyproj.ssp4 <- driver(countyinc.ssp4,df)
 energyproj.ssp5 <- driver(countyinc.ssp5,df)
 
-
-
-
 #-----------------------------------------------------------------------------------------
 #Bring in data for energy regions
 #-----------------------------------------------------------------------------------------
-
-
 
 #bring in data for each energy region (data mapping proportion of counties in each region)
 ercot<-read.csv('Energy_ERCOT.csv',header=TRUE)
@@ -2179,8 +2150,6 @@ wecc<-wecc[,c(7,12,48)]
 colnames(wecc)[1] <- "fips"
 wecc <- fipsfixenergy(wecc)
 colnames(wecc)[1] <- "GEOID"
-
-
 
 ercot$Area_mean <- ifelse(ercot$GEOID >51900 && ercot$GEOID <52000, ercot$Area_sum, ercot$Area_mean)
 ercot<-ercot[,c(1,4,3)]
@@ -2457,7 +2426,6 @@ TH_final <- TH_final %>% group_by(GEOID) %>% summarise_all(sum)
 #------------------------------------------------------------------
 #Using water consumption from Diehl and Harris we apply increased demand at the energy region level.
 
-
 #applying increase to plant water consumption
 th.ssp1 <- merge(energyproj.ssp1, TH_final,by="GEOID", all.x=TRUE)
 colnames(th.ssp1)[colnames(th.ssp1)=="TH_WD"] <- "th2015"
@@ -2545,8 +2513,6 @@ th.ssp5<-th.ssp5[,c(1,15:26)]
 th.ssp5[is.na(th.ssp5)]<-0
 
 
-
-
 #---------------------------------------------------------------------
 #Creates linear approximations for in between years. Converts thermo data to match formats of other sectors.
 #---------------------------------------------------------------------
@@ -2576,14 +2542,7 @@ th.ssp3 <-linapprox(th.ssp3)
 th.ssp4 <-linapprox(th.ssp4)
 th.ssp5 <-linapprox(th.ssp5)
   
-
-
-
-
-
 #=====================================================================================================
-
-
 
 #The following section is code from Ro
 
@@ -2643,7 +2602,6 @@ for (i in tempFiles){
   assign(nam, df)
 }
 
-
 HUC8toCounty <- cntypercent
 HUC8toCounty$HUC_8 <- 0
 for (i in 1:nrow(HUC8toCounty)){
@@ -2688,7 +2646,6 @@ for (i in tempAnnual) {
   assign(i, df)
 }
 
-
 #calculate annual temp changes and apply mm by fips
 #linearly approximate mm for missing years
 mm <- mm[,-c(15:20)]
@@ -2724,7 +2681,6 @@ for (ii in tempAnnual){
   }
   assign(ii,df)
 }
-
 
 #apply temperature impacts to thermo water use for each scenario
 listSSP <- as.list(ls(pattern = "th.ssp"))
@@ -2824,19 +2780,12 @@ if(carbon==85 & gcm=="noresm"){
   th.ssp1 <- th.ssp1T_NorESM_85_annual
 }
 
-
-
-
-
-
 #---------------------------------------------------------------------
 #Brings in consumptive proportions and then converts data to consumptive water use.
 #Note Thermo is already in consumptive use.
 #---------------------------------------------------------------------
 cons <- read.csv(file="inputs_ssp1.csv")
 cons <- cons[,c(2,24,9,26:27,25)]
-
-
 
 #function to convert withdrawal data to consumptive water use
 #NUM = 2 for IC, 3 for DP, 4 for LS, 5 for IR, 6 for AQ
@@ -2877,44 +2826,43 @@ aq.ssp3 <- consumption(aq.ssp3, 6)
 aq.ssp4 <- consumption(aq.ssp4, 6)
 aq.ssp5 <- consumption(aq.ssp5, 6)
 
-
 #=====================================================================================================
 #This section allows for county level final results
 #only used when picking out specific results
 
 #=====================================================================================================ic.ssp1.county <-ic.ssp1
-# ic.ssp2.county <-ic.ssp2
-# ic.ssp3.county <-ic.ssp3
-# ic.ssp4.county <-ic.ssp4
-# ic.ssp5.county <-ic.ssp5
-# 
-# dp.ssp1.county <-dp.ssp1
-# dp.ssp2.county <-dp.ssp2
-# dp.ssp3.county <-dp.ssp3
-# dp.ssp4.county <-dp.ssp4
-# dp.ssp5.county <-dp.ssp5
-# 
-# ls.ssp1.county <-ls.ssp1
-# ls.ssp2.county <-ls.ssp2
-# ls.ssp3.county <-ls.ssp3
-# ls.ssp4.county <-ls.ssp4
-# ls.ssp5.county <-ls.ssp5
-# 
-# th.ssp1.county <-th.ssp1
-# th.ssp2.county <-th.ssp2
-# th.ssp3.county <-th.ssp3
-# th.ssp4.county <-th.ssp4
-# th.ssp5.county <-th.ssp5
-# 
-# aq.ssp1.county <-aq.ssp1
-# aq.ssp2.county <-aq.ssp2
-# aq.ssp3.county <-aq.ssp3
-# aq.ssp4.county <-aq.ssp4
-# aq.ssp5.county <-aq.ssp5
-# 
-# ir.county <- ir
-#  
-# 
+ic.ssp2.county <-ic.ssp2
+ic.ssp3.county <-ic.ssp3
+ic.ssp4.county <-ic.ssp4
+ic.ssp5.county <-ic.ssp5
+ 
+dp.ssp1.county <-dp.ssp1
+dp.ssp2.county <-dp.ssp2
+dp.ssp3.county <-dp.ssp3
+dp.ssp4.county <-dp.ssp4
+dp.ssp5.county <-dp.ssp5
+ 
+ls.ssp1.county <-ls.ssp1
+ls.ssp2.county <-ls.ssp2
+ls.ssp3.county <-ls.ssp3
+ls.ssp4.county <-ls.ssp4
+ls.ssp5.county <-ls.ssp5
+ 
+th.ssp1.county <-th.ssp1
+th.ssp2.county <-th.ssp2
+th.ssp3.county <-th.ssp3
+th.ssp4.county <-th.ssp4
+th.ssp5.county <-th.ssp5
+ 
+aq.ssp1.county <-aq.ssp1
+aq.ssp2.county <-aq.ssp2
+aq.ssp3.county <-aq.ssp3
+aq.ssp4.county <-aq.ssp4
+aq.ssp5.county <-aq.ssp5
+ 
+ir.county <- ir
+  
+ 
 # #This function specifies which counties to pick out results for
 # countypick<- function(DF)
 # {
@@ -2992,13 +2940,7 @@ aq.ssp5 <- consumption(aq.ssp5, 6)
 # write.csv(ir.county, file="arnf_ir.csv")
 # write.csv(ssp2.county, file="arnf_popinc.csv")
 
-
-
 #=====================================================================================================
-
-
-
-
 
 
 
@@ -3019,9 +2961,6 @@ df <- merge(df, df1, by="FIPS")
 df$pcthuc8.x <- df$pcthuc8.x/df$pcthuc8.y
 df<- df[,c(1,2,5)]
 colnames(df)[colnames(df)=="FIPS"] <- "fips"
-
-
-
 
 huc <- function(DF,sect)
 {
@@ -3067,9 +3006,6 @@ th.ssp2 <-huc(th.ssp2, "th")
 th.ssp3 <-huc(th.ssp3, "th")
 th.ssp4 <-huc(th.ssp4, "th")
 th.ssp5 <-huc(th.ssp5, "th")
-
-
-
 
 
 #=====================================================================================================
@@ -3166,9 +3102,6 @@ th.ssp5 <-huc(th.ssp5, "th")
 #1 Mgal/day = 1381.6345 (thousand) m^3
 #----------------------------------------------------------------------------------------------------------------------
 
-
-
-
 unitconv <- function(DF)
 {
   for (n in 3:58){
@@ -3215,7 +3148,6 @@ ir <- unitconv(ir)
 #----------------------------------------------------------------------------------------------------------------------
 
 month <- read.csv("monthly.csv")
-
 
 irmonthly <- function(df, time)
 {
@@ -3287,11 +3219,6 @@ irmonthly <- function(df, time)
                     )
   return(df)
 }
-
-
-
-
-
 
 dpmonthly <- function(df, time)
 {
@@ -3614,7 +3541,6 @@ ls.ssp5 <- lsmonthly(ls.ssp5,month)
 #consumption2 is low value use (IR, LS, AQ)
 #----------------------------------------------------------------------------------------------------------------------
 
-
 consumption_ssp1 <- rbind(ir, dp.ssp1, ic.ssp1,th.ssp1, aq.ssp1, ls.ssp1)
 consumption_ssp1 <- consumption_ssp1[,c(1,3:674)]
 consumption_ssp1 <- consumption_ssp1 %>% group_by(HUC_4) %>% summarise_all(funs(sum))
@@ -3680,8 +3606,6 @@ consumption2_ssp5 <- consumption2_ssp5 %>% group_by(HUC_4) %>% summarise_all(fun
 #Transposes dataframes to match WEAP input format. 
 #----------------------------------------------------------------------------------------------------------------------
 
-
-
 transpose <- function(DF)
 {
   DF <- t(DF)
@@ -3731,7 +3655,6 @@ consumption2_ssp5 <- consumption2_ssp5[,c(length(colnames(consumption2_ssp5)):1)
 #----------------------------------------------------------------------------------------------------------------------
 #Output for WEAP
 #----------------------------------------------------------------------------------------------------------------------
-
 
 write.csv(consumption_ssp1, file="consumption_ssp1.csv")
 write.csv(consumption_ssp2, file="consumption_ssp2.csv")
