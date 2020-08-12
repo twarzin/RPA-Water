@@ -2957,14 +2957,48 @@ results <- rbind(
   aq.ssp1, aq.ssp2, aq.ssp3, aq.ssp4, aq.ssp5,
   th.ssp1, th.ssp2, th.ssp3, th.ssp4, th.ssp5)
 
-results$year <- NA
 
+dp.101 <- rbind(
+  subset(dp.ssp1, HUC4 == 101), 
+  subset(dp.ssp2, HUC4 == 101),
+  subset(dp.ssp3, HUC4 == 101),
+  subset(dp.ssp4, HUC4 == 101),
+  subset(dp.ssp5, HUC4 == 101)
+  )
+
+dp.102 <- rbind(
+  subset(dp.ssp1, HUC4 == 102), 
+  subset(dp.ssp2, HUC4 == 102),
+  subset(dp.ssp3, HUC4 == 102),
+  subset(dp.ssp4, HUC4 == 102),
+  subset(dp.ssp5, HUC4 == 102)
+)
+
+results.df <- rbind(dp.101, dp.102)
+results.df$year <- NA
+results.df$gcm <- NA
+results.df$wd <- NA
+
+results.df <- subset(results.df, select=-c(Y2024, Y2025, Y2026, Y2027,
+                                           Y2028, Y2029, Y2030, Y2031,
+                                           Y2032, Y2033, Y2034, Y2035,
+                                           Y2036, Y2037, Y2038, Y2039,
+                                           Y2040, Y2041, Y2042, Y2043,
+                                           Y2044, Y2045, Y2046, Y2047,
+                                           Y2048, Y2049, Y2050, Y2051,
+                                           Y2052, Y2053, Y2054, Y2055,
+                                           Y2056, Y2057, Y2058, Y2059,
+                                           Y2060, Y2061, Y2062, Y2063,
+                                           Y2064, Y2065, Y2066, Y2067,
+                                           Y2068, Y2069, Y2070))
+                                           
+                                           
 
 
 # -- Figures ---
 
-dp.101 <- subset(dp.ssp1, HUC4 == 101)
-plot(dp.101)
+
+
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
