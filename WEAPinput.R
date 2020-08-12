@@ -1778,11 +1778,6 @@ proj.ssp5 <- proj
 
 #-------------------------------------------------------------------------------------------------------------------------------------
 
-
-
-
-
-
 #----------------------------------------------------------------------------------------------------------------------
 #Creating new dataframes for each scenario (ssp1, etc) and creating linear approximations for in between years.
 #----------------------------------------------------------------------------------------------------------------------
@@ -2090,7 +2085,6 @@ spp<-spp[,c(1,4,3)]
 wecc$Area_mean <- ifelse(wecc$GEOID >51900 && wecc$GEOID <52000, wecc$Area_sum, wecc$Area_mean)
 wecc<-wecc[,c(1,4,3)]
 
-
 #calculating the proportion of each county in each region
 ercot$ercotprop <- (ercot$Shape_Area_sum/ercot$Area_mean)
 frcc$frccprop <- (frcc$Shape_Area_sum/frcc$Area_mean)
@@ -2342,7 +2336,6 @@ TH_final <- TH_final %>% group_by(GEOID) %>% summarise_all(sum)
 #------------------------------------------------------------------
 #Using water consumption from Diehl and Harris we apply increased demand at the energy region level.
 
-
 #applying increase to plant water consumption
 th.ssp1 <- merge(energyproj.ssp1, TH_final,by="GEOID", all.x=TRUE)
 colnames(th.ssp1)[colnames(th.ssp1)=="TH_WD"] <- "th2015"
@@ -2494,7 +2487,7 @@ mm[,c(2:20)] <- data.frame(apply(mm[,c(2:20)], 2, function (WRRlevel) {
 mm <- mm %>% group_by(fips) %>% summarise_all(funs(sum))
 mm <- mm[,-c(2,22)]
 
-#create data frame for each climate scenario annual temperatures
+#create dataframe for each climate scenario annual temperatures
 tempFiles <-list.files (path = "ClimateData", pattern = "^T_")
 tempFiles <-strsplit(tempFiles, ".csv")
 
@@ -2592,7 +2585,6 @@ for (ii in tempAnnual){
   }
   assign(ii,df)
 }
-
 
 #apply temperature impacts to thermo water use for each scenario
 listSSP <- as.list(ls(pattern = "th.ssp"))
@@ -2852,8 +2844,6 @@ aq.ssp5 <- consumption(aq.ssp5, 6)
 # write.csv(ir.county, file="arnf_ir.csv")
 # write.csv(ssp2.county, file="arnf_popinc.csv")
 
-
-
 #=====================================================================================================
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -2872,7 +2862,6 @@ df <- merge(df, df1, by="FIPS")
 df$pcthuc8.x <- df$pcthuc8.x/df$pcthuc8.y
 df<- df[,c(1,2,5)]
 colnames(df)[colnames(df)=="FIPS"] <- "fips"
-
 
 huc <- function(DF,sect)
 {
@@ -2919,13 +2908,70 @@ th.ssp3 <-huc(th.ssp3, "th")
 th.ssp4 <-huc(th.ssp4, "th")
 th.ssp5 <-huc(th.ssp5, "th")
 
+# create on large dataframe with results
+
+aq.ssp1$ssp <- 'ssp1'
+aq.ssp2$ssp <- 'ssp2'
+aq.ssp3$ssp <- 'ssp3'
+aq.ssp4$ssp <- 'ssp4'
+aq.ssp5$ssp <- 'ssp5'
+
+dp.ssp1$ssp <- 'ssp1'
+dp.ssp2$ssp <- 'ssp2'
+dp.ssp3$ssp <- 'ssp3'
+dp.ssp4$ssp <- 'ssp4'
+dp.ssp5$ssp <- 'ssp5'
+
+ic.ssp1$ssp <- 'ssp1'
+ic.ssp2$ssp <- 'ssp2'
+ic.ssp3$ssp <- 'ssp3'
+ic.ssp4$ssp <- 'ssp4'
+ic.ssp5$ssp <- 'ssp5'
+
+ls.ssp1$ssp <- 'ssp1'
+ls.ssp2$ssp <- 'ssp2'
+ls.ssp3$ssp <- 'ssp3'
+ls.ssp4$ssp <- 'ssp4'
+ls.ssp5$ssp <- 'ssp5'
+
+th.ssp1$ssp <- 'ssp1'
+th.ssp2$ssp <- 'ssp2'
+th.ssp3$ssp <- 'ssp3'
+th.ssp4$ssp <- 'ssp4'
+th.ssp5$ssp <- 'ssp5'
+
+ir$ssp <- 'ssp1'
+
+# need to change column headiings for thermo
+
+colnames(th.ssp1) <- colnames(ic.ssp1)
+colnames(th.ssp2) <- colnames(ic.ssp2)
+colnames(th.ssp3) <- colnames(ic.ssp3)
+colnames(th.ssp4) <- colnames(ic.ssp4)
+colnames(th.ssp5) <- colnames(ic.ssp5)
+
+results <- rbind(
+  dp.ssp1, dp.ssp2, dp.ssp3, dp.ssp4, dp.ssp5,
+  ic.ssp1, ic.ssp2, ic.ssp3, ic.ssp4, ic.ssp5,
+  ls.ssp1, ls.ssp2, ls.ssp3, ls.ssp4, ls.ssp5,
+  aq.ssp1, aq.ssp2, aq.ssp3, aq.ssp4, aq.ssp5,
+  th.ssp1, th.ssp2, th.ssp3, th.ssp4, th.ssp5)
+
+results$year <- NA
+
+
+
+# -- Figures ---
+
+dp.101 <- subset(dp.ssp1, HUC4 == 101)
+plot(dp.101)
+
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #OUTPUTTING COUNTY RESULTS BY SECTOR
 #this section outputs all projections at the county level by sector. Units are in Mgal per day rather than cubic meters (needed for WEAP)
 #if comparison to WEAP output is needed, then move this section under the unit conversion section currently at line 3182.
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 
 write.csv(aq.ssp1, file="aq.ssp1.csv")
 write.csv(aq.ssp2, file="aq.ssp2.csv")
@@ -2997,7 +3043,6 @@ write.csv(ir, file="ir.csv")
 # write.csv(dp.wpu.ssp3, file="dp_wpu_ssp3.csv")
 # write.csv(dp.wpu.ssp4, file="dp_wpu_ssp4.csv")
 # write.csv(dp.wpu.ssp5, file="dp_wpu_ssp5.csv")
-
 
 #---------------------------------------------------------------------------------
 #Outputing projections by HUC4 for 2015 and 2070 for RPA meeting map
@@ -3088,7 +3133,6 @@ ir <- unitconv(ir)
 #----------------------------------------------------------------------------------------------------------------------
 
 month <- read.csv("monthly.csv")
-
 
 irmonthly <- function(df, time)
 {
