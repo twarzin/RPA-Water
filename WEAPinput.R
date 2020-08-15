@@ -2950,6 +2950,7 @@ colnames(th.ssp3) <- colnames(ic.ssp3)
 colnames(th.ssp4) <- colnames(ic.ssp4)
 colnames(th.ssp5) <- colnames(ic.ssp5)
 
+# Results of wd for climate scenario. These results are in a format that is difficult to work with
 results <- rbind(
   dp.ssp1, dp.ssp2, dp.ssp3, dp.ssp4, dp.ssp5,
   ic.ssp1, ic.ssp2, ic.ssp3, ic.ssp4, ic.ssp5,
@@ -2957,7 +2958,265 @@ results <- rbind(
   aq.ssp1, aq.ssp2, aq.ssp3, aq.ssp4, aq.ssp5,
   th.ssp1, th.ssp2, th.ssp3, th.ssp4, th.ssp5)
 
+# Here are same results as above, just with climate scenario specified                         
+results.cnrm_c5 <- rbind(
+  dp.ssp1, dp.ssp2, dp.ssp3, dp.ssp4, dp.ssp5,
+  ic.ssp1, ic.ssp2, ic.ssp3, ic.ssp4, ic.ssp5,
+  ls.ssp1, ls.ssp2, ls.ssp3, ls.ssp4, ls.ssp5,
+  aq.ssp1, aq.ssp2, aq.ssp3, aq.ssp4, aq.ssp5,
+  th.ssp1, th.ssp2, th.ssp3, th.ssp4, th.ssp5)
 
+# To make results easier to work with, begin by adding new columns for "year" and "climate scenario"                               
+results.cnrm_c5$year <- NA
+results.cnrm_c5$gcm <- NA
+
+# Create new data frames that subset wd for each year. This code is currently repetitive
+# and should be rewritten to loop through year columns and create each new data frame                               
+Y2015 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2015, year, gcm)
+Y2015$year <- "2015"
+names(Y2015)[names(Y2015) == "Y2015"] <- "Demand"
+
+Y2016 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2016, year, gcm)
+Y2016$year <- "2016"
+names(Y2016)[names(Y2016) == "Y2016"] <- "Demand"
+
+Y2017 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2017, year, gcm)
+Y2017$year <- "2017"
+names(Y2017)[names(Y2017) == "Y2017"] <- "Demand"
+
+Y2018 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2018, year, gcm)
+Y2018$year <- "2018"
+names(Y2018)[names(Y2018) == "Y2018"] <- "Demand"
+
+Y2019 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2019, year, gcm)
+Y2019$year <- "2019"
+names(Y2019)[names(Y2019) == "Y2019"] <- "Demand"
+
+Y2020 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2020, year, gcm)
+Y2020$year <- "2020"
+names(Y2020)[names(Y2020) == "Y2020"] <- "Demand"
+
+Y2021 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2021, year, gcm)
+Y2021$year <- "2021"
+names(Y2021)[names(Y2021) == "Y2021"] <- "Demand"
+
+Y2022 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2022, year, gcm)
+Y2022$year <- "2022"
+names(Y2022)[names(Y2022) == "Y2022"] <- "Demand"
+
+Y2023 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2023, year, gcm)
+Y2023$year <- "2023"
+names(Y2023)[names(Y2023) == "Y2023"] <- "Demand"
+
+Y2024 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2024, year, gcm)
+Y2024$year <- "2024"
+names(Y2024)[names(Y2024) == "Y2024"] <- "Demand"
+
+Y2025 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2025, year, gcm)
+Y2025$year <- "2025"
+names(Y2025)[names(Y2025) == "Y2025"] <- "Demand"
+
+Y2026 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2026, year, gcm)
+Y2026$year <- "2026"
+names(Y2026)[names(Y2026) == "Y2026"] <- "Demand"
+
+Y2027 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2027, year, gcm)
+Y2027$year <- "2027"
+names(Y2027)[names(Y2027) == "Y2027"] <- "Demand"
+
+Y2028 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2028, year, gcm)
+Y2028$year <- "2028"
+names(Y2028)[names(Y2028) == "Y2028"] <- "Demand"
+
+Y2029 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2029, year, gcm)
+Y2029$year <- "2029"
+names(Y2029)[names(Y2029) == "Y2029"] <- "Demand"
+
+Y2030 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2030, year, gcm)
+Y2030$year <- "2030"
+names(Y2030)[names(Y2030) == "Y2030"] <- "Demand"
+
+Y2031 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2031, year, gcm)
+Y2031$year <- "2031"
+names(Y2031)[names(Y2031) == "Y2031"] <- "Demand"
+
+Y2032 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2032, year, gcm)
+Y2032$year <- "2032"
+names(Y2032)[names(Y2032) == "Y2032"] <- "Demand"
+
+Y2033 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2033, year, gcm)
+Y2033$year <- "2033"
+names(Y2033)[names(Y2033) == "Y2033"] <- "Demand"
+
+Y2034 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2034, year, gcm)
+Y2034$year <- "2034"
+names(Y2034)[names(Y2034) == "Y2034"] <- "Demand"
+
+Y2035 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2035, year, gcm)
+Y2035$year <- "2035"
+names(Y2035)[names(Y2035) == "Y2035"] <- "Demand"
+
+Y2036 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2036, year, gcm)
+Y2036$year <- "2036"
+names(Y2036)[names(Y2036) == "Y2036"] <- "Demand"
+
+Y2037 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2037, year, gcm)
+Y2037$year <- "2037"
+names(Y2037)[names(Y2037) == "Y2037"] <- "Demand"
+
+Y2038 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2038, year, gcm)
+Y2038$year <- "2038"
+names(Y2038)[names(Y2038) == "Y2038"] <- "Demand"
+
+Y2039 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2039, year, gcm)
+Y2039$year <- "2039"
+names(Y2039)[names(Y2039) == "Y2039"] <- "Demand"
+
+Y2040 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2040, year, gcm)
+Y2040$year <- "2040"
+names(Y2040)[names(Y2040) == "Y2040"] <- "Demand"
+
+Y2041 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2041, year, gcm)
+Y2041$year <- "2041"
+names(Y2041)[names(Y2041) == "Y2041"] <- "Demand"
+
+Y2042 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2042, year, gcm)
+Y2042$year <- "2042"
+names(Y2042)[names(Y2042) == "Y2042"] <- "Demand"
+
+Y2043 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2043, year, gcm)
+Y2043$year <- "2043"
+names(Y2043)[names(Y2043) == "Y2043"] <- "Demand"
+
+Y2044 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2044, year, gcm)
+Y2044$year <- "2044"
+names(Y2044)[names(Y2044) == "Y2044"] <- "Demand"
+
+Y2045 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2045, year, gcm)
+Y2045$year <- "2045"
+names(Y2045)[names(Y2045) == "Y2045"] <- "Demand"
+
+Y2046 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2046, year, gcm)
+Y2046$year <- "2046"
+names(Y2046)[names(Y2046) == "Y2046"] <- "Demand"
+
+Y2047 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2047, year, gcm)
+Y2047$year <- "2047"
+names(Y2047)[names(Y2047) == "Y2047"] <- "Demand"
+
+Y2048 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2048, year, gcm)
+Y2048$year <- "2048"
+names(Y2048)[names(Y2048) == "Y2048"] <- "Demand"
+
+Y2049 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2049, year, gcm)
+Y2049$year <- "2049"
+names(Y2049)[names(Y2049) == "Y2049"] <- "Demand"
+
+Y2050 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2050, year, gcm)
+Y2050$year <- "2050"
+names(Y2050)[names(Y2050) == "Y2050"] <- "Demand"
+
+Y2051 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2051, year, gcm)
+Y2051$year <- "2051"
+names(Y2051)[names(Y2051) == "Y2051"] <- "Demand"
+
+Y2052 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2052, year, gcm)
+Y2052$year <- "2052"
+names(Y2052)[names(Y2052) == "Y2052"] <- "Demand"
+
+Y2053 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2053, year, gcm)
+Y2053$year <- "2053"
+names(Y2053)[names(Y2053) == "Y2053"] <- "Demand"
+
+Y2054 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2054, year, gcm)
+Y2054$year <- "2054"
+names(Y2054)[names(Y2054) == "Y2054"] <- "Demand"
+
+Y2055 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2055, year, gcm)
+Y2055$year <- "2055"
+names(Y2055)[names(Y2055) == "Y2055"] <- "Demand"
+
+Y2056 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2056, year, gcm)
+Y2056$year <- "2056"
+names(Y2056)[names(Y2056) == "Y2056"] <- "Demand"
+
+Y2057 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2057, year, gcm)
+Y2057$year <- "2057"
+names(Y2057)[names(Y2057) == "Y2057"] <- "Demand"
+
+Y2058 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2058, year, gcm)
+Y2058$year <- "2058"
+names(Y2058)[names(Y2058) == "Y2058"] <- "Demand"
+
+Y2059 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2059, year, gcm)
+Y2059$year <- "2059"
+names(Y2059)[names(Y2059) == "Y2059"] <- "Demand"
+
+Y2060 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2060, year, gcm)
+Y2060$year <- "2060"
+names(Y2060)[names(Y2060) == "Y2060"] <- "Demand"
+
+Y2061 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2061, year, gcm)
+Y2061$year <- "2061"
+names(Y2061)[names(Y2061) == "Y2061"] <- "Demand"
+
+Y2062 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2062, year, gcm)
+Y2062$year <- "2062"
+names(Y2062)[names(Y2062) == "Y2062"] <- "Demand"
+
+Y2063 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2063, year, gcm)
+Y2063$year <- "2063"
+names(Y2063)[names(Y2063) == "Y2063"] <- "Demand"
+
+Y2064 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2064, year, gcm)
+Y2064$year <- "2064"
+names(Y2064)[names(Y2064) == "Y2064"] <- "Demand"
+
+Y2065 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2065, year, gcm)
+Y2065$year <- "2065"
+names(Y2065)[names(Y2065) == "Y2065"] <- "Demand"
+
+Y2066 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2066, year, gcm)
+Y2066$year <- "2066"
+names(Y2066)[names(Y2066) == "Y2066"] <- "Demand"
+
+Y2067 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2067, year, gcm)
+Y2067$year <- "2067"
+names(Y2067)[names(Y2067) == "Y2067"] <- "Demand"
+
+Y2068 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2068, year, gcm)
+Y2068$year <- "2068"
+names(Y2068)[names(Y2068) == "Y2068"] <- "Demand"
+
+Y2069 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2069, year, gcm)
+Y2069$year <- "2069"
+names(Y2069)[names(Y2069) == "Y2069"] <- "Demand"
+
+Y2070 <- select(results.cnrm_c5, HUC4, sector, ssp, Y2070, year, gcm)
+Y2070$year <- "2070"
+names(Y2070)[names(Y2070) == "Y2070"] <- "Demand"
+
+# Bind together resulting data frames for all years                             
+results.cnrm_c5 <- rbind(Y2015,
+                    Y2016, Y2017, Y2018, Y2019,
+                    Y2020, Y2021, Y2022, Y2023,
+                    Y2024, Y2025, Y2026, Y2027,
+                    Y2028, Y2029, Y2030, Y2031,
+                    Y2032, Y2033, Y2034, Y2035,
+                    Y2036, Y2037, Y2038, Y2039,
+                    Y2040, Y2041, Y2042, Y2043,
+                    Y2044, Y2045, Y2046, Y2047,
+                    Y2048, Y2049, Y2050, Y2051,
+                    Y2052, Y2053, Y2054, Y2055,
+                    Y2056, Y2057, Y2058, Y2059,
+                    Y2060, Y2061, Y2062, Y2063,
+                    Y2064, Y2065, Y2066, Y2067,
+                    Y2068, Y2069, Y2070)
+                                 
+# Specify the climate scenario in the "gcm" column
+results.cnrm_c5$gcm <- "cnrm_c5"
+                                                    
+# Below (lines 3220 - 3252) are previously explored ways to subset results, may or may not be used further                                 
 dp.101 <- rbind(
   subset(dp.ssp1, HUC4 == 101), 
   subset(dp.ssp2, HUC4 == 101),
