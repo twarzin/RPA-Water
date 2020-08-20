@@ -2849,64 +2849,65 @@ aq.ssp5 <- consumption(aq.ssp5, 6)
 #----------------------------------------------------------------------------------------------------------------------
 #Transforms every sector into HUC4s. Calculations are done at the county level, but input for WEAP needs to be in HUC4s.
 #----------------------------------------------------------------------------------------------------------------------
-
-df<-cntypercent
-df$HUC4 <-signif(df$HUC_10,4)/1000000
-df<-df[,c(1:3,8,6)]
-df <- df %>% group_by(FIPS,HUC4) %>% summarise(Shape_Area=sum(Shape_Area),CountyArea=mean(CountyArea))
-df$pcthuc8 <- df$Shape_Area/df$CountyArea
-df1 <- df[,c(1,5)]
-df1 <- df1 %>% group_by(FIPS) %>% summarise_all(funs(sum))
-
-df <- merge(df, df1, by="FIPS")
-df$pcthuc8.x <- df$pcthuc8.x/df$pcthuc8.y
-df<- df[,c(1,2,5)]
-colnames(df)[colnames(df)=="FIPS"] <- "fips"
-
-huc <- function(DF,sect)
-{
-  DF <- merge(DF, df, by="fips")
-  DF[,1] <- as.numeric(DF[,1])
-  for (n in 3:58){
-    DF[,n]<- DF[,n]*DF[,60]
-  }
-  DF <- DF[,c(1,3:60)]
-  DF <- DF%>% group_by(HUC4) %>% summarise_all(funs(sum))
-  DF$sector <- sect
-  DF <- DF[,c(1,60,3:58)]
-  return(DF[,c(1:58)])
-}
-ic.ssp1 <- huc(ic.ssp1, "ic")
-ic.ssp2 <- huc(ic.ssp2, "ic")
-ic.ssp3 <- huc(ic.ssp3, "ic")
-ic.ssp4 <- huc(ic.ssp4, "ic")
-ic.ssp5 <- huc(ic.ssp5, "ic")
-
-dp.ssp1 <- huc(dp.ssp1, "dp")
-dp.ssp2 <- huc(dp.ssp2, "dp")
-dp.ssp3 <- huc(dp.ssp3, "dp")
-dp.ssp4 <- huc(dp.ssp4, "dp")
-dp.ssp5 <- huc(dp.ssp5, "dp")
-
-ls.ssp1 <- huc(ls.ssp1, "ls")
-ls.ssp2 <- huc(ls.ssp2, "ls")
-ls.ssp3 <- huc(ls.ssp3, "ls")
-ls.ssp4 <- huc(ls.ssp4, "ls")
-ls.ssp5 <- huc(ls.ssp5, "ls")
-
-ir <- huc(ir, "ir")
-
-aq.ssp1 <- huc(aq.ssp1, "aq")
-aq.ssp2 <- huc(aq.ssp2, "aq")
-aq.ssp3 <- huc(aq.ssp3, "aq")
-aq.ssp4 <- huc(aq.ssp4, "aq")
-aq.ssp5 <- huc(aq.ssp5, "aq")
-
-th.ssp1 <-huc(th.ssp1, "th")
-th.ssp2 <-huc(th.ssp2, "th")
-th.ssp3 <-huc(th.ssp3, "th")
-th.ssp4 <-huc(th.ssp4, "th")
-th.ssp5 <-huc(th.ssp5, "th")
+#  
+# df<-cntypercent
+# df$HUC4 <-signif(df$HUC_10,4)/1000000
+# df<-df[,c(1:3,8,6)]
+# df <- df %>% group_by(FIPS,HUC4) %>% summarise(Shape_Area=sum(Shape_Area),CountyArea=mean(CountyArea))
+# df$pcthuc8 <- df$Shape_Area/df$CountyArea
+# df1 <- df[,c(1,5)]
+# df1 <- df1 %>% group_by(FIPS) %>% summarise_all(funs(sum))
+# 
+# df <- merge(df, df1, by="FIPS")
+# df$pcthuc8.x <- df$pcthuc8.x/df$pcthuc8.y
+# df<- df[,c(1,2,5)]
+# colnames(df)[colnames(df)=="FIPS"] <- "fips"
+# 
+# huc <- function(DF,sect)
+# {
+#   DF <- merge(DF, df, by="fips")
+#   DF[,1] <- as.numeric(DF[,1])
+#   for (n in 3:58){
+#     DF[,n]<- DF[,n]*DF[,60]
+#   }
+#   DF <- DF[,c(1,3:60)]
+#   DF <- DF%>% group_by(HUC4) %>% summarise_all(funs(sum))
+#   DF$sector <- sect
+#   DF <- DF[,c(1,60,3:58)]
+#   return(DF[,c(1:58)])
+# }
+# ic.ssp1 <- huc(ic.ssp1, "ic")
+# ic.ssp2 <- huc(ic.ssp2, "ic")
+# ic.ssp3 <- huc(ic.ssp3, "ic")
+# ic.ssp4 <- huc(ic.ssp4, "ic")
+# ic.ssp5 <- huc(ic.ssp5, "ic")
+# 
+# dp.ssp1 <- huc(dp.ssp1, "dp")
+# dp.ssp2 <- huc(dp.ssp2, "dp")
+# dp.ssp3 <- huc(dp.ssp3, "dp")
+# dp.ssp4 <- huc(dp.ssp4, "dp")
+# dp.ssp5 <- huc(dp.ssp5, "dp")
+# 
+# ls.ssp1 <- huc(ls.ssp1, "ls")
+# ls.ssp2 <- huc(ls.ssp2, "ls")
+# ls.ssp3 <- huc(ls.ssp3, "ls")
+# ls.ssp4 <- huc(ls.ssp4, "ls")
+# ls.ssp5 <- huc(ls.ssp5, "ls")
+# 
+# ir <- huc(ir, "ir")
+# 
+# aq.ssp1 <- huc(aq.ssp1, "aq")
+# aq.ssp2 <- huc(aq.ssp2, "aq")
+# aq.ssp3 <- huc(aq.ssp3, "aq")
+# aq.ssp4 <- huc(aq.ssp4, "aq")
+# aq.ssp5 <- huc(aq.ssp5, "aq")
+# 
+# th.ssp1 <-huc(th.ssp1, "th")
+# th.ssp2 <-huc(th.ssp2, "th")
+# th.ssp3 <-huc(th.ssp3, "th")
+# th.ssp4 <-huc(th.ssp4, "th")
+# th.ssp5 <-huc(th.ssp5, "th")
+# 
 
 # create on large dataframe with results
 
@@ -2962,231 +2963,465 @@ results <- rbind(
 results$year <- NA
 results$gcm <- NA
 
+## - redoing Shaunie's code but with counties. I skipped the part of Ryan's code that coveretd to HUCs
+#--------------------
+
 # Create new data frames that subset wd for each year. This code is currently repetitive
 # and should be rewritten to loop through year columns and create each new data frame                               
-Y2015 <- select(results, HUC4, sector, ssp, Y2015, year, gcm)
+Y2015 <- select(results, fips, sector, ssp, Y2015, year, gcm)
 Y2015$year <- "2015"
 names(Y2015)[names(Y2015) == "Y2015"] <- "Demand"
 
-Y2016 <- select(results, HUC4, sector, ssp, Y2016, year, gcm)
+Y2016 <- select(results, fips, sector, ssp, Y2016, year, gcm)
 Y2016$year <- "2016"
 names(Y2016)[names(Y2016) == "Y2016"] <- "Demand"
 
-Y2017 <- select(results, HUC4, sector, ssp, Y2017, year, gcm)
+Y2017 <- select(results, fips, sector, ssp, Y2017, year, gcm)
 Y2017$year <- "2017"
 names(Y2017)[names(Y2017) == "Y2017"] <- "Demand"
 
-Y2018 <- select(results, HUC4, sector, ssp, Y2018, year, gcm)
+Y2018 <- select(results, fips, sector, ssp, Y2018, year, gcm)
 Y2018$year <- "2018"
 names(Y2018)[names(Y2018) == "Y2018"] <- "Demand"
 
-Y2019 <- select(results, HUC4, sector, ssp, Y2019, year, gcm)
+Y2019 <- select(results, fips, sector, ssp, Y2019, year, gcm)
 Y2019$year <- "2019"
 names(Y2019)[names(Y2019) == "Y2019"] <- "Demand"
 
-Y2020 <- select(results, HUC4, sector, ssp, Y2020, year, gcm)
+Y2020 <- select(results, fips, sector, ssp, Y2020, year, gcm)
 Y2020$year <- "2020"
 names(Y2020)[names(Y2020) == "Y2020"] <- "Demand"
 
-Y2021 <- select(results, HUC4, sector, ssp, Y2021, year, gcm)
+Y2021 <- select(results, fips, sector, ssp, Y2021, year, gcm)
 Y2021$year <- "2021"
 names(Y2021)[names(Y2021) == "Y2021"] <- "Demand"
 
-Y2022 <- select(results, HUC4, sector, ssp, Y2022, year, gcm)
+Y2022 <- select(results, fips, sector, ssp, Y2022, year, gcm)
 Y2022$year <- "2022"
 names(Y2022)[names(Y2022) == "Y2022"] <- "Demand"
 
-Y2023 <- select(results, HUC4, sector, ssp, Y2023, year, gcm)
+Y2023 <- select(results, fips, sector, ssp, Y2023, year, gcm)
 Y2023$year <- "2023"
 names(Y2023)[names(Y2023) == "Y2023"] <- "Demand"
 
-Y2024 <- select(results, HUC4, sector, ssp, Y2024, year, gcm)
+Y2024 <- select(results, fips, sector, ssp, Y2024, year, gcm)
 Y2024$year <- "2024"
 names(Y2024)[names(Y2024) == "Y2024"] <- "Demand"
 
-Y2025 <- select(results, HUC4, sector, ssp, Y2025, year, gcm)
+Y2025 <- select(results, fips, sector, ssp, Y2025, year, gcm)
 Y2025$year <- "2025"
 names(Y2025)[names(Y2025) == "Y2025"] <- "Demand"
 
-Y2026 <- select(results, HUC4, sector, ssp, Y2026, year, gcm)
+Y2026 <- select(results, fips, sector, ssp, Y2026, year, gcm)
 Y2026$year <- "2026"
 names(Y2026)[names(Y2026) == "Y2026"] <- "Demand"
 
-Y2027 <- select(results, HUC4, sector, ssp, Y2027, year, gcm)
+Y2027 <- select(results, fips, sector, ssp, Y2027, year, gcm)
 Y2027$year <- "2027"
 names(Y2027)[names(Y2027) == "Y2027"] <- "Demand"
 
-Y2028 <- select(results, HUC4, sector, ssp, Y2028, year, gcm)
+Y2028 <- select(results, fips, sector, ssp, Y2028, year, gcm)
 Y2028$year <- "2028"
 names(Y2028)[names(Y2028) == "Y2028"] <- "Demand"
 
-Y2029 <- select(results, HUC4, sector, ssp, Y2029, year, gcm)
+Y2029 <- select(results, fips, sector, ssp, Y2029, year, gcm)
 Y2029$year <- "2029"
 names(Y2029)[names(Y2029) == "Y2029"] <- "Demand"
 
-Y2030 <- select(results, HUC4, sector, ssp, Y2030, year, gcm)
+Y2030 <- select(results, fips, sector, ssp, Y2030, year, gcm)
 Y2030$year <- "2030"
 names(Y2030)[names(Y2030) == "Y2030"] <- "Demand"
 
-Y2031 <- select(results, HUC4, sector, ssp, Y2031, year, gcm)
+Y2031 <- select(results, fips, sector, ssp, Y2031, year, gcm)
 Y2031$year <- "2031"
 names(Y2031)[names(Y2031) == "Y2031"] <- "Demand"
 
-Y2032 <- select(results, HUC4, sector, ssp, Y2032, year, gcm)
+Y2032 <- select(results, fips, sector, ssp, Y2032, year, gcm)
 Y2032$year <- "2032"
 names(Y2032)[names(Y2032) == "Y2032"] <- "Demand"
 
-Y2033 <- select(results, HUC4, sector, ssp, Y2033, year, gcm)
+Y2033 <- select(results, fips, sector, ssp, Y2033, year, gcm)
 Y2033$year <- "2033"
 names(Y2033)[names(Y2033) == "Y2033"] <- "Demand"
 
-Y2034 <- select(results, HUC4, sector, ssp, Y2034, year, gcm)
+Y2034 <- select(results, fips, sector, ssp, Y2034, year, gcm)
 Y2034$year <- "2034"
 names(Y2034)[names(Y2034) == "Y2034"] <- "Demand"
 
-Y2035 <- select(results, HUC4, sector, ssp, Y2035, year, gcm)
+Y2035 <- select(results, fips, sector, ssp, Y2035, year, gcm)
 Y2035$year <- "2035"
 names(Y2035)[names(Y2035) == "Y2035"] <- "Demand"
 
-Y2036 <- select(results, HUC4, sector, ssp, Y2036, year, gcm)
+Y2036 <- select(results, fips, sector, ssp, Y2036, year, gcm)
 Y2036$year <- "2036"
 names(Y2036)[names(Y2036) == "Y2036"] <- "Demand"
 
-Y2037 <- select(results, HUC4, sector, ssp, Y2037, year, gcm)
+Y2037 <- select(results, fips, sector, ssp, Y2037, year, gcm)
 Y2037$year <- "2037"
 names(Y2037)[names(Y2037) == "Y2037"] <- "Demand"
 
-Y2038 <- select(results, HUC4, sector, ssp, Y2038, year, gcm)
+Y2038 <- select(results, fips, sector, ssp, Y2038, year, gcm)
 Y2038$year <- "2038"
 names(Y2038)[names(Y2038) == "Y2038"] <- "Demand"
 
-Y2039 <- select(results, HUC4, sector, ssp, Y2039, year, gcm)
+Y2039 <- select(results, fips, sector, ssp, Y2039, year, gcm)
 Y2039$year <- "2039"
 names(Y2039)[names(Y2039) == "Y2039"] <- "Demand"
 
-Y2040 <- select(results, HUC4, sector, ssp, Y2040, year, gcm)
+Y2040 <- select(results, fips, sector, ssp, Y2040, year, gcm)
 Y2040$year <- "2040"
 names(Y2040)[names(Y2040) == "Y2040"] <- "Demand"
 
-Y2041 <- select(results, HUC4, sector, ssp, Y2041, year, gcm)
+Y2041 <- select(results, fips, sector, ssp, Y2041, year, gcm)
 Y2041$year <- "2041"
 names(Y2041)[names(Y2041) == "Y2041"] <- "Demand"
 
-Y2042 <- select(results, HUC4, sector, ssp, Y2042, year, gcm)
+Y2042 <- select(results, fips, sector, ssp, Y2042, year, gcm)
 Y2042$year <- "2042"
 names(Y2042)[names(Y2042) == "Y2042"] <- "Demand"
 
-Y2043 <- select(results, HUC4, sector, ssp, Y2043, year, gcm)
+Y2043 <- select(results, fips, sector, ssp, Y2043, year, gcm)
 Y2043$year <- "2043"
 names(Y2043)[names(Y2043) == "Y2043"] <- "Demand"
 
-Y2044 <- select(results, HUC4, sector, ssp, Y2044, year, gcm)
+Y2044 <- select(results, fips, sector, ssp, Y2044, year, gcm)
 Y2044$year <- "2044"
 names(Y2044)[names(Y2044) == "Y2044"] <- "Demand"
 
-Y2045 <- select(results, HUC4, sector, ssp, Y2045, year, gcm)
+Y2045 <- select(results, fips, sector, ssp, Y2045, year, gcm)
 Y2045$year <- "2045"
 names(Y2045)[names(Y2045) == "Y2045"] <- "Demand"
 
-Y2046 <- select(results, HUC4, sector, ssp, Y2046, year, gcm)
+Y2046 <- select(results, fips, sector, ssp, Y2046, year, gcm)
 Y2046$year <- "2046"
 names(Y2046)[names(Y2046) == "Y2046"] <- "Demand"
 
-Y2047 <- select(results, HUC4, sector, ssp, Y2047, year, gcm)
+Y2047 <- select(results, fips, sector, ssp, Y2047, year, gcm)
 Y2047$year <- "2047"
 names(Y2047)[names(Y2047) == "Y2047"] <- "Demand"
 
-Y2048 <- select(results, HUC4, sector, ssp, Y2048, year, gcm)
+Y2048 <- select(results, fips, sector, ssp, Y2048, year, gcm)
 Y2048$year <- "2048"
 names(Y2048)[names(Y2048) == "Y2048"] <- "Demand"
 
-Y2049 <- select(results, HUC4, sector, ssp, Y2049, year, gcm)
+Y2049 <- select(results, fips, sector, ssp, Y2049, year, gcm)
 Y2049$year <- "2049"
 names(Y2049)[names(Y2049) == "Y2049"] <- "Demand"
 
-Y2050 <- select(results, HUC4, sector, ssp, Y2050, year, gcm)
+Y2050 <- select(results, fips, sector, ssp, Y2050, year, gcm)
 Y2050$year <- "2050"
 names(Y2050)[names(Y2050) == "Y2050"] <- "Demand"
 
-Y2051 <- select(results, HUC4, sector, ssp, Y2051, year, gcm)
+Y2051 <- select(results, fips, sector, ssp, Y2051, year, gcm)
 Y2051$year <- "2051"
 names(Y2051)[names(Y2051) == "Y2051"] <- "Demand"
 
-Y2052 <- select(results, HUC4, sector, ssp, Y2052, year, gcm)
+Y2052 <- select(results, fips, sector, ssp, Y2052, year, gcm)
 Y2052$year <- "2052"
 names(Y2052)[names(Y2052) == "Y2052"] <- "Demand"
 
-Y2053 <- select(results, HUC4, sector, ssp, Y2053, year, gcm)
+Y2053 <- select(results, fips, sector, ssp, Y2053, year, gcm)
 Y2053$year <- "2053"
 names(Y2053)[names(Y2053) == "Y2053"] <- "Demand"
 
-Y2054 <- select(results, HUC4, sector, ssp, Y2054, year, gcm)
+Y2054 <- select(results, fips, sector, ssp, Y2054, year, gcm)
 Y2054$year <- "2054"
 names(Y2054)[names(Y2054) == "Y2054"] <- "Demand"
 
-Y2055 <- select(results, HUC4, sector, ssp, Y2055, year, gcm)
+Y2055 <- select(results, fips, sector, ssp, Y2055, year, gcm)
 Y2055$year <- "2055"
 names(Y2055)[names(Y2055) == "Y2055"] <- "Demand"
 
-Y2056 <- select(results, HUC4, sector, ssp, Y2056, year, gcm)
+Y2056 <- select(results, fips, sector, ssp, Y2056, year, gcm)
 Y2056$year <- "2056"
 names(Y2056)[names(Y2056) == "Y2056"] <- "Demand"
 
-Y2057 <- select(results, HUC4, sector, ssp, Y2057, year, gcm)
+Y2057 <- select(results, fips, sector, ssp, Y2057, year, gcm)
 Y2057$year <- "2057"
 names(Y2057)[names(Y2057) == "Y2057"] <- "Demand"
 
-Y2058 <- select(results, HUC4, sector, ssp, Y2058, year, gcm)
+Y2058 <- select(results, fips, sector, ssp, Y2058, year, gcm)
 Y2058$year <- "2058"
 names(Y2058)[names(Y2058) == "Y2058"] <- "Demand"
 
-Y2059 <- select(results, HUC4, sector, ssp, Y2059, year, gcm)
+Y2059 <- select(results, fips, sector, ssp, Y2059, year, gcm)
 Y2059$year <- "2059"
 names(Y2059)[names(Y2059) == "Y2059"] <- "Demand"
 
-Y2060 <- select(results, HUC4, sector, ssp, Y2060, year, gcm)
+Y2060 <- select(results, fips, sector, ssp, Y2060, year, gcm)
 Y2060$year <- "2060"
 names(Y2060)[names(Y2060) == "Y2060"] <- "Demand"
 
-Y2061 <- select(results, HUC4, sector, ssp, Y2061, year, gcm)
+Y2061 <- select(results, fips, sector, ssp, Y2061, year, gcm)
 Y2061$year <- "2061"
 names(Y2061)[names(Y2061) == "Y2061"] <- "Demand"
 
-Y2062 <- select(results, HUC4, sector, ssp, Y2062, year, gcm)
+Y2062 <- select(results, fips, sector, ssp, Y2062, year, gcm)
 Y2062$year <- "2062"
 names(Y2062)[names(Y2062) == "Y2062"] <- "Demand"
 
-Y2063 <- select(results, HUC4, sector, ssp, Y2063, year, gcm)
+Y2063 <- select(results, fips, sector, ssp, Y2063, year, gcm)
 Y2063$year <- "2063"
 names(Y2063)[names(Y2063) == "Y2063"] <- "Demand"
 
-Y2064 <- select(results, HUC4, sector, ssp, Y2064, year, gcm)
+Y2064 <- select(results, fips, sector, ssp, Y2064, year, gcm)
 Y2064$year <- "2064"
 names(Y2064)[names(Y2064) == "Y2064"] <- "Demand"
 
-Y2065 <- select(results, HUC4, sector, ssp, Y2065, year, gcm)
+Y2065 <- select(results, fips, sector, ssp, Y2065, year, gcm)
 Y2065$year <- "2065"
 names(Y2065)[names(Y2065) == "Y2065"] <- "Demand"
 
-Y2066 <- select(results, HUC4, sector, ssp, Y2066, year, gcm)
+Y2066 <- select(results, fips, sector, ssp, Y2066, year, gcm)
 Y2066$year <- "2066"
 names(Y2066)[names(Y2066) == "Y2066"] <- "Demand"
 
-Y2067 <- select(results, HUC4, sector, ssp, Y2067, year, gcm)
+Y2067 <- select(results, fips, sector, ssp, Y2067, year, gcm)
 Y2067$year <- "2067"
 names(Y2067)[names(Y2067) == "Y2067"] <- "Demand"
 
-Y2068 <- select(results, HUC4, sector, ssp, Y2068, year, gcm)
+Y2068 <- select(results, fips, sector, ssp, Y2068, year, gcm)
 Y2068$year <- "2068"
 names(Y2068)[names(Y2068) == "Y2068"] <- "Demand"
 
-Y2069 <- select(results, HUC4, sector, ssp, Y2069, year, gcm)
+Y2069 <- select(results, fips, sector, ssp, Y2069, year, gcm)
 Y2069$year <- "2069"
 names(Y2069)[names(Y2069) == "Y2069"] <- "Demand"
 
-Y2070 <- select(results, HUC4, sector, ssp, Y2070, year, gcm)
+Y2070 <- select(results, fips, sector, ssp, Y2070, year, gcm)
 Y2070$year <- "2070"
 names(Y2070)[names(Y2070) == "Y2070"] <- "Demand"
+
+
+### -- if you skipped the above and are using HUCs use what is below here
+#------------------
+
+
+# Create new data frames that subset wd for each year. This code is currently repetitive
+# and should be rewritten to loop through year columns and create each new data frame                               
+# Y2015 <- select(results, HUC4, sector, ssp, Y2015, year, gcm)
+# Y2015$year <- "2015"
+# names(Y2015)[names(Y2015) == "Y2015"] <- "Demand"
+# 
+# Y2016 <- select(results, HUC4, sector, ssp, Y2016, year, gcm)
+# Y2016$year <- "2016"
+# names(Y2016)[names(Y2016) == "Y2016"] <- "Demand"
+# 
+# Y2017 <- select(results, HUC4, sector, ssp, Y2017, year, gcm)
+# Y2017$year <- "2017"
+# names(Y2017)[names(Y2017) == "Y2017"] <- "Demand"
+# 
+# Y2018 <- select(results, HUC4, sector, ssp, Y2018, year, gcm)
+# Y2018$year <- "2018"
+# names(Y2018)[names(Y2018) == "Y2018"] <- "Demand"
+# 
+# Y2019 <- select(results, HUC4, sector, ssp, Y2019, year, gcm)
+# Y2019$year <- "2019"
+# names(Y2019)[names(Y2019) == "Y2019"] <- "Demand"
+# 
+# Y2020 <- select(results, HUC4, sector, ssp, Y2020, year, gcm)
+# Y2020$year <- "2020"
+# names(Y2020)[names(Y2020) == "Y2020"] <- "Demand"
+# 
+# Y2021 <- select(results, HUC4, sector, ssp, Y2021, year, gcm)
+# Y2021$year <- "2021"
+# names(Y2021)[names(Y2021) == "Y2021"] <- "Demand"
+# 
+# Y2022 <- select(results, HUC4, sector, ssp, Y2022, year, gcm)
+# Y2022$year <- "2022"
+# names(Y2022)[names(Y2022) == "Y2022"] <- "Demand"
+# 
+# Y2023 <- select(results, HUC4, sector, ssp, Y2023, year, gcm)
+# Y2023$year <- "2023"
+# names(Y2023)[names(Y2023) == "Y2023"] <- "Demand"
+# 
+# Y2024 <- select(results, HUC4, sector, ssp, Y2024, year, gcm)
+# Y2024$year <- "2024"
+# names(Y2024)[names(Y2024) == "Y2024"] <- "Demand"
+# 
+# Y2025 <- select(results, HUC4, sector, ssp, Y2025, year, gcm)
+# Y2025$year <- "2025"
+# names(Y2025)[names(Y2025) == "Y2025"] <- "Demand"
+# 
+# Y2026 <- select(results, HUC4, sector, ssp, Y2026, year, gcm)
+# Y2026$year <- "2026"
+# names(Y2026)[names(Y2026) == "Y2026"] <- "Demand"
+# 
+# Y2027 <- select(results, HUC4, sector, ssp, Y2027, year, gcm)
+# Y2027$year <- "2027"
+# names(Y2027)[names(Y2027) == "Y2027"] <- "Demand"
+# 
+# Y2028 <- select(results, HUC4, sector, ssp, Y2028, year, gcm)
+# Y2028$year <- "2028"
+# names(Y2028)[names(Y2028) == "Y2028"] <- "Demand"
+# 
+# Y2029 <- select(results, HUC4, sector, ssp, Y2029, year, gcm)
+# Y2029$year <- "2029"
+# names(Y2029)[names(Y2029) == "Y2029"] <- "Demand"
+# 
+# Y2030 <- select(results, HUC4, sector, ssp, Y2030, year, gcm)
+# Y2030$year <- "2030"
+# names(Y2030)[names(Y2030) == "Y2030"] <- "Demand"
+# 
+# Y2031 <- select(results, HUC4, sector, ssp, Y2031, year, gcm)
+# Y2031$year <- "2031"
+# names(Y2031)[names(Y2031) == "Y2031"] <- "Demand"
+# 
+# Y2032 <- select(results, HUC4, sector, ssp, Y2032, year, gcm)
+# Y2032$year <- "2032"
+# names(Y2032)[names(Y2032) == "Y2032"] <- "Demand"
+# 
+# Y2033 <- select(results, HUC4, sector, ssp, Y2033, year, gcm)
+# Y2033$year <- "2033"
+# names(Y2033)[names(Y2033) == "Y2033"] <- "Demand"
+# 
+# Y2034 <- select(results, HUC4, sector, ssp, Y2034, year, gcm)
+# Y2034$year <- "2034"
+# names(Y2034)[names(Y2034) == "Y2034"] <- "Demand"
+# 
+# Y2035 <- select(results, HUC4, sector, ssp, Y2035, year, gcm)
+# Y2035$year <- "2035"
+# names(Y2035)[names(Y2035) == "Y2035"] <- "Demand"
+# 
+# Y2036 <- select(results, HUC4, sector, ssp, Y2036, year, gcm)
+# Y2036$year <- "2036"
+# names(Y2036)[names(Y2036) == "Y2036"] <- "Demand"
+# 
+# Y2037 <- select(results, HUC4, sector, ssp, Y2037, year, gcm)
+# Y2037$year <- "2037"
+# names(Y2037)[names(Y2037) == "Y2037"] <- "Demand"
+# 
+# Y2038 <- select(results, HUC4, sector, ssp, Y2038, year, gcm)
+# Y2038$year <- "2038"
+# names(Y2038)[names(Y2038) == "Y2038"] <- "Demand"
+# 
+# Y2039 <- select(results, HUC4, sector, ssp, Y2039, year, gcm)
+# Y2039$year <- "2039"
+# names(Y2039)[names(Y2039) == "Y2039"] <- "Demand"
+# 
+# Y2040 <- select(results, HUC4, sector, ssp, Y2040, year, gcm)
+# Y2040$year <- "2040"
+# names(Y2040)[names(Y2040) == "Y2040"] <- "Demand"
+# 
+# Y2041 <- select(results, HUC4, sector, ssp, Y2041, year, gcm)
+# Y2041$year <- "2041"
+# names(Y2041)[names(Y2041) == "Y2041"] <- "Demand"
+# 
+# Y2042 <- select(results, HUC4, sector, ssp, Y2042, year, gcm)
+# Y2042$year <- "2042"
+# names(Y2042)[names(Y2042) == "Y2042"] <- "Demand"
+# 
+# Y2043 <- select(results, HUC4, sector, ssp, Y2043, year, gcm)
+# Y2043$year <- "2043"
+# names(Y2043)[names(Y2043) == "Y2043"] <- "Demand"
+# 
+# Y2044 <- select(results, HUC4, sector, ssp, Y2044, year, gcm)
+# Y2044$year <- "2044"
+# names(Y2044)[names(Y2044) == "Y2044"] <- "Demand"
+# 
+# Y2045 <- select(results, HUC4, sector, ssp, Y2045, year, gcm)
+# Y2045$year <- "2045"
+# names(Y2045)[names(Y2045) == "Y2045"] <- "Demand"
+# 
+# Y2046 <- select(results, HUC4, sector, ssp, Y2046, year, gcm)
+# Y2046$year <- "2046"
+# names(Y2046)[names(Y2046) == "Y2046"] <- "Demand"
+# 
+# Y2047 <- select(results, HUC4, sector, ssp, Y2047, year, gcm)
+# Y2047$year <- "2047"
+# names(Y2047)[names(Y2047) == "Y2047"] <- "Demand"
+# 
+# Y2048 <- select(results, HUC4, sector, ssp, Y2048, year, gcm)
+# Y2048$year <- "2048"
+# names(Y2048)[names(Y2048) == "Y2048"] <- "Demand"
+# 
+# Y2049 <- select(results, HUC4, sector, ssp, Y2049, year, gcm)
+# Y2049$year <- "2049"
+# names(Y2049)[names(Y2049) == "Y2049"] <- "Demand"
+# 
+# Y2050 <- select(results, HUC4, sector, ssp, Y2050, year, gcm)
+# Y2050$year <- "2050"
+# names(Y2050)[names(Y2050) == "Y2050"] <- "Demand"
+# 
+# Y2051 <- select(results, HUC4, sector, ssp, Y2051, year, gcm)
+# Y2051$year <- "2051"
+# names(Y2051)[names(Y2051) == "Y2051"] <- "Demand"
+# 
+# Y2052 <- select(results, HUC4, sector, ssp, Y2052, year, gcm)
+# Y2052$year <- "2052"
+# names(Y2052)[names(Y2052) == "Y2052"] <- "Demand"
+# 
+# Y2053 <- select(results, HUC4, sector, ssp, Y2053, year, gcm)
+# Y2053$year <- "2053"
+# names(Y2053)[names(Y2053) == "Y2053"] <- "Demand"
+# 
+# Y2054 <- select(results, HUC4, sector, ssp, Y2054, year, gcm)
+# Y2054$year <- "2054"
+# names(Y2054)[names(Y2054) == "Y2054"] <- "Demand"
+# 
+# Y2055 <- select(results, HUC4, sector, ssp, Y2055, year, gcm)
+# Y2055$year <- "2055"
+# names(Y2055)[names(Y2055) == "Y2055"] <- "Demand"
+# 
+# Y2056 <- select(results, HUC4, sector, ssp, Y2056, year, gcm)
+# Y2056$year <- "2056"
+# names(Y2056)[names(Y2056) == "Y2056"] <- "Demand"
+# 
+# Y2057 <- select(results, HUC4, sector, ssp, Y2057, year, gcm)
+# Y2057$year <- "2057"
+# names(Y2057)[names(Y2057) == "Y2057"] <- "Demand"
+# 
+# Y2058 <- select(results, HUC4, sector, ssp, Y2058, year, gcm)
+# Y2058$year <- "2058"
+# names(Y2058)[names(Y2058) == "Y2058"] <- "Demand"
+# 
+# Y2059 <- select(results, HUC4, sector, ssp, Y2059, year, gcm)
+# Y2059$year <- "2059"
+# names(Y2059)[names(Y2059) == "Y2059"] <- "Demand"
+# 
+# Y2060 <- select(results, HUC4, sector, ssp, Y2060, year, gcm)
+# Y2060$year <- "2060"
+# names(Y2060)[names(Y2060) == "Y2060"] <- "Demand"
+# 
+# Y2061 <- select(results, HUC4, sector, ssp, Y2061, year, gcm)
+# Y2061$year <- "2061"
+# names(Y2061)[names(Y2061) == "Y2061"] <- "Demand"
+# 
+# Y2062 <- select(results, HUC4, sector, ssp, Y2062, year, gcm)
+# Y2062$year <- "2062"
+# names(Y2062)[names(Y2062) == "Y2062"] <- "Demand"
+# 
+# Y2063 <- select(results, HUC4, sector, ssp, Y2063, year, gcm)
+# Y2063$year <- "2063"
+# names(Y2063)[names(Y2063) == "Y2063"] <- "Demand"
+# 
+# Y2064 <- select(results, HUC4, sector, ssp, Y2064, year, gcm)
+# Y2064$year <- "2064"
+# names(Y2064)[names(Y2064) == "Y2064"] <- "Demand"
+# 
+# Y2065 <- select(results, HUC4, sector, ssp, Y2065, year, gcm)
+# Y2065$year <- "2065"
+# names(Y2065)[names(Y2065) == "Y2065"] <- "Demand"
+# 
+# Y2066 <- select(results, HUC4, sector, ssp, Y2066, year, gcm)
+# Y2066$year <- "2066"
+# names(Y2066)[names(Y2066) == "Y2066"] <- "Demand"
+# 
+# Y2067 <- select(results, HUC4, sector, ssp, Y2067, year, gcm)
+# Y2067$year <- "2067"
+# names(Y2067)[names(Y2067) == "Y2067"] <- "Demand"
+# 
+# Y2068 <- select(results, HUC4, sector, ssp, Y2068, year, gcm)
+# Y2068$year <- "2068"
+# names(Y2068)[names(Y2068) == "Y2068"] <- "Demand"
+# 
+# Y2069 <- select(results, HUC4, sector, ssp, Y2069, year, gcm)
+# Y2069$year <- "2069"
+# names(Y2069)[names(Y2069) == "Y2069"] <- "Demand"
+# 
+# Y2070 <- select(results, HUC4, sector, ssp, Y2070, year, gcm)
+# Y2070$year <- "2070"
+# names(Y2070)[names(Y2070) == "Y2070"] <- "Demand"
 
 # Bind together resulting data frames for all years                             
 results <- rbind(Y2015,
@@ -3207,49 +3442,37 @@ results <- rbind(Y2015,
                                  
 # Specify the climate scenario in the "gcm" column
 results$gcm <- "cnrm_c5"
-                                                    
-# Below (lines 3220 - 3252) are previously explored ways to subset results, may or may not be used further                                 
-dp.101 <- rbind(
-  subset(dp.ssp1, HUC4 == 101), 
-  subset(dp.ssp2, HUC4 == 101),
-  subset(dp.ssp3, HUC4 == 101),
-  subset(dp.ssp4, HUC4 == 101),
-  subset(dp.ssp5, HUC4 == 101)
-  )
 
-dp.102 <- rbind(
-  subset(dp.ssp1, HUC4 == 102), 
-  subset(dp.ssp2, HUC4 == 102),
-  subset(dp.ssp3, HUC4 == 102),
-  subset(dp.ssp4, HUC4 == 102),
-  subset(dp.ssp5, HUC4 == 102)
-)
-
-results.df <- rbind(dp.101, dp.102)
-results.df$year <- NA
-results.df$gcm <- NA
-results.df$wd <- NA
-
-results.df <- subset(results.df, select=-c(Y2024, Y2025, Y2026, Y2027,
-                                           Y2028, Y2029, Y2030, Y2031,
-                                           Y2032, Y2033, Y2034, Y2035,
-                                           Y2036, Y2037, Y2038, Y2039,
-                                           Y2040, Y2041, Y2042, Y2043,
-                                           Y2044, Y2045, Y2046, Y2047,
-                                           Y2048, Y2049, Y2050, Y2051,
-                                           Y2052, Y2053, Y2054, Y2055,
-                                           Y2056, Y2057, Y2058, Y2059,
-                                           Y2060, Y2061, Y2062, Y2063,
-                                           Y2064, Y2065, Y2066, Y2067,
-                                           Y2068, Y2069, Y2070))
-                                           
-                                           
-
+results$pop <- NA
+results$acres <- NA
+results$region <- NA
 
 # -- Figures ---
 
+# plot of dp withdrawals over time
 
+dp.results <- subset(results, sector=="dp")
+dp.results.ssp1 <- subset(dp.results, ssp=="ssp1")
+dp.results.ssp2 <- subset(dp.results, ssp=="ssp2")
 
+dp.res.ssp1.cnrm <- aggregate(dp.results.ssp1$Demand, by=list(Category=dp.results.ssp1$year), FUN=sum)
+dp.res.ssp2.cnrm <- aggregate(dp.results.ssp2$Demand, by=list(Category=dp.results.ssp2$year), FUN=sum)
+
+colnames(dp.res.ssp1.cnrm) <- c('year','dp.spp1.cnrm')
+colnames(dp.res.ssp2.cnrm) <- c('year2','dp.spp2.cnrm')
+
+dp.res <- cbind(dp.res.ssp1.cnrm, dp.res.ssp2.cnrm)
+
+summary(dp.res.ssp1.cnrm)
+
+dp.res$year <- as.numeric(dp.res$year)
+dp.res$dp.ssp1.cnrm <- as.numeric(dp.res$dp.ssp1.cnrm)
+
+length(dp.res$year)
+
+### Why isn't this working with the dp.res data?
+plot(dp.res$year, dp.res.ssp1.cnrm$dp.spp1.cnrm, type="l")
+lines(dp.res$year, dp.res.ssp2.cnrm$dp.spp2.cnrm)
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
