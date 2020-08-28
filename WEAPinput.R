@@ -1,7 +1,8 @@
-#Lacey Testing
 rm(list = ls())
 
 # set working directory to file location
+# for Travis:
+# setwd("~/5_RPA/2020 Assessment/Demand model/WEAP Input Creation")
 
 library(tidyr)
 library(ggplot2)
@@ -3443,10 +3444,25 @@ results <- rbind(Y2015,
                                  
 # Specify the climate scenario in the "gcm" column
 results$gcm <- "cnrm_c5"
+results$rcp <- 45
+
+# recall the core scenarios:
+
+# High-high: RCP 8.5, SSP5
+# High-med: RCP 8.5, SSP2
+# High-low: RCP 8.5, SSP3
+# Low-med: RCP 4.5, SSP1
 
 results$pop <- NA
 results$acres <- NA
 results$region <- NA
+results$wpu <- NA # withdrawals per unit
+
+
+# fake pop - need to replace
+results$pop <- 100
+
+results$wpu <- results$Demand / results$pop
 
 # -- Figures ---
 
