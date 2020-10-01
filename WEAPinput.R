@@ -3460,7 +3460,12 @@ results$wpu <- NA # withdrawals per unit
 
 
 # fake pop - need to replace
-results$pop <- 100
+
+
+
+results.ssp1 <- results
+results.ssp1 <- merge(results.ssp1, water1, by="fips")
+
 
 results$wpu <- results$Demand / results$pop
 
@@ -3605,6 +3610,8 @@ write.csv(ir, file="ir.csv")
 
 
 #=====================================================================================================
+
+# WEAP INPUT -- takes county (?) results and turns into WEAP-friendly input files
 
 #----------------------------------------------------------------------------------------------------------------------
 #WEAP input needs to be converted to thousands of cubic meters.
