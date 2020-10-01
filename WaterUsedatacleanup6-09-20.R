@@ -711,6 +711,9 @@ AQ <- AQ %>% group_by(FIPS) %>% summarise_all(funs(sum))
 # colnames(hist) <- c("FIPS","year","IC","DP","LS","IR","IC_cons","DP_cons","LS_cons","IR_cons")
 # write.csv(hist, file="historic_wd_forML_corrected.csv")
 
+# Below 2 lines are useful if you want to pull historic data (total wd) for each sector (minus thermal and some years of AQ)
+#waterdataHist <- waterdata[,c(1,2,3,12,64,66,67,36,39)]
+#waterdataHist$DP.wd.tot <- waterdataHist$Public + waterdataHist$D.wd.tot
 #===================================================================================================================
 
 
