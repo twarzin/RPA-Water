@@ -2,7 +2,7 @@ rm(list = ls())
 
 # set working directory to file location
 # for Travis:
-# setwd("~/5_RPA/2020 Assessment/Demand model/WEAP Input Creation")
+setwd("~/5_RPA/2020 Assessment/Demand model/WEAP Input Creation")
 
 library(tidyr)
 library(ggplot2)
@@ -345,6 +345,78 @@ linapprox <- function (DF)
   
   DF <- DF[,c(1,2,3,15:18,4,19:22,5,23:26,6,27:30,7,31:34,8,35:38,9,39:42,10,43:46,11,47:50,12,51:54,13,55:58,14)]
 }
+
+
+## DP -- Travis' attampt
+
+demand.ssp1 <- read.csv('inputs_ssp1.csv')
+demand.ssp1$dpu <- NA
+
+demand.ssp1 <- merge(demand.ssp1, pop1, by='fips')
+
+demand.2020 <- demand.ssp1
+demand.2020$year = 2020
+demand.2020$pop <- demand.2020$pr_pop_2020
+demand.2020$inc.in.thousands <- NA
+demand.2020$AcresIrrig <- NA
+
+demand.2025 <- demand.2020
+demand.2030 <- demand.2020
+demand.2035 <- demand.2020
+demand.2040 <- demand.2020
+demand.2045 <- demand.2020
+demand.2050 <- demand.2020
+demand.2055 <- demand.2020
+demand.2060 <- demand.2020
+demand.2065 <- demand.2020
+demand.2070 <- demand.2020
+
+demand.2025$year <- 2025
+demand.2030$year <- 2030
+demand.2035$year <- 2035
+demand.2040$year <- 2040
+demand.2045$year <- 2045
+demand.2050$year <- 2050
+demand.2055$year <- 2055
+demand.2060$year <- 2060
+demand.2065$year <- 2065
+demand.2070$year <- 2070
+
+demand.2025$pop <- demand.2025$pr_pop_2025
+demand.2030$pop <- demand.2030$pr_pop_2030
+demand.2035$pop <- demand.2035$pr_pop_2035
+demand.2040$pop <- demand.2040$pr_pop_2040
+demand.2045$pop <- demand.2045$pr_pop_2045
+demand.2050$pop <- demand.2050$pr_pop_2050
+demand.2055$pop <- demand.2055$pr_pop_2055
+demand.2060$pop <- demand.2060$pr_pop_2060
+demand.2065$pop <- demand.2065$pr_pop_2065
+demand.2070$pop <- demand.2070$pr_pop_2070
+
+demand.ssp1 <- rbind(demand.ssp1, demand.2020, demand.2025, demand.2030,
+                     demand.2035, demand.2040, demand.2045, demand.2050,
+                     demand.2055, demand.2060, demand.2065, demand.2070)
+
+# this function is not quite right
+demand.ssp1$dpu <- demand.ssp1$DP.perUnit * 
+  (1+demand.ssp1$DP.growth*(1+demand.ssp1$DP.decay)^(demand.ssp1$year-2015))^5
+
+demand.ssp1$dpwd <- demand.ssp1$pop * demand.ssp1$DP.perUnit
+demand.ssp1$dpcu <- demand.ssp1$dpwd * demand.ssp1$DP.cu.ratio
+
+## NEED to add climate effects
+
+demand.east <- subset(demand.ssp1, EastWest == "East")
+demand.west <- subset(demand.ssp1, EastWest == "West")
+dpu.summary <- aggregate(demand.ssp1[, c('dpu')], list(demand.ssp1$year), mean)
+dpu.east <- aggregate(demand.east[, c('dpu')], list(demand.east$year), mean)
+dpu.west <- aggregate(demand.west[, c('dpu')], list(demand.west$year), mean)
+
+plot(dpu.east)
+plot(dpu.west)
+plot(dpu.summary)
+
+### ---- end Travis' attempt
 
 #This function calculates dp projections out to 2070 using function from Tom's paper (Foti, Ramirez, Brown, 2010 FS RPA Assessment)
 
