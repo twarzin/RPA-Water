@@ -28,7 +28,7 @@ cty.huc <- select(cty.huc,FIPS, HUC_10)
 cty.huc$FIPS2 <- floor(log10(cty.huc$FIPS)) + 1
 cty.huc$FIPS <- ifelse(cty.huc$FIPS2==4,paste0("0",cty.huc$FIPS),cty.huc$FIPS)
 cty.huc$HUC4 <- as.character(cty.huc$HUC_10)
-cty.huc$HUC4 <- substr(cty.huc$HUC4,1,3)
+cty.huc$HUC4 <- substr(cty.huc$HUC4,1,4)
 cty.huc <- select(cty.huc,FIPS,HUC4)
 duplicated(cty.huc)
 cty.huc <- cty.huc[!duplicated(cty.huc$FIPS), ]
