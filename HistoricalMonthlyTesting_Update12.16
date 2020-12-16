@@ -1,0 +1,3034 @@
+library(readxl)
+library(dplyr)
+library(plyr)
+library(tidyr)
+library(tidyverse)
+library(stringr)
+
+### FYI - I used several files that were pulled from diff locations in Box. I'd pull those files and make a folder
+### solely for these historical monthly projections
+
+##### Water data #####
+# This file is located in Box: 2020 RPA Assessment > Base Data
+setwd("set your path to the historical testing folder")
+waterdemand <- read_excel("./Historical testing/TotalWaterDemands2015.xlsx")
+waterdemand.cons <- waterdemand
+
+# reformat state and county to obtain full FIPS
+waterdemand.cons$state_cd <-formatC(waterdemand.cons$state_cd, width = 2, format = "d", flag = "0") # Adds a place holder for the state FIPS (2 digits)
+waterdemand.cons$county_cd <-formatC(waterdemand.cons$county_cd, width = 3, format = "d", flag = "0") # Adds a place holder for the county FIPS (3 digits)
+waterdemand.cons$FIPS <- paste(waterdemand.cons$state_cd, waterdemand.cons$county_cd, sep="") # This combines the state and county values
+
+# Bring in the summarized FIPS and HUC data from Ryan's WEAP input code (~lines 3144 - 3154)
+# this section is calculating the percentage of each county within HUCs and totaling their water use.
+# It mimics the calculation in the WEAP code.
+fips.huc <- read.csv("./Historical testing/summarizedFIPS_HUC.csv")
+fips.huc$pcthuc8 <- fips.huc$Shape_Area/fips.huc$CountyArea
+fips.huc1 <- fips.huc[,c(1,5)]
+fips.huc2 <- fips.huc1 %>% group_by(FIPS) %>% summarise_all(funs(sum))
+
+df <- merge(fips.huc, fips.huc2, by = 'FIPS')
+df$pcthuc8.x <- df$pcthuc8.x/df$pcthuc8.y
+df<- df[,c(1,2,5)]
+df$FIPS2 <- floor(log10(df$FIPS)) + 1
+df$FIPS <- ifelse(df$FIPS2==4,paste0("0",df$FIPS),df$FIPS)
+df <- df[-c(4)]
+
+water.huc <- merge(waterdemand.cons,df)
+for (n in 7:13){
+  water.huc[,n]<- water.huc[,n]*water.huc[,15]
+}
+
+
+#------------------------------------------------------------------------------------------.
+
+
+# Add inputs output from water data cleanup R script that includes consumption ratios for all sectors except thermo
+# In Box this is located in 2020 RPA Assessment > Water Demand - Complete R code and input files > WEAP Input Creation
+# FYI - Consumptive proportions are the same for every SSP scenario
+inputs<- read.csv("./Historical testing/inputs_ssp1.csv")
+inputs.cu <- select(inputs,fips,DP.cu.ratio,IC.cu.ratio,AQ.cu.ratio,LS.cu.ratio,IR.cu.ratio)
+
+# FIPS column is missing leading 0 so this adds it so we can merge it with water data
+inputs.cu$FIPS2 <- floor(log10(inputs.cu$fips)) + 1
+inputs.cu$fips <- ifelse(inputs.cu$FIPS2==4,paste0("0",inputs.cu$fips),inputs.cu$fips)
+
+# Add thermo consumption ratio which is a separate document retrieved from Tom's spreadsheet
+# In Box, this info is located in Tom's excel file in 2020 RPA Assessment - "Use-huc4 nov20.xlsm"
+# I merely copy + pasted the thermo CU proportions section and made a new excel sheet called thermo_cu
+thermo.cu <- read_excel("./Historical testing/thermo_cu.xlsx")
+thermo.cu <- plyr::rename(thermo.cu,c("Prop cu"="TH.cu.ratio"))
+
+# Merge water data and consumption ratios from inputs file
+cons.water <- merge(water.huc,inputs.cu, by.x = "FIPS", by.y = "fips")
+cons.water <- cons.water[order(cons.water$FIPS, cons.water$year),]
+
+# Merge thermo data with water data
+# have to make sure HUCs AND year match for merging thermo. 
+# Thermo cu proportions sometimes vary by year
+cons.water <- merge(cons.water,thermo.cu, by=c("HUC4","year")) 
+cons.water <- cons.water[order(cons.water$HUC4, cons.water$year),]
+cons.water <- cons.water[-c(21)] #removes 'x' column
+
+# I like to verify only unique values are retained, so run unique function
+cons.water <- unique(cons.water, incomparables = FALSE)
+
+# Calculate consumptive use (mgal/day) for each sector
+cons.water$dp.cu <- cons.water$`Domestic, total`*cons.water$DP.cu.ratio
+cons.water$ic.cu <- cons.water$`C&I`*cons.water$IC.cu.ratio
+cons.water$aq.cu <- cons.water$`Aquaculture, total`*cons.water$AQ.cu.ratio
+cons.water$ls.cu <- cons.water$`Livestock, total`*cons.water$LS.cu.ratio
+cons.water$ir.cu <- cons.water$`Irrigation, total`*cons.water$IR.cu.ratio
+cons.water$th.cu <- cons.water$`Thermo, total`* cons.water$TH.cu.ratio
+cons.water$tot.cu <- cons.water$dp.cu+cons.water$ic.cu+cons.water$aq.cu+
+  cons.water$ls.cu+cons.water$ir.cu+cons.water$th.cu
+
+# subset each sector so we can adjust the format for each year
+dp <- select(cons.water, FIPS, year, dp.cu, HUC4)
+ic <- select(cons.water, FIPS, year, ic.cu, HUC4)
+th <- select(cons.water, FIPS, year, th.cu, HUC4)
+ls <- select(cons.water, FIPS, year, ls.cu, HUC4)
+aq <- select(cons.water, FIPS, year, aq.cu, HUC4)
+ir <- select(cons.water, FIPS, year, ir.cu, HUC4)
+tot <- select(cons.water, FIPS, year, tot.cu, HUC4)
+
+#------------------------------------------------------------------------------------------.
+# Calculate annual use and convert units from mgal to 1000 cubic meters, and then monthly use
+# Read in monthly data that will merge monthly proportions with annual data
+# In Box this is located in 2020 RPA Assessment > Water Demand - Complete R code and input files > WEAP Input Creation
+month <- read.csv("./Historical testing/monthly.csv")
+
+
+
+######## Domestic and public sector ########
+DF <- dp %>%
+  gather(key, value, dp.cu) %>%
+  spread(year, value)
+DF<-plyr::rename(DF,c("key"="sector","1985"="Y1985","1990"="Y1990","1995"="Y1995","2000"="Y2000","2005"="Y2005","2010"="Y2010","2015"="Y2015"))
+DF <- select(DF, HUC4, Y1985, Y1990, Y1995, Y2000, Y2005, Y2010, Y2015)
+# Convert any NAs to 0 so we can summarize based on the HUC
+DF[is.na(DF)] <- 0
+# This sums values for each HUC
+DF <- DF%>% group_by(HUC4) %>% summarise_all(funs(sum))
+
+# Now perform linear approximations
+DF$Y1986 <- DF$Y1985 + 1*(DF$Y1990 - DF$Y1985)/5
+DF$Y1987 <- DF$Y1985 + 2*(DF$Y1990 - DF$Y1985)/5
+DF$Y1988 <- DF$Y1985 + 3*(DF$Y1990 - DF$Y1985)/5
+DF$Y1989 <- DF$Y1985 + 4*(DF$Y1990 - DF$Y1985)/5
+
+DF$Y1991 <- DF$Y1990 + 1*(DF$Y1995 - DF$Y1990)/5
+DF$Y1992 <- DF$Y1990 + 2*(DF$Y1995 - DF$Y1990)/5
+DF$Y1993 <- DF$Y1990 + 3*(DF$Y1995 - DF$Y1990)/5
+DF$Y1994 <- DF$Y1990 + 4*(DF$Y1995 - DF$Y1990)/5
+
+DF$Y1996 <- DF$Y1995 + 1*(DF$Y2000 - DF$Y1995)/5
+DF$Y1997 <- DF$Y1995 + 2*(DF$Y2000 - DF$Y1995)/5
+DF$Y1998 <- DF$Y1995 + 3*(DF$Y2000 - DF$Y1995)/5
+DF$Y1999 <- DF$Y1995 + 4*(DF$Y2000 - DF$Y1995)/5
+
+DF$Y2001 <- DF$Y2000 + 1*(DF$Y2005 - DF$Y2000)/5
+DF$Y2002 <- DF$Y2000 + 2*(DF$Y2005 - DF$Y2000)/5
+DF$Y2003 <- DF$Y2000 + 3*(DF$Y2005 - DF$Y2000)/5
+DF$Y2004 <- DF$Y2000 + 4*(DF$Y2005 - DF$Y2000)/5
+
+DF$Y2006 <- DF$Y2005 + 1*(DF$Y2010 - DF$Y2005)/5
+DF$Y2007 <- DF$Y2005 + 2*(DF$Y2010 - DF$Y2005)/5
+DF$Y2008 <- DF$Y2005 + 3*(DF$Y2010 - DF$Y2005)/5
+DF$Y2009 <- DF$Y2005 + 4*(DF$Y2010 - DF$Y2005)/5
+
+DF$Y2011 <- DF$Y2010 + 1*(DF$Y2015 - DF$Y2010)/5
+DF$Y2012 <- DF$Y2010 + 2*(DF$Y2015 - DF$Y2010)/5
+DF$Y2013 <- DF$Y2010 + 3*(DF$Y2015 - DF$Y2010)/5
+DF$Y2014 <- DF$Y2010 + 4*(DF$Y2015 - DF$Y2010)/5
+
+
+col_order <- c("HUC4", "Y1985", "Y1986", "Y1987", "Y1988", "Y1989", "Y1990", "Y1991", "Y1992", "Y1993", "Y1994",
+               "Y1995", "Y1996", "Y1997", "Y1998", "Y1999", "Y2000", "Y2001", "Y2002", "Y2003", "Y2004", "Y2005",
+               "Y2006", "Y2007", "Y2008", "Y2009", "Y2010", "Y2011", "Y2012", "Y2013", "Y2014", "Y2015")
+DF <- DF[,col_order]
+
+# Now convert units from mgal to 1000 cubic meters (this come from Ryan's WEAP input code)
+# (optional unless you are using the output for WEAP)
+# 1 Mgal/day = 1381.6345 (thousand) m^3
+
+for (n in 2:32){
+  DF[,n]<- DF[,n]*(1381.6345)
+}
+
+
+# Now calculate monthly use based on Tom's monthly proportions
+df <- DF
+month.dp <- select(month,1:13)
+
+df.month <- merge(df,month.dp, by="HUC4")
+monthly <- df.month
+
+monthly$'1/1/1985' <- monthly$Y1985 * monthly[,33]
+monthly$'2/1/1985' <- monthly$Y1985 * monthly[,34]
+monthly$'3/1/1985' <- monthly$Y1985 * monthly[,35]
+monthly$'4/1/1985' <- monthly$Y1985 * monthly[,36]
+monthly$'5/1/1985' <- monthly$Y1985 * monthly[,37]
+monthly$'6/1/1985' <- monthly$Y1985 * monthly[,38]
+monthly$'7/1/1985' <- monthly$Y1985 * monthly[,39]
+monthly$'8/1/1985' <- monthly$Y1985 * monthly[,40]
+monthly$'9/1/1985' <- monthly$Y1985 * monthly[,41]
+monthly$'10/1/1985' <- monthly$Y1985 * monthly[,42]
+monthly$'11/1/1985' <- monthly$Y1985 * monthly[,43]
+monthly$'12/1/1985' <- monthly$Y1985 * monthly[,44]
+
+monthly$'1/1/1986' <- monthly$Y1986 * monthly[,33]
+monthly$'2/1/1986' <- monthly$Y1986 * monthly[,34]
+monthly$'3/1/1986' <- monthly$Y1986 * monthly[,35]
+monthly$'4/1/1986' <- monthly$Y1986 * monthly[,36]
+monthly$'5/1/1986' <- monthly$Y1986 * monthly[,37]
+monthly$'6/1/1986' <- monthly$Y1986 * monthly[,38]
+monthly$'7/1/1986' <- monthly$Y1986 * monthly[,39]
+monthly$'8/1/1986' <- monthly$Y1986 * monthly[,40]
+monthly$'9/1/1986' <- monthly$Y1986 * monthly[,41]
+monthly$'10/1/1986' <- monthly$Y1986 * monthly[,42]
+monthly$'11/1/1986' <- monthly$Y1986 * monthly[,43]
+monthly$'12/1/1986' <- monthly$Y1986 * monthly[,44]
+
+monthly$'1/1/1987' <- monthly$Y1987 * monthly[,33]
+monthly$'2/1/1987' <- monthly$Y1987 * monthly[,34]
+monthly$'3/1/1987' <- monthly$Y1987 * monthly[,35]
+monthly$'4/1/1987' <- monthly$Y1987 * monthly[,36]
+monthly$'5/1/1987' <- monthly$Y1987 * monthly[,37]
+monthly$'6/1/1987' <- monthly$Y1987 * monthly[,38]
+monthly$'7/1/1987' <- monthly$Y1987 * monthly[,39]
+monthly$'8/1/1987' <- monthly$Y1987 * monthly[,40]
+monthly$'9/1/1987' <- monthly$Y1987 * monthly[,41]
+monthly$'10/1/1987' <- monthly$Y1987 * monthly[,42]
+monthly$'11/1/1987' <- monthly$Y1987 * monthly[,43]
+monthly$'12/1/1987' <- monthly$Y1987 * monthly[,44]
+
+monthly$'1/1/1988' <- monthly$Y1988 * monthly[,33]
+monthly$'2/1/1988' <- monthly$Y1988 * monthly[,34]
+monthly$'3/1/1988' <- monthly$Y1988 * monthly[,35]
+monthly$'4/1/1988' <- monthly$Y1988 * monthly[,36]
+monthly$'5/1/1988' <- monthly$Y1988 * monthly[,37]
+monthly$'6/1/1988' <- monthly$Y1988 * monthly[,38]
+monthly$'7/1/1988' <- monthly$Y1988 * monthly[,39]
+monthly$'8/1/1988' <- monthly$Y1988 * monthly[,40]
+monthly$'9/1/1988' <- monthly$Y1988 * monthly[,41]
+monthly$'10/1/1988' <- monthly$Y1988 * monthly[,42]
+monthly$'11/1/1988' <- monthly$Y1988 * monthly[,43]
+monthly$'12/1/1988' <- monthly$Y1988 * monthly[,44]
+
+monthly$'1/1/1989' <- monthly$Y1989 * monthly[,33]
+monthly$'2/1/1989' <- monthly$Y1989 * monthly[,34]
+monthly$'3/1/1989' <- monthly$Y1989 * monthly[,35]
+monthly$'4/1/1989' <- monthly$Y1989 * monthly[,36]
+monthly$'5/1/1989' <- monthly$Y1989 * monthly[,37]
+monthly$'6/1/1989' <- monthly$Y1989 * monthly[,38]
+monthly$'7/1/1989' <- monthly$Y1989 * monthly[,39]
+monthly$'8/1/1989' <- monthly$Y1989 * monthly[,40]
+monthly$'9/1/1989' <- monthly$Y1989 * monthly[,41]
+monthly$'10/1/1989' <- monthly$Y1989 * monthly[,42]
+monthly$'11/1/1989' <- monthly$Y1989 * monthly[,43]
+monthly$'12/1/1989' <- monthly$Y1989 * monthly[,44]
+
+monthly$'1/1/1990' <- monthly$Y1990 * monthly[,33]
+monthly$'2/1/1990' <- monthly$Y1990 * monthly[,34]
+monthly$'3/1/1990' <- monthly$Y1990 * monthly[,35]
+monthly$'4/1/1990' <- monthly$Y1990 * monthly[,36]
+monthly$'5/1/1990' <- monthly$Y1990 * monthly[,37]
+monthly$'6/1/1990' <- monthly$Y1990 * monthly[,38]
+monthly$'7/1/1990' <- monthly$Y1990 * monthly[,39]
+monthly$'8/1/1990' <- monthly$Y1990 * monthly[,40]
+monthly$'9/1/1990' <- monthly$Y1990 * monthly[,41]
+monthly$'10/1/1990' <- monthly$Y1990 * monthly[,42]
+monthly$'11/1/1990' <- monthly$Y1990 * monthly[,43]
+monthly$'12/1/1990' <- monthly$Y1990 * monthly[,44]
+
+monthly$'1/1/1991' <- monthly$Y1991 * monthly[,33]
+monthly$'2/1/1991' <- monthly$Y1991 * monthly[,34]
+monthly$'3/1/1991' <- monthly$Y1991 * monthly[,35]
+monthly$'4/1/1991' <- monthly$Y1991 * monthly[,36]
+monthly$'5/1/1991' <- monthly$Y1991 * monthly[,37]
+monthly$'6/1/1991' <- monthly$Y1991 * monthly[,38]
+monthly$'7/1/1991' <- monthly$Y1991 * monthly[,39]
+monthly$'8/1/1991' <- monthly$Y1991 * monthly[,40]
+monthly$'9/1/1991' <- monthly$Y1991 * monthly[,41]
+monthly$'10/1/1991' <- monthly$Y1991 * monthly[,42]
+monthly$'11/1/1991' <- monthly$Y1991 * monthly[,43]
+monthly$'12/1/1991' <- monthly$Y1991 * monthly[,44]
+
+monthly$'1/1/1992' <- monthly$Y1992 * monthly[,33]
+monthly$'2/1/1992' <- monthly$Y1992 * monthly[,34]
+monthly$'3/1/1992' <- monthly$Y1992 * monthly[,35]
+monthly$'4/1/1992' <- monthly$Y1992 * monthly[,36]
+monthly$'5/1/1992' <- monthly$Y1992 * monthly[,37]
+monthly$'6/1/1992' <- monthly$Y1992 * monthly[,38]
+monthly$'7/1/1992' <- monthly$Y1992 * monthly[,39]
+monthly$'8/1/1992' <- monthly$Y1992 * monthly[,40]
+monthly$'9/1/1992' <- monthly$Y1992 * monthly[,41]
+monthly$'10/1/1992' <- monthly$Y1992 * monthly[,42]
+monthly$'11/1/1992' <- monthly$Y1992 * monthly[,43]
+monthly$'12/1/1992' <- monthly$Y1992 * monthly[,44]
+
+monthly$'1/1/1993' <- monthly$Y1993 * monthly[,33]
+monthly$'2/1/1993' <- monthly$Y1993 * monthly[,34]
+monthly$'3/1/1993' <- monthly$Y1993 * monthly[,35]
+monthly$'4/1/1993' <- monthly$Y1993 * monthly[,36]
+monthly$'5/1/1993' <- monthly$Y1993 * monthly[,37]
+monthly$'6/1/1993' <- monthly$Y1993 * monthly[,38]
+monthly$'7/1/1993' <- monthly$Y1993 * monthly[,39]
+monthly$'8/1/1993' <- monthly$Y1993 * monthly[,40]
+monthly$'9/1/1993' <- monthly$Y1993 * monthly[,41]
+monthly$'10/1/1993' <- monthly$Y1993 * monthly[,42]
+monthly$'11/1/1993' <- monthly$Y1993 * monthly[,43]
+monthly$'12/1/1993' <- monthly$Y1993 * monthly[,44]
+
+monthly$'1/1/1994' <- monthly$Y1994 * monthly[,33]
+monthly$'2/1/1994' <- monthly$Y1994 * monthly[,34]
+monthly$'3/1/1994' <- monthly$Y1994 * monthly[,35]
+monthly$'4/1/1994' <- monthly$Y1994 * monthly[,36]
+monthly$'5/1/1994' <- monthly$Y1994 * monthly[,37]
+monthly$'6/1/1994' <- monthly$Y1994 * monthly[,38]
+monthly$'7/1/1994' <- monthly$Y1994 * monthly[,39]
+monthly$'8/1/1994' <- monthly$Y1994 * monthly[,40]
+monthly$'9/1/1994' <- monthly$Y1994 * monthly[,41]
+monthly$'10/1/1994' <- monthly$Y1994 * monthly[,42]
+monthly$'11/1/1994' <- monthly$Y1994 * monthly[,43]
+monthly$'12/1/1994' <- monthly$Y1994 * monthly[,44]
+
+monthly$'1/1/1995' <- monthly$Y1995 * monthly[,33]
+monthly$'2/1/1995' <- monthly$Y1995 * monthly[,34]
+monthly$'3/1/1995' <- monthly$Y1995 * monthly[,35]
+monthly$'4/1/1995' <- monthly$Y1995 * monthly[,36]
+monthly$'5/1/1995' <- monthly$Y1995 * monthly[,37]
+monthly$'6/1/1995' <- monthly$Y1995 * monthly[,38]
+monthly$'7/1/1995' <- monthly$Y1995 * monthly[,39]
+monthly$'8/1/1995' <- monthly$Y1995 * monthly[,40]
+monthly$'9/1/1995' <- monthly$Y1995 * monthly[,41]
+monthly$'10/1/1995' <- monthly$Y1995 * monthly[,42]
+monthly$'11/1/1995' <- monthly$Y1995 * monthly[,43]
+monthly$'12/1/1995' <- monthly$Y1995 * monthly[,44]
+
+monthly$'1/1/1996' <- monthly$Y1996 * monthly[,33]
+monthly$'2/1/1996' <- monthly$Y1996 * monthly[,34]
+monthly$'3/1/1996' <- monthly$Y1996 * monthly[,35]
+monthly$'4/1/1996' <- monthly$Y1996 * monthly[,36]
+monthly$'5/1/1996' <- monthly$Y1996 * monthly[,37]
+monthly$'6/1/1996' <- monthly$Y1996 * monthly[,38]
+monthly$'7/1/1996' <- monthly$Y1996 * monthly[,39]
+monthly$'8/1/1996' <- monthly$Y1996 * monthly[,40]
+monthly$'9/1/1996' <- monthly$Y1996 * monthly[,41]
+monthly$'10/1/1996' <- monthly$Y1996 * monthly[,42]
+monthly$'11/1/1996' <- monthly$Y1996 * monthly[,43]
+monthly$'12/1/1996' <- monthly$Y1996 * monthly[,44]
+
+monthly$'1/1/1997' <- monthly$Y1997 * monthly[,33]
+monthly$'2/1/1997' <- monthly$Y1997 * monthly[,34]
+monthly$'3/1/1997' <- monthly$Y1997 * monthly[,35]
+monthly$'4/1/1997' <- monthly$Y1997 * monthly[,36]
+monthly$'5/1/1997' <- monthly$Y1997 * monthly[,37]
+monthly$'6/1/1997' <- monthly$Y1997 * monthly[,38]
+monthly$'7/1/1997' <- monthly$Y1997 * monthly[,39]
+monthly$'8/1/1997' <- monthly$Y1997 * monthly[,40]
+monthly$'9/1/1997' <- monthly$Y1997 * monthly[,41]
+monthly$'10/1/1997' <- monthly$Y1997 * monthly[,42]
+monthly$'11/1/1997' <- monthly$Y1997 * monthly[,43]
+monthly$'12/1/1997' <- monthly$Y1997 * monthly[,44]
+
+monthly$'1/1/1998' <- monthly$Y1998 * monthly[,33]
+monthly$'2/1/1998' <- monthly$Y1998 * monthly[,34]
+monthly$'3/1/1998' <- monthly$Y1998 * monthly[,35]
+monthly$'4/1/1998' <- monthly$Y1998 * monthly[,36]
+monthly$'5/1/1998' <- monthly$Y1998 * monthly[,37]
+monthly$'6/1/1998' <- monthly$Y1998 * monthly[,38]
+monthly$'7/1/1998' <- monthly$Y1998 * monthly[,39]
+monthly$'8/1/1998' <- monthly$Y1998 * monthly[,40]
+monthly$'9/1/1998' <- monthly$Y1998 * monthly[,41]
+monthly$'10/1/1998' <- monthly$Y1998 * monthly[,42]
+monthly$'11/1/1998' <- monthly$Y1998 * monthly[,43]
+monthly$'12/1/1998' <- monthly$Y1998 * monthly[,44]
+
+monthly$'1/1/1999' <- monthly$Y1999 * monthly[,33]
+monthly$'2/1/1999' <- monthly$Y1999 * monthly[,34]
+monthly$'3/1/1999' <- monthly$Y1999 * monthly[,35]
+monthly$'4/1/1999' <- monthly$Y1999 * monthly[,36]
+monthly$'5/1/1999' <- monthly$Y1999 * monthly[,37]
+monthly$'6/1/1999' <- monthly$Y1999 * monthly[,38]
+monthly$'7/1/1999' <- monthly$Y1999 * monthly[,39]
+monthly$'8/1/1999' <- monthly$Y1999 * monthly[,40]
+monthly$'9/1/1999' <- monthly$Y1999 * monthly[,41]
+monthly$'10/1/1999' <- monthly$Y1999 * monthly[,42]
+monthly$'11/1/1999' <- monthly$Y1999 * monthly[,43]
+monthly$'12/1/1999' <- monthly$Y1999 * monthly[,44]
+
+monthly$'1/1/2000' <- monthly$Y2000 * monthly[,33]
+monthly$'2/1/2000' <- monthly$Y2000 * monthly[,34]
+monthly$'3/1/2000' <- monthly$Y2000 * monthly[,35]
+monthly$'4/1/2000' <- monthly$Y2000 * monthly[,36]
+monthly$'5/1/2000' <- monthly$Y2000 * monthly[,37]
+monthly$'6/1/2000' <- monthly$Y2000 * monthly[,38]
+monthly$'7/1/2000' <- monthly$Y2000 * monthly[,39]
+monthly$'8/1/2000' <- monthly$Y2000 * monthly[,40]
+monthly$'9/1/2000' <- monthly$Y2000 * monthly[,41]
+monthly$'10/1/2000' <- monthly$Y2000 * monthly[,42]
+monthly$'11/1/2000' <- monthly$Y2000 * monthly[,43]
+monthly$'12/1/2000' <- monthly$Y2000 * monthly[,44]
+
+monthly$'1/1/2001' <- monthly$Y2001 * monthly[,33]
+monthly$'2/1/2001' <- monthly$Y2001 * monthly[,34]
+monthly$'3/1/2001' <- monthly$Y2001 * monthly[,35]
+monthly$'4/1/2001' <- monthly$Y2001 * monthly[,36]
+monthly$'5/1/2001' <- monthly$Y2001 * monthly[,37]
+monthly$'6/1/2001' <- monthly$Y2001 * monthly[,38]
+monthly$'7/1/2001' <- monthly$Y2001 * monthly[,39]
+monthly$'8/1/2001' <- monthly$Y2001 * monthly[,40]
+monthly$'9/1/2001' <- monthly$Y2001 * monthly[,41]
+monthly$'10/1/2001' <- monthly$Y2001 * monthly[,42]
+monthly$'11/1/2001' <- monthly$Y2001 * monthly[,43]
+monthly$'12/1/2001' <- monthly$Y2001 * monthly[,44]
+
+monthly$'1/1/2002' <- monthly$Y2002 * monthly[,33]
+monthly$'2/1/2002' <- monthly$Y2002 * monthly[,34]
+monthly$'3/1/2002' <- monthly$Y2002 * monthly[,35]
+monthly$'4/1/2002' <- monthly$Y2002 * monthly[,36]
+monthly$'5/1/2002' <- monthly$Y2002 * monthly[,37]
+monthly$'6/1/2002' <- monthly$Y2002 * monthly[,38]
+monthly$'7/1/2002' <- monthly$Y2002 * monthly[,39]
+monthly$'8/1/2002' <- monthly$Y2002 * monthly[,40]
+monthly$'9/1/2002' <- monthly$Y2002 * monthly[,41]
+monthly$'10/1/2002' <- monthly$Y2002 * monthly[,42]
+monthly$'11/1/2002' <- monthly$Y2002 * monthly[,43]
+monthly$'12/1/2002' <- monthly$Y2002 * monthly[,44]
+
+monthly$'1/1/2003' <- monthly$Y2003 * monthly[,33]
+monthly$'2/1/2003' <- monthly$Y2003 * monthly[,34]
+monthly$'3/1/2003' <- monthly$Y2003 * monthly[,35]
+monthly$'4/1/2003' <- monthly$Y2003 * monthly[,36]
+monthly$'5/1/2003' <- monthly$Y2003 * monthly[,37]
+monthly$'6/1/2003' <- monthly$Y2003 * monthly[,38]
+monthly$'7/1/2003' <- monthly$Y2003 * monthly[,39]
+monthly$'8/1/2003' <- monthly$Y2003 * monthly[,40]
+monthly$'9/1/2003' <- monthly$Y2003 * monthly[,41]
+monthly$'10/1/2003' <- monthly$Y2003 * monthly[,42]
+monthly$'11/1/2003' <- monthly$Y2003 * monthly[,43]
+monthly$'12/1/2003' <- monthly$Y2003 * monthly[,44]
+
+
+monthly$'1/1/2004' <- monthly$Y2004 * monthly[,33]
+monthly$'2/1/2004' <- monthly$Y2004 * monthly[,34]
+monthly$'3/1/2004' <- monthly$Y2004 * monthly[,35]
+monthly$'4/1/2004' <- monthly$Y2004 * monthly[,36]
+monthly$'5/1/2004' <- monthly$Y2004 * monthly[,37]
+monthly$'6/1/2004' <- monthly$Y2004 * monthly[,38]
+monthly$'7/1/2004' <- monthly$Y2004 * monthly[,39]
+monthly$'8/1/2004' <- monthly$Y2004 * monthly[,40]
+monthly$'9/1/2004' <- monthly$Y2004 * monthly[,41]
+monthly$'10/1/2004' <- monthly$Y2004 * monthly[,42]
+monthly$'11/1/2004' <- monthly$Y2004 * monthly[,43]
+monthly$'12/1/2004' <- monthly$Y2004 * monthly[,44]
+
+
+monthly$'1/1/2005' <- monthly$Y2005 * monthly[,33]
+monthly$'2/1/2005' <- monthly$Y2005 * monthly[,34]
+monthly$'3/1/2005' <- monthly$Y2005 * monthly[,35]
+monthly$'4/1/2005' <- monthly$Y2005 * monthly[,36]
+monthly$'5/1/2005' <- monthly$Y2005 * monthly[,37]
+monthly$'6/1/2005' <- monthly$Y2005 * monthly[,38]
+monthly$'7/1/2005' <- monthly$Y2005 * monthly[,39]
+monthly$'8/1/2005' <- monthly$Y2005 * monthly[,40]
+monthly$'9/1/2005' <- monthly$Y2005 * monthly[,41]
+monthly$'10/1/2005' <- monthly$Y2005 * monthly[,42]
+monthly$'11/1/2005' <- monthly$Y2005 * monthly[,43]
+monthly$'12/1/2005' <- monthly$Y2005 * monthly[,44]
+
+
+monthly$'1/1/2006' <- monthly$Y2006 * monthly[,33]
+monthly$'2/1/2006' <- monthly$Y2006 * monthly[,34]
+monthly$'3/1/2006' <- monthly$Y2006 * monthly[,35]
+monthly$'4/1/2006' <- monthly$Y2006 * monthly[,36]
+monthly$'5/1/2006' <- monthly$Y2006 * monthly[,37]
+monthly$'6/1/2006' <- monthly$Y2006 * monthly[,38]
+monthly$'7/1/2006' <- monthly$Y2006 * monthly[,39]
+monthly$'8/1/2006' <- monthly$Y2006 * monthly[,40]
+monthly$'9/1/2006' <- monthly$Y2006 * monthly[,41]
+monthly$'10/1/2006' <- monthly$Y2006 * monthly[,42]
+monthly$'11/1/2006' <- monthly$Y2006 * monthly[,43]
+monthly$'12/1/2006' <- monthly$Y2006 * monthly[,44]
+
+
+monthly$'1/1/2007' <- monthly$Y2007 * monthly[,33]
+monthly$'2/1/2007' <- monthly$Y2007 * monthly[,34]
+monthly$'3/1/2007' <- monthly$Y2007 * monthly[,35]
+monthly$'4/1/2007' <- monthly$Y2007 * monthly[,36]
+monthly$'5/1/2007' <- monthly$Y2007 * monthly[,37]
+monthly$'6/1/2007' <- monthly$Y2007 * monthly[,38]
+monthly$'7/1/2007' <- monthly$Y2007 * monthly[,39]
+monthly$'8/1/2007' <- monthly$Y2007 * monthly[,40]
+monthly$'9/1/2007' <- monthly$Y2007 * monthly[,41]
+monthly$'10/1/2007' <- monthly$Y2007 * monthly[,42]
+monthly$'11/1/2007' <- monthly$Y2007 * monthly[,43]
+monthly$'12/1/2007' <- monthly$Y2007 * monthly[,44]
+
+
+monthly$'1/1/2008' <- monthly$Y2008 * monthly[,33]
+monthly$'2/1/2008' <- monthly$Y2008 * monthly[,34]
+monthly$'3/1/2008' <- monthly$Y2008 * monthly[,35]
+monthly$'4/1/2008' <- monthly$Y2008 * monthly[,36]
+monthly$'5/1/2008' <- monthly$Y2008 * monthly[,37]
+monthly$'6/1/2008' <- monthly$Y2008 * monthly[,38]
+monthly$'7/1/2008' <- monthly$Y2008 * monthly[,39]
+monthly$'8/1/2008' <- monthly$Y2008 * monthly[,40]
+monthly$'9/1/2008' <- monthly$Y2008 * monthly[,41]
+monthly$'10/1/2008' <- monthly$Y2008 * monthly[,42]
+monthly$'11/1/2008' <- monthly$Y2008 * monthly[,43]
+monthly$'12/1/2008' <- monthly$Y2008 * monthly[,44]
+
+
+monthly$'1/1/2009' <- monthly$Y2009 * monthly[,33]
+monthly$'2/1/2009' <- monthly$Y2009 * monthly[,34]
+monthly$'3/1/2009' <- monthly$Y2009 * monthly[,35]
+monthly$'4/1/2009' <- monthly$Y2009 * monthly[,36]
+monthly$'5/1/2009' <- monthly$Y2009 * monthly[,37]
+monthly$'6/1/2009' <- monthly$Y2009 * monthly[,38]
+monthly$'7/1/2009' <- monthly$Y2009 * monthly[,39]
+monthly$'8/1/2009' <- monthly$Y2009 * monthly[,40]
+monthly$'9/1/2009' <- monthly$Y2009 * monthly[,41]
+monthly$'10/1/2009' <- monthly$Y2009 * monthly[,42]
+monthly$'11/1/2009' <- monthly$Y2009 * monthly[,43]
+monthly$'12/1/2009' <- monthly$Y2009 * monthly[,44]
+
+monthly$'1/1/2010' <- monthly$Y2010 * monthly[,33]
+monthly$'2/1/2010' <- monthly$Y2010 * monthly[,34]
+monthly$'3/1/2010' <- monthly$Y2010 * monthly[,35]
+monthly$'4/1/2010' <- monthly$Y2010 * monthly[,36]
+monthly$'5/1/2010' <- monthly$Y2010 * monthly[,37]
+monthly$'6/1/2010' <- monthly$Y2010 * monthly[,38]
+monthly$'7/1/2010' <- monthly$Y2010 * monthly[,39]
+monthly$'8/1/2010' <- monthly$Y2010 * monthly[,40]
+monthly$'9/1/2010' <- monthly$Y2010 * monthly[,41]
+monthly$'10/1/2010' <- monthly$Y2010 * monthly[,42]
+monthly$'11/1/2010' <- monthly$Y2010 * monthly[,43]
+monthly$'12/1/2010' <- monthly$Y2010 * monthly[,44]
+
+monthly$'1/1/2011' <- monthly$Y2011 * monthly[,33]
+monthly$'2/1/2011' <- monthly$Y2011 * monthly[,34]
+monthly$'3/1/2011' <- monthly$Y2011 * monthly[,35]
+monthly$'4/1/2011' <- monthly$Y2011 * monthly[,36]
+monthly$'5/1/2011' <- monthly$Y2011 * monthly[,37]
+monthly$'6/1/2011' <- monthly$Y2011 * monthly[,38]
+monthly$'7/1/2011' <- monthly$Y2011 * monthly[,39]
+monthly$'8/1/2011' <- monthly$Y2011 * monthly[,40]
+monthly$'9/1/2011' <- monthly$Y2011 * monthly[,41]
+monthly$'10/1/2011' <- monthly$Y2011 * monthly[,42]
+monthly$'11/1/2011' <- monthly$Y2011 * monthly[,43]
+monthly$'12/1/2011' <- monthly$Y2011 * monthly[,44]
+
+monthly$'1/1/2012' <- monthly$Y2012 * monthly[,33]
+monthly$'2/1/2012' <- monthly$Y2012 * monthly[,34]
+monthly$'3/1/2012' <- monthly$Y2012 * monthly[,35]
+monthly$'4/1/2012' <- monthly$Y2012 * monthly[,36]
+monthly$'5/1/2012' <- monthly$Y2012 * monthly[,37]
+monthly$'6/1/2012' <- monthly$Y2012 * monthly[,38]
+monthly$'7/1/2012' <- monthly$Y2012 * monthly[,39]
+monthly$'8/1/2012' <- monthly$Y2012 * monthly[,40]
+monthly$'9/1/2012' <- monthly$Y2012 * monthly[,41]
+monthly$'10/1/2012' <- monthly$Y2012 * monthly[,42]
+monthly$'11/1/2012' <- monthly$Y2012 * monthly[,43]
+monthly$'12/1/2012' <- monthly$Y2012 * monthly[,44]
+
+monthly$'1/1/2013' <- monthly$Y2013 * monthly[,33]
+monthly$'2/1/2013' <- monthly$Y2013 * monthly[,34]
+monthly$'3/1/2013' <- monthly$Y2013 * monthly[,35]
+monthly$'4/1/2013' <- monthly$Y2013 * monthly[,36]
+monthly$'5/1/2013' <- monthly$Y2013 * monthly[,37]
+monthly$'6/1/2013' <- monthly$Y2013 * monthly[,38]
+monthly$'7/1/2013' <- monthly$Y2013 * monthly[,39]
+monthly$'8/1/2013' <- monthly$Y2013 * monthly[,40]
+monthly$'9/1/2013' <- monthly$Y2013 * monthly[,41]
+monthly$'10/1/2013' <- monthly$Y2013 * monthly[,42]
+monthly$'11/1/2013' <- monthly$Y2013 * monthly[,43]
+monthly$'12/1/2013' <- monthly$Y2013 * monthly[,44]
+
+monthly$'1/1/2014' <- monthly$Y2014 * monthly[,33]
+monthly$'2/1/2014' <- monthly$Y2014 * monthly[,34]
+monthly$'3/1/2014' <- monthly$Y2014 * monthly[,35]
+monthly$'4/1/2014' <- monthly$Y2014 * monthly[,36]
+monthly$'5/1/2014' <- monthly$Y2014 * monthly[,37]
+monthly$'6/1/2014' <- monthly$Y2014 * monthly[,38]
+monthly$'7/1/2014' <- monthly$Y2014 * monthly[,39]
+monthly$'8/1/2014' <- monthly$Y2014 * monthly[,40]
+monthly$'9/1/2014' <- monthly$Y2014 * monthly[,41]
+monthly$'10/1/2014' <- monthly$Y2014 * monthly[,42]
+monthly$'11/1/2014' <- monthly$Y2014 * monthly[,43]
+monthly$'12/1/2014' <- monthly$Y2014 * monthly[,44]
+
+monthly$'1/1/2015' <- monthly$Y2015 * monthly[,33]
+monthly$'2/1/2015' <- monthly$Y2015 * monthly[,34]
+monthly$'3/1/2015' <- monthly$Y2015 * monthly[,35]
+monthly$'4/1/2015' <- monthly$Y2015 * monthly[,36]
+monthly$'5/1/2015' <- monthly$Y2015 * monthly[,37]
+monthly$'6/1/2015' <- monthly$Y2015 * monthly[,38]
+monthly$'7/1/2015' <- monthly$Y2015 * monthly[,39]
+monthly$'8/1/2015' <- monthly$Y2015 * monthly[,40]
+monthly$'9/1/2015' <- monthly$Y2015 * monthly[,41]
+monthly$'10/1/2015' <- monthly$Y2015 * monthly[,42]
+monthly$'11/1/2015' <- monthly$Y2015 * monthly[,43]
+monthly$'12/1/2015' <- monthly$Y2015 * monthly[,44]
+
+monthly$sector <- 'dp'
+monthly <- select(monthly, 1,417,45:416)
+
+dp.historic.monthly <- monthly
+
+
+#------------------------------------------------------------------------------------------.
+####### Industrial / Commercial sector ########
+DF <- ic %>%
+  gather(key, value, ic.cu) %>%
+  spread(year, value)
+DF<-plyr::rename(DF,c("key"="sector","1985"="Y1985","1990"="Y1990","1995"="Y1995","2000"="Y2000","2005"="Y2005","2010"="Y2010","2015"="Y2015"))
+DF <- select(DF, HUC4, Y1985, Y1990, Y1995, Y2000, Y2005, Y2010, Y2015)
+# Convert any NAs to 0 so we can summarize based on the HUC
+DF[is.na(DF)] <- 0
+# This sums values for each HUC
+DF <- DF%>% group_by(HUC4) %>% summarise_all(funs(sum))
+
+# Now perform linear approximations
+DF$Y1986 <- DF$Y1985 + 1*(DF$Y1990 - DF$Y1985)/5
+DF$Y1987 <- DF$Y1985 + 2*(DF$Y1990 - DF$Y1985)/5
+DF$Y1988 <- DF$Y1985 + 3*(DF$Y1990 - DF$Y1985)/5
+DF$Y1989 <- DF$Y1985 + 4*(DF$Y1990 - DF$Y1985)/5
+
+DF$Y1991 <- DF$Y1990 + 1*(DF$Y1995 - DF$Y1990)/5
+DF$Y1992 <- DF$Y1990 + 2*(DF$Y1995 - DF$Y1990)/5
+DF$Y1993 <- DF$Y1990 + 3*(DF$Y1995 - DF$Y1990)/5
+DF$Y1994 <- DF$Y1990 + 4*(DF$Y1995 - DF$Y1990)/5
+
+DF$Y1996 <- DF$Y1995 + 1*(DF$Y2000 - DF$Y1995)/5
+DF$Y1997 <- DF$Y1995 + 2*(DF$Y2000 - DF$Y1995)/5
+DF$Y1998 <- DF$Y1995 + 3*(DF$Y2000 - DF$Y1995)/5
+DF$Y1999 <- DF$Y1995 + 4*(DF$Y2000 - DF$Y1995)/5
+
+DF$Y2001 <- DF$Y2000 + 1*(DF$Y2005 - DF$Y2000)/5
+DF$Y2002 <- DF$Y2000 + 2*(DF$Y2005 - DF$Y2000)/5
+DF$Y2003 <- DF$Y2000 + 3*(DF$Y2005 - DF$Y2000)/5
+DF$Y2004 <- DF$Y2000 + 4*(DF$Y2005 - DF$Y2000)/5
+
+DF$Y2006 <- DF$Y2005 + 1*(DF$Y2010 - DF$Y2005)/5
+DF$Y2007 <- DF$Y2005 + 2*(DF$Y2010 - DF$Y2005)/5
+DF$Y2008 <- DF$Y2005 + 3*(DF$Y2010 - DF$Y2005)/5
+DF$Y2009 <- DF$Y2005 + 4*(DF$Y2010 - DF$Y2005)/5
+
+DF$Y2011 <- DF$Y2010 + 1*(DF$Y2015 - DF$Y2010)/5
+DF$Y2012 <- DF$Y2010 + 2*(DF$Y2015 - DF$Y2010)/5
+DF$Y2013 <- DF$Y2010 + 3*(DF$Y2015 - DF$Y2010)/5
+DF$Y2014 <- DF$Y2010 + 4*(DF$Y2015 - DF$Y2010)/5
+
+
+col_order <- c("HUC4", "Y1985", "Y1986", "Y1987", "Y1988", "Y1989", "Y1990", "Y1991", "Y1992", "Y1993", "Y1994",
+               "Y1995", "Y1996", "Y1997", "Y1998", "Y1999", "Y2000", "Y2001", "Y2002", "Y2003", "Y2004", "Y2005",
+               "Y2006", "Y2007", "Y2008", "Y2009", "Y2010", "Y2011", "Y2012", "Y2013", "Y2014", "Y2015")
+DF <- DF[,col_order]
+
+# Now convert units from mgal to 1000 cubic meters (this come from Ryan's WEAP input code)
+# (optional unless you are using the output for WEAP)
+# 1 Mgal/day = 1381.6345 (thousand) m^3
+
+for (n in 2:32){
+  DF[,n]<- DF[,n]*(1381.6345)
+}
+
+
+# Now calculate monthly use based on Tom's monthly proportions
+df <- DF
+month.ic <- select(month,1,14:25)
+
+df.month <- merge(df,month.ic, by="HUC4")
+monthly <- df.month
+
+monthly$'1/1/1985' <- monthly$Y1985 * monthly[,33]
+monthly$'2/1/1985' <- monthly$Y1985 * monthly[,34]
+monthly$'3/1/1985' <- monthly$Y1985 * monthly[,35]
+monthly$'4/1/1985' <- monthly$Y1985 * monthly[,36]
+monthly$'5/1/1985' <- monthly$Y1985 * monthly[,37]
+monthly$'6/1/1985' <- monthly$Y1985 * monthly[,38]
+monthly$'7/1/1985' <- monthly$Y1985 * monthly[,39]
+monthly$'8/1/1985' <- monthly$Y1985 * monthly[,40]
+monthly$'9/1/1985' <- monthly$Y1985 * monthly[,41]
+monthly$'10/1/1985' <- monthly$Y1985 * monthly[,42]
+monthly$'11/1/1985' <- monthly$Y1985 * monthly[,43]
+monthly$'12/1/1985' <- monthly$Y1985 * monthly[,44]
+
+monthly$'1/1/1986' <- monthly$Y1986 * monthly[,33]
+monthly$'2/1/1986' <- monthly$Y1986 * monthly[,34]
+monthly$'3/1/1986' <- monthly$Y1986 * monthly[,35]
+monthly$'4/1/1986' <- monthly$Y1986 * monthly[,36]
+monthly$'5/1/1986' <- monthly$Y1986 * monthly[,37]
+monthly$'6/1/1986' <- monthly$Y1986 * monthly[,38]
+monthly$'7/1/1986' <- monthly$Y1986 * monthly[,39]
+monthly$'8/1/1986' <- monthly$Y1986 * monthly[,40]
+monthly$'9/1/1986' <- monthly$Y1986 * monthly[,41]
+monthly$'10/1/1986' <- monthly$Y1986 * monthly[,42]
+monthly$'11/1/1986' <- monthly$Y1986 * monthly[,43]
+monthly$'12/1/1986' <- monthly$Y1986 * monthly[,44]
+
+monthly$'1/1/1987' <- monthly$Y1987 * monthly[,33]
+monthly$'2/1/1987' <- monthly$Y1987 * monthly[,34]
+monthly$'3/1/1987' <- monthly$Y1987 * monthly[,35]
+monthly$'4/1/1987' <- monthly$Y1987 * monthly[,36]
+monthly$'5/1/1987' <- monthly$Y1987 * monthly[,37]
+monthly$'6/1/1987' <- monthly$Y1987 * monthly[,38]
+monthly$'7/1/1987' <- monthly$Y1987 * monthly[,39]
+monthly$'8/1/1987' <- monthly$Y1987 * monthly[,40]
+monthly$'9/1/1987' <- monthly$Y1987 * monthly[,41]
+monthly$'10/1/1987' <- monthly$Y1987 * monthly[,42]
+monthly$'11/1/1987' <- monthly$Y1987 * monthly[,43]
+monthly$'12/1/1987' <- monthly$Y1987 * monthly[,44]
+
+monthly$'1/1/1988' <- monthly$Y1988 * monthly[,33]
+monthly$'2/1/1988' <- monthly$Y1988 * monthly[,34]
+monthly$'3/1/1988' <- monthly$Y1988 * monthly[,35]
+monthly$'4/1/1988' <- monthly$Y1988 * monthly[,36]
+monthly$'5/1/1988' <- monthly$Y1988 * monthly[,37]
+monthly$'6/1/1988' <- monthly$Y1988 * monthly[,38]
+monthly$'7/1/1988' <- monthly$Y1988 * monthly[,39]
+monthly$'8/1/1988' <- monthly$Y1988 * monthly[,40]
+monthly$'9/1/1988' <- monthly$Y1988 * monthly[,41]
+monthly$'10/1/1988' <- monthly$Y1988 * monthly[,42]
+monthly$'11/1/1988' <- monthly$Y1988 * monthly[,43]
+monthly$'12/1/1988' <- monthly$Y1988 * monthly[,44]
+
+monthly$'1/1/1989' <- monthly$Y1989 * monthly[,33]
+monthly$'2/1/1989' <- monthly$Y1989 * monthly[,34]
+monthly$'3/1/1989' <- monthly$Y1989 * monthly[,35]
+monthly$'4/1/1989' <- monthly$Y1989 * monthly[,36]
+monthly$'5/1/1989' <- monthly$Y1989 * monthly[,37]
+monthly$'6/1/1989' <- monthly$Y1989 * monthly[,38]
+monthly$'7/1/1989' <- monthly$Y1989 * monthly[,39]
+monthly$'8/1/1989' <- monthly$Y1989 * monthly[,40]
+monthly$'9/1/1989' <- monthly$Y1989 * monthly[,41]
+monthly$'10/1/1989' <- monthly$Y1989 * monthly[,42]
+monthly$'11/1/1989' <- monthly$Y1989 * monthly[,43]
+monthly$'12/1/1989' <- monthly$Y1989 * monthly[,44]
+
+monthly$'1/1/1990' <- monthly$Y1990 * monthly[,33]
+monthly$'2/1/1990' <- monthly$Y1990 * monthly[,34]
+monthly$'3/1/1990' <- monthly$Y1990 * monthly[,35]
+monthly$'4/1/1990' <- monthly$Y1990 * monthly[,36]
+monthly$'5/1/1990' <- monthly$Y1990 * monthly[,37]
+monthly$'6/1/1990' <- monthly$Y1990 * monthly[,38]
+monthly$'7/1/1990' <- monthly$Y1990 * monthly[,39]
+monthly$'8/1/1990' <- monthly$Y1990 * monthly[,40]
+monthly$'9/1/1990' <- monthly$Y1990 * monthly[,41]
+monthly$'10/1/1990' <- monthly$Y1990 * monthly[,42]
+monthly$'11/1/1990' <- monthly$Y1990 * monthly[,43]
+monthly$'12/1/1990' <- monthly$Y1990 * monthly[,44]
+
+monthly$'1/1/1991' <- monthly$Y1991 * monthly[,33]
+monthly$'2/1/1991' <- monthly$Y1991 * monthly[,34]
+monthly$'3/1/1991' <- monthly$Y1991 * monthly[,35]
+monthly$'4/1/1991' <- monthly$Y1991 * monthly[,36]
+monthly$'5/1/1991' <- monthly$Y1991 * monthly[,37]
+monthly$'6/1/1991' <- monthly$Y1991 * monthly[,38]
+monthly$'7/1/1991' <- monthly$Y1991 * monthly[,39]
+monthly$'8/1/1991' <- monthly$Y1991 * monthly[,40]
+monthly$'9/1/1991' <- monthly$Y1991 * monthly[,41]
+monthly$'10/1/1991' <- monthly$Y1991 * monthly[,42]
+monthly$'11/1/1991' <- monthly$Y1991 * monthly[,43]
+monthly$'12/1/1991' <- monthly$Y1991 * monthly[,44]
+
+monthly$'1/1/1992' <- monthly$Y1992 * monthly[,33]
+monthly$'2/1/1992' <- monthly$Y1992 * monthly[,34]
+monthly$'3/1/1992' <- monthly$Y1992 * monthly[,35]
+monthly$'4/1/1992' <- monthly$Y1992 * monthly[,36]
+monthly$'5/1/1992' <- monthly$Y1992 * monthly[,37]
+monthly$'6/1/1992' <- monthly$Y1992 * monthly[,38]
+monthly$'7/1/1992' <- monthly$Y1992 * monthly[,39]
+monthly$'8/1/1992' <- monthly$Y1992 * monthly[,40]
+monthly$'9/1/1992' <- monthly$Y1992 * monthly[,41]
+monthly$'10/1/1992' <- monthly$Y1992 * monthly[,42]
+monthly$'11/1/1992' <- monthly$Y1992 * monthly[,43]
+monthly$'12/1/1992' <- monthly$Y1992 * monthly[,44]
+
+monthly$'1/1/1993' <- monthly$Y1993 * monthly[,33]
+monthly$'2/1/1993' <- monthly$Y1993 * monthly[,34]
+monthly$'3/1/1993' <- monthly$Y1993 * monthly[,35]
+monthly$'4/1/1993' <- monthly$Y1993 * monthly[,36]
+monthly$'5/1/1993' <- monthly$Y1993 * monthly[,37]
+monthly$'6/1/1993' <- monthly$Y1993 * monthly[,38]
+monthly$'7/1/1993' <- monthly$Y1993 * monthly[,39]
+monthly$'8/1/1993' <- monthly$Y1993 * monthly[,40]
+monthly$'9/1/1993' <- monthly$Y1993 * monthly[,41]
+monthly$'10/1/1993' <- monthly$Y1993 * monthly[,42]
+monthly$'11/1/1993' <- monthly$Y1993 * monthly[,43]
+monthly$'12/1/1993' <- monthly$Y1993 * monthly[,44]
+
+monthly$'1/1/1994' <- monthly$Y1994 * monthly[,33]
+monthly$'2/1/1994' <- monthly$Y1994 * monthly[,34]
+monthly$'3/1/1994' <- monthly$Y1994 * monthly[,35]
+monthly$'4/1/1994' <- monthly$Y1994 * monthly[,36]
+monthly$'5/1/1994' <- monthly$Y1994 * monthly[,37]
+monthly$'6/1/1994' <- monthly$Y1994 * monthly[,38]
+monthly$'7/1/1994' <- monthly$Y1994 * monthly[,39]
+monthly$'8/1/1994' <- monthly$Y1994 * monthly[,40]
+monthly$'9/1/1994' <- monthly$Y1994 * monthly[,41]
+monthly$'10/1/1994' <- monthly$Y1994 * monthly[,42]
+monthly$'11/1/1994' <- monthly$Y1994 * monthly[,43]
+monthly$'12/1/1994' <- monthly$Y1994 * monthly[,44]
+
+monthly$'1/1/1995' <- monthly$Y1995 * monthly[,33]
+monthly$'2/1/1995' <- monthly$Y1995 * monthly[,34]
+monthly$'3/1/1995' <- monthly$Y1995 * monthly[,35]
+monthly$'4/1/1995' <- monthly$Y1995 * monthly[,36]
+monthly$'5/1/1995' <- monthly$Y1995 * monthly[,37]
+monthly$'6/1/1995' <- monthly$Y1995 * monthly[,38]
+monthly$'7/1/1995' <- monthly$Y1995 * monthly[,39]
+monthly$'8/1/1995' <- monthly$Y1995 * monthly[,40]
+monthly$'9/1/1995' <- monthly$Y1995 * monthly[,41]
+monthly$'10/1/1995' <- monthly$Y1995 * monthly[,42]
+monthly$'11/1/1995' <- monthly$Y1995 * monthly[,43]
+monthly$'12/1/1995' <- monthly$Y1995 * monthly[,44]
+
+monthly$'1/1/1996' <- monthly$Y1996 * monthly[,33]
+monthly$'2/1/1996' <- monthly$Y1996 * monthly[,34]
+monthly$'3/1/1996' <- monthly$Y1996 * monthly[,35]
+monthly$'4/1/1996' <- monthly$Y1996 * monthly[,36]
+monthly$'5/1/1996' <- monthly$Y1996 * monthly[,37]
+monthly$'6/1/1996' <- monthly$Y1996 * monthly[,38]
+monthly$'7/1/1996' <- monthly$Y1996 * monthly[,39]
+monthly$'8/1/1996' <- monthly$Y1996 * monthly[,40]
+monthly$'9/1/1996' <- monthly$Y1996 * monthly[,41]
+monthly$'10/1/1996' <- monthly$Y1996 * monthly[,42]
+monthly$'11/1/1996' <- monthly$Y1996 * monthly[,43]
+monthly$'12/1/1996' <- monthly$Y1996 * monthly[,44]
+
+monthly$'1/1/1997' <- monthly$Y1997 * monthly[,33]
+monthly$'2/1/1997' <- monthly$Y1997 * monthly[,34]
+monthly$'3/1/1997' <- monthly$Y1997 * monthly[,35]
+monthly$'4/1/1997' <- monthly$Y1997 * monthly[,36]
+monthly$'5/1/1997' <- monthly$Y1997 * monthly[,37]
+monthly$'6/1/1997' <- monthly$Y1997 * monthly[,38]
+monthly$'7/1/1997' <- monthly$Y1997 * monthly[,39]
+monthly$'8/1/1997' <- monthly$Y1997 * monthly[,40]
+monthly$'9/1/1997' <- monthly$Y1997 * monthly[,41]
+monthly$'10/1/1997' <- monthly$Y1997 * monthly[,42]
+monthly$'11/1/1997' <- monthly$Y1997 * monthly[,43]
+monthly$'12/1/1997' <- monthly$Y1997 * monthly[,44]
+
+monthly$'1/1/1998' <- monthly$Y1998 * monthly[,33]
+monthly$'2/1/1998' <- monthly$Y1998 * monthly[,34]
+monthly$'3/1/1998' <- monthly$Y1998 * monthly[,35]
+monthly$'4/1/1998' <- monthly$Y1998 * monthly[,36]
+monthly$'5/1/1998' <- monthly$Y1998 * monthly[,37]
+monthly$'6/1/1998' <- monthly$Y1998 * monthly[,38]
+monthly$'7/1/1998' <- monthly$Y1998 * monthly[,39]
+monthly$'8/1/1998' <- monthly$Y1998 * monthly[,40]
+monthly$'9/1/1998' <- monthly$Y1998 * monthly[,41]
+monthly$'10/1/1998' <- monthly$Y1998 * monthly[,42]
+monthly$'11/1/1998' <- monthly$Y1998 * monthly[,43]
+monthly$'12/1/1998' <- monthly$Y1998 * monthly[,44]
+
+monthly$'1/1/1999' <- monthly$Y1999 * monthly[,33]
+monthly$'2/1/1999' <- monthly$Y1999 * monthly[,34]
+monthly$'3/1/1999' <- monthly$Y1999 * monthly[,35]
+monthly$'4/1/1999' <- monthly$Y1999 * monthly[,36]
+monthly$'5/1/1999' <- monthly$Y1999 * monthly[,37]
+monthly$'6/1/1999' <- monthly$Y1999 * monthly[,38]
+monthly$'7/1/1999' <- monthly$Y1999 * monthly[,39]
+monthly$'8/1/1999' <- monthly$Y1999 * monthly[,40]
+monthly$'9/1/1999' <- monthly$Y1999 * monthly[,41]
+monthly$'10/1/1999' <- monthly$Y1999 * monthly[,42]
+monthly$'11/1/1999' <- monthly$Y1999 * monthly[,43]
+monthly$'12/1/1999' <- monthly$Y1999 * monthly[,44]
+
+monthly$'1/1/2000' <- monthly$Y2000 * monthly[,33]
+monthly$'2/1/2000' <- monthly$Y2000 * monthly[,34]
+monthly$'3/1/2000' <- monthly$Y2000 * monthly[,35]
+monthly$'4/1/2000' <- monthly$Y2000 * monthly[,36]
+monthly$'5/1/2000' <- monthly$Y2000 * monthly[,37]
+monthly$'6/1/2000' <- monthly$Y2000 * monthly[,38]
+monthly$'7/1/2000' <- monthly$Y2000 * monthly[,39]
+monthly$'8/1/2000' <- monthly$Y2000 * monthly[,40]
+monthly$'9/1/2000' <- monthly$Y2000 * monthly[,41]
+monthly$'10/1/2000' <- monthly$Y2000 * monthly[,42]
+monthly$'11/1/2000' <- monthly$Y2000 * monthly[,43]
+monthly$'12/1/2000' <- monthly$Y2000 * monthly[,44]
+
+monthly$'1/1/2001' <- monthly$Y2001 * monthly[,33]
+monthly$'2/1/2001' <- monthly$Y2001 * monthly[,34]
+monthly$'3/1/2001' <- monthly$Y2001 * monthly[,35]
+monthly$'4/1/2001' <- monthly$Y2001 * monthly[,36]
+monthly$'5/1/2001' <- monthly$Y2001 * monthly[,37]
+monthly$'6/1/2001' <- monthly$Y2001 * monthly[,38]
+monthly$'7/1/2001' <- monthly$Y2001 * monthly[,39]
+monthly$'8/1/2001' <- monthly$Y2001 * monthly[,40]
+monthly$'9/1/2001' <- monthly$Y2001 * monthly[,41]
+monthly$'10/1/2001' <- monthly$Y2001 * monthly[,42]
+monthly$'11/1/2001' <- monthly$Y2001 * monthly[,43]
+monthly$'12/1/2001' <- monthly$Y2001 * monthly[,44]
+
+monthly$'1/1/2002' <- monthly$Y2002 * monthly[,33]
+monthly$'2/1/2002' <- monthly$Y2002 * monthly[,34]
+monthly$'3/1/2002' <- monthly$Y2002 * monthly[,35]
+monthly$'4/1/2002' <- monthly$Y2002 * monthly[,36]
+monthly$'5/1/2002' <- monthly$Y2002 * monthly[,37]
+monthly$'6/1/2002' <- monthly$Y2002 * monthly[,38]
+monthly$'7/1/2002' <- monthly$Y2002 * monthly[,39]
+monthly$'8/1/2002' <- monthly$Y2002 * monthly[,40]
+monthly$'9/1/2002' <- monthly$Y2002 * monthly[,41]
+monthly$'10/1/2002' <- monthly$Y2002 * monthly[,42]
+monthly$'11/1/2002' <- monthly$Y2002 * monthly[,43]
+monthly$'12/1/2002' <- monthly$Y2002 * monthly[,44]
+
+monthly$'1/1/2003' <- monthly$Y2003 * monthly[,33]
+monthly$'2/1/2003' <- monthly$Y2003 * monthly[,34]
+monthly$'3/1/2003' <- monthly$Y2003 * monthly[,35]
+monthly$'4/1/2003' <- monthly$Y2003 * monthly[,36]
+monthly$'5/1/2003' <- monthly$Y2003 * monthly[,37]
+monthly$'6/1/2003' <- monthly$Y2003 * monthly[,38]
+monthly$'7/1/2003' <- monthly$Y2003 * monthly[,39]
+monthly$'8/1/2003' <- monthly$Y2003 * monthly[,40]
+monthly$'9/1/2003' <- monthly$Y2003 * monthly[,41]
+monthly$'10/1/2003' <- monthly$Y2003 * monthly[,42]
+monthly$'11/1/2003' <- monthly$Y2003 * monthly[,43]
+monthly$'12/1/2003' <- monthly$Y2003 * monthly[,44]
+
+
+monthly$'1/1/2004' <- monthly$Y2004 * monthly[,33]
+monthly$'2/1/2004' <- monthly$Y2004 * monthly[,34]
+monthly$'3/1/2004' <- monthly$Y2004 * monthly[,35]
+monthly$'4/1/2004' <- monthly$Y2004 * monthly[,36]
+monthly$'5/1/2004' <- monthly$Y2004 * monthly[,37]
+monthly$'6/1/2004' <- monthly$Y2004 * monthly[,38]
+monthly$'7/1/2004' <- monthly$Y2004 * monthly[,39]
+monthly$'8/1/2004' <- monthly$Y2004 * monthly[,40]
+monthly$'9/1/2004' <- monthly$Y2004 * monthly[,41]
+monthly$'10/1/2004' <- monthly$Y2004 * monthly[,42]
+monthly$'11/1/2004' <- monthly$Y2004 * monthly[,43]
+monthly$'12/1/2004' <- monthly$Y2004 * monthly[,44]
+
+
+monthly$'1/1/2005' <- monthly$Y2005 * monthly[,33]
+monthly$'2/1/2005' <- monthly$Y2005 * monthly[,34]
+monthly$'3/1/2005' <- monthly$Y2005 * monthly[,35]
+monthly$'4/1/2005' <- monthly$Y2005 * monthly[,36]
+monthly$'5/1/2005' <- monthly$Y2005 * monthly[,37]
+monthly$'6/1/2005' <- monthly$Y2005 * monthly[,38]
+monthly$'7/1/2005' <- monthly$Y2005 * monthly[,39]
+monthly$'8/1/2005' <- monthly$Y2005 * monthly[,40]
+monthly$'9/1/2005' <- monthly$Y2005 * monthly[,41]
+monthly$'10/1/2005' <- monthly$Y2005 * monthly[,42]
+monthly$'11/1/2005' <- monthly$Y2005 * monthly[,43]
+monthly$'12/1/2005' <- monthly$Y2005 * monthly[,44]
+
+
+monthly$'1/1/2006' <- monthly$Y2006 * monthly[,33]
+monthly$'2/1/2006' <- monthly$Y2006 * monthly[,34]
+monthly$'3/1/2006' <- monthly$Y2006 * monthly[,35]
+monthly$'4/1/2006' <- monthly$Y2006 * monthly[,36]
+monthly$'5/1/2006' <- monthly$Y2006 * monthly[,37]
+monthly$'6/1/2006' <- monthly$Y2006 * monthly[,38]
+monthly$'7/1/2006' <- monthly$Y2006 * monthly[,39]
+monthly$'8/1/2006' <- monthly$Y2006 * monthly[,40]
+monthly$'9/1/2006' <- monthly$Y2006 * monthly[,41]
+monthly$'10/1/2006' <- monthly$Y2006 * monthly[,42]
+monthly$'11/1/2006' <- monthly$Y2006 * monthly[,43]
+monthly$'12/1/2006' <- monthly$Y2006 * monthly[,44]
+
+
+monthly$'1/1/2007' <- monthly$Y2007 * monthly[,33]
+monthly$'2/1/2007' <- monthly$Y2007 * monthly[,34]
+monthly$'3/1/2007' <- monthly$Y2007 * monthly[,35]
+monthly$'4/1/2007' <- monthly$Y2007 * monthly[,36]
+monthly$'5/1/2007' <- monthly$Y2007 * monthly[,37]
+monthly$'6/1/2007' <- monthly$Y2007 * monthly[,38]
+monthly$'7/1/2007' <- monthly$Y2007 * monthly[,39]
+monthly$'8/1/2007' <- monthly$Y2007 * monthly[,40]
+monthly$'9/1/2007' <- monthly$Y2007 * monthly[,41]
+monthly$'10/1/2007' <- monthly$Y2007 * monthly[,42]
+monthly$'11/1/2007' <- monthly$Y2007 * monthly[,43]
+monthly$'12/1/2007' <- monthly$Y2007 * monthly[,44]
+
+
+monthly$'1/1/2008' <- monthly$Y2008 * monthly[,33]
+monthly$'2/1/2008' <- monthly$Y2008 * monthly[,34]
+monthly$'3/1/2008' <- monthly$Y2008 * monthly[,35]
+monthly$'4/1/2008' <- monthly$Y2008 * monthly[,36]
+monthly$'5/1/2008' <- monthly$Y2008 * monthly[,37]
+monthly$'6/1/2008' <- monthly$Y2008 * monthly[,38]
+monthly$'7/1/2008' <- monthly$Y2008 * monthly[,39]
+monthly$'8/1/2008' <- monthly$Y2008 * monthly[,40]
+monthly$'9/1/2008' <- monthly$Y2008 * monthly[,41]
+monthly$'10/1/2008' <- monthly$Y2008 * monthly[,42]
+monthly$'11/1/2008' <- monthly$Y2008 * monthly[,43]
+monthly$'12/1/2008' <- monthly$Y2008 * monthly[,44]
+
+
+monthly$'1/1/2009' <- monthly$Y2009 * monthly[,33]
+monthly$'2/1/2009' <- monthly$Y2009 * monthly[,34]
+monthly$'3/1/2009' <- monthly$Y2009 * monthly[,35]
+monthly$'4/1/2009' <- monthly$Y2009 * monthly[,36]
+monthly$'5/1/2009' <- monthly$Y2009 * monthly[,37]
+monthly$'6/1/2009' <- monthly$Y2009 * monthly[,38]
+monthly$'7/1/2009' <- monthly$Y2009 * monthly[,39]
+monthly$'8/1/2009' <- monthly$Y2009 * monthly[,40]
+monthly$'9/1/2009' <- monthly$Y2009 * monthly[,41]
+monthly$'10/1/2009' <- monthly$Y2009 * monthly[,42]
+monthly$'11/1/2009' <- monthly$Y2009 * monthly[,43]
+monthly$'12/1/2009' <- monthly$Y2009 * monthly[,44]
+
+monthly$'1/1/2010' <- monthly$Y2010 * monthly[,33]
+monthly$'2/1/2010' <- monthly$Y2010 * monthly[,34]
+monthly$'3/1/2010' <- monthly$Y2010 * monthly[,35]
+monthly$'4/1/2010' <- monthly$Y2010 * monthly[,36]
+monthly$'5/1/2010' <- monthly$Y2010 * monthly[,37]
+monthly$'6/1/2010' <- monthly$Y2010 * monthly[,38]
+monthly$'7/1/2010' <- monthly$Y2010 * monthly[,39]
+monthly$'8/1/2010' <- monthly$Y2010 * monthly[,40]
+monthly$'9/1/2010' <- monthly$Y2010 * monthly[,41]
+monthly$'10/1/2010' <- monthly$Y2010 * monthly[,42]
+monthly$'11/1/2010' <- monthly$Y2010 * monthly[,43]
+monthly$'12/1/2010' <- monthly$Y2010 * monthly[,44]
+
+monthly$'1/1/2011' <- monthly$Y2011 * monthly[,33]
+monthly$'2/1/2011' <- monthly$Y2011 * monthly[,34]
+monthly$'3/1/2011' <- monthly$Y2011 * monthly[,35]
+monthly$'4/1/2011' <- monthly$Y2011 * monthly[,36]
+monthly$'5/1/2011' <- monthly$Y2011 * monthly[,37]
+monthly$'6/1/2011' <- monthly$Y2011 * monthly[,38]
+monthly$'7/1/2011' <- monthly$Y2011 * monthly[,39]
+monthly$'8/1/2011' <- monthly$Y2011 * monthly[,40]
+monthly$'9/1/2011' <- monthly$Y2011 * monthly[,41]
+monthly$'10/1/2011' <- monthly$Y2011 * monthly[,42]
+monthly$'11/1/2011' <- monthly$Y2011 * monthly[,43]
+monthly$'12/1/2011' <- monthly$Y2011 * monthly[,44]
+
+monthly$'1/1/2012' <- monthly$Y2012 * monthly[,33]
+monthly$'2/1/2012' <- monthly$Y2012 * monthly[,34]
+monthly$'3/1/2012' <- monthly$Y2012 * monthly[,35]
+monthly$'4/1/2012' <- monthly$Y2012 * monthly[,36]
+monthly$'5/1/2012' <- monthly$Y2012 * monthly[,37]
+monthly$'6/1/2012' <- monthly$Y2012 * monthly[,38]
+monthly$'7/1/2012' <- monthly$Y2012 * monthly[,39]
+monthly$'8/1/2012' <- monthly$Y2012 * monthly[,40]
+monthly$'9/1/2012' <- monthly$Y2012 * monthly[,41]
+monthly$'10/1/2012' <- monthly$Y2012 * monthly[,42]
+monthly$'11/1/2012' <- monthly$Y2012 * monthly[,43]
+monthly$'12/1/2012' <- monthly$Y2012 * monthly[,44]
+
+monthly$'1/1/2013' <- monthly$Y2013 * monthly[,33]
+monthly$'2/1/2013' <- monthly$Y2013 * monthly[,34]
+monthly$'3/1/2013' <- monthly$Y2013 * monthly[,35]
+monthly$'4/1/2013' <- monthly$Y2013 * monthly[,36]
+monthly$'5/1/2013' <- monthly$Y2013 * monthly[,37]
+monthly$'6/1/2013' <- monthly$Y2013 * monthly[,38]
+monthly$'7/1/2013' <- monthly$Y2013 * monthly[,39]
+monthly$'8/1/2013' <- monthly$Y2013 * monthly[,40]
+monthly$'9/1/2013' <- monthly$Y2013 * monthly[,41]
+monthly$'10/1/2013' <- monthly$Y2013 * monthly[,42]
+monthly$'11/1/2013' <- monthly$Y2013 * monthly[,43]
+monthly$'12/1/2013' <- monthly$Y2013 * monthly[,44]
+
+monthly$'1/1/2014' <- monthly$Y2014 * monthly[,33]
+monthly$'2/1/2014' <- monthly$Y2014 * monthly[,34]
+monthly$'3/1/2014' <- monthly$Y2014 * monthly[,35]
+monthly$'4/1/2014' <- monthly$Y2014 * monthly[,36]
+monthly$'5/1/2014' <- monthly$Y2014 * monthly[,37]
+monthly$'6/1/2014' <- monthly$Y2014 * monthly[,38]
+monthly$'7/1/2014' <- monthly$Y2014 * monthly[,39]
+monthly$'8/1/2014' <- monthly$Y2014 * monthly[,40]
+monthly$'9/1/2014' <- monthly$Y2014 * monthly[,41]
+monthly$'10/1/2014' <- monthly$Y2014 * monthly[,42]
+monthly$'11/1/2014' <- monthly$Y2014 * monthly[,43]
+monthly$'12/1/2014' <- monthly$Y2014 * monthly[,44]
+
+monthly$'1/1/2015' <- monthly$Y2015 * monthly[,33]
+monthly$'2/1/2015' <- monthly$Y2015 * monthly[,34]
+monthly$'3/1/2015' <- monthly$Y2015 * monthly[,35]
+monthly$'4/1/2015' <- monthly$Y2015 * monthly[,36]
+monthly$'5/1/2015' <- monthly$Y2015 * monthly[,37]
+monthly$'6/1/2015' <- monthly$Y2015 * monthly[,38]
+monthly$'7/1/2015' <- monthly$Y2015 * monthly[,39]
+monthly$'8/1/2015' <- monthly$Y2015 * monthly[,40]
+monthly$'9/1/2015' <- monthly$Y2015 * monthly[,41]
+monthly$'10/1/2015' <- monthly$Y2015 * monthly[,42]
+monthly$'11/1/2015' <- monthly$Y2015 * monthly[,43]
+monthly$'12/1/2015' <- monthly$Y2015 * monthly[,44]
+
+monthly$sector <- 'ic'
+monthly <- select(monthly, 1,417,45:416)
+
+ic.historic.monthly <- monthly
+
+
+
+#------------------------------------------------------------------------------------------.
+######### Irrigation sector #########
+DF <- ir %>%
+  gather(key, value, ir.cu) %>%
+  spread(year, value)
+DF<-plyr::rename(DF,c("key"="sector","1985"="Y1985","1990"="Y1990","1995"="Y1995","2000"="Y2000","2005"="Y2005","2010"="Y2010","2015"="Y2015"))
+DF <- select(DF, HUC4, Y1985, Y1990, Y1995, Y2000, Y2005, Y2010, Y2015)
+# Convert any NAs to 0 so we can summarize based on the HUC
+DF[is.na(DF)] <- 0
+# This sums values for each HUC
+DF <- DF%>% group_by(HUC4) %>% summarise_all(funs(sum))
+
+# Now perform linear approximations
+DF$Y1986 <- DF$Y1985 + 1*(DF$Y1990 - DF$Y1985)/5
+DF$Y1987 <- DF$Y1985 + 2*(DF$Y1990 - DF$Y1985)/5
+DF$Y1988 <- DF$Y1985 + 3*(DF$Y1990 - DF$Y1985)/5
+DF$Y1989 <- DF$Y1985 + 4*(DF$Y1990 - DF$Y1985)/5
+
+DF$Y1991 <- DF$Y1990 + 1*(DF$Y1995 - DF$Y1990)/5
+DF$Y1992 <- DF$Y1990 + 2*(DF$Y1995 - DF$Y1990)/5
+DF$Y1993 <- DF$Y1990 + 3*(DF$Y1995 - DF$Y1990)/5
+DF$Y1994 <- DF$Y1990 + 4*(DF$Y1995 - DF$Y1990)/5
+
+DF$Y1996 <- DF$Y1995 + 1*(DF$Y2000 - DF$Y1995)/5
+DF$Y1997 <- DF$Y1995 + 2*(DF$Y2000 - DF$Y1995)/5
+DF$Y1998 <- DF$Y1995 + 3*(DF$Y2000 - DF$Y1995)/5
+DF$Y1999 <- DF$Y1995 + 4*(DF$Y2000 - DF$Y1995)/5
+
+DF$Y2001 <- DF$Y2000 + 1*(DF$Y2005 - DF$Y2000)/5
+DF$Y2002 <- DF$Y2000 + 2*(DF$Y2005 - DF$Y2000)/5
+DF$Y2003 <- DF$Y2000 + 3*(DF$Y2005 - DF$Y2000)/5
+DF$Y2004 <- DF$Y2000 + 4*(DF$Y2005 - DF$Y2000)/5
+
+DF$Y2006 <- DF$Y2005 + 1*(DF$Y2010 - DF$Y2005)/5
+DF$Y2007 <- DF$Y2005 + 2*(DF$Y2010 - DF$Y2005)/5
+DF$Y2008 <- DF$Y2005 + 3*(DF$Y2010 - DF$Y2005)/5
+DF$Y2009 <- DF$Y2005 + 4*(DF$Y2010 - DF$Y2005)/5
+
+DF$Y2011 <- DF$Y2010 + 1*(DF$Y2015 - DF$Y2010)/5
+DF$Y2012 <- DF$Y2010 + 2*(DF$Y2015 - DF$Y2010)/5
+DF$Y2013 <- DF$Y2010 + 3*(DF$Y2015 - DF$Y2010)/5
+DF$Y2014 <- DF$Y2010 + 4*(DF$Y2015 - DF$Y2010)/5
+
+
+col_order <- c("HUC4", "Y1985", "Y1986", "Y1987", "Y1988", "Y1989", "Y1990", "Y1991", "Y1992", "Y1993", "Y1994",
+               "Y1995", "Y1996", "Y1997", "Y1998", "Y1999", "Y2000", "Y2001", "Y2002", "Y2003", "Y2004", "Y2005",
+               "Y2006", "Y2007", "Y2008", "Y2009", "Y2010", "Y2011", "Y2012", "Y2013", "Y2014", "Y2015")
+DF <- DF[,col_order]
+
+# Now convert units from mgal to 1000 cubic meters (this come from Ryan's WEAP input code)
+# (optional unless you are using the output for WEAP)
+# 1 Mgal/day = 1381.6345 (thousand) m^3
+
+for (n in 2:32){
+  DF[,n]<- DF[,n]*(1381.6345)
+}
+
+
+# Now calculate monthly use based on Tom's monthly proportions
+df <- DF
+month.ir <- select(month,1,38:49)
+
+df.month <- merge(df,month.ir, by="HUC4")
+monthly <- df.month
+
+monthly$'1/1/1985' <- monthly$Y1985 * monthly[,33]
+monthly$'2/1/1985' <- monthly$Y1985 * monthly[,34]
+monthly$'3/1/1985' <- monthly$Y1985 * monthly[,35]
+monthly$'4/1/1985' <- monthly$Y1985 * monthly[,36]
+monthly$'5/1/1985' <- monthly$Y1985 * monthly[,37]
+monthly$'6/1/1985' <- monthly$Y1985 * monthly[,38]
+monthly$'7/1/1985' <- monthly$Y1985 * monthly[,39]
+monthly$'8/1/1985' <- monthly$Y1985 * monthly[,40]
+monthly$'9/1/1985' <- monthly$Y1985 * monthly[,41]
+monthly$'10/1/1985' <- monthly$Y1985 * monthly[,42]
+monthly$'11/1/1985' <- monthly$Y1985 * monthly[,43]
+monthly$'12/1/1985' <- monthly$Y1985 * monthly[,44]
+
+monthly$'1/1/1986' <- monthly$Y1986 * monthly[,33]
+monthly$'2/1/1986' <- monthly$Y1986 * monthly[,34]
+monthly$'3/1/1986' <- monthly$Y1986 * monthly[,35]
+monthly$'4/1/1986' <- monthly$Y1986 * monthly[,36]
+monthly$'5/1/1986' <- monthly$Y1986 * monthly[,37]
+monthly$'6/1/1986' <- monthly$Y1986 * monthly[,38]
+monthly$'7/1/1986' <- monthly$Y1986 * monthly[,39]
+monthly$'8/1/1986' <- monthly$Y1986 * monthly[,40]
+monthly$'9/1/1986' <- monthly$Y1986 * monthly[,41]
+monthly$'10/1/1986' <- monthly$Y1986 * monthly[,42]
+monthly$'11/1/1986' <- monthly$Y1986 * monthly[,43]
+monthly$'12/1/1986' <- monthly$Y1986 * monthly[,44]
+
+monthly$'1/1/1987' <- monthly$Y1987 * monthly[,33]
+monthly$'2/1/1987' <- monthly$Y1987 * monthly[,34]
+monthly$'3/1/1987' <- monthly$Y1987 * monthly[,35]
+monthly$'4/1/1987' <- monthly$Y1987 * monthly[,36]
+monthly$'5/1/1987' <- monthly$Y1987 * monthly[,37]
+monthly$'6/1/1987' <- monthly$Y1987 * monthly[,38]
+monthly$'7/1/1987' <- monthly$Y1987 * monthly[,39]
+monthly$'8/1/1987' <- monthly$Y1987 * monthly[,40]
+monthly$'9/1/1987' <- monthly$Y1987 * monthly[,41]
+monthly$'10/1/1987' <- monthly$Y1987 * monthly[,42]
+monthly$'11/1/1987' <- monthly$Y1987 * monthly[,43]
+monthly$'12/1/1987' <- monthly$Y1987 * monthly[,44]
+
+monthly$'1/1/1988' <- monthly$Y1988 * monthly[,33]
+monthly$'2/1/1988' <- monthly$Y1988 * monthly[,34]
+monthly$'3/1/1988' <- monthly$Y1988 * monthly[,35]
+monthly$'4/1/1988' <- monthly$Y1988 * monthly[,36]
+monthly$'5/1/1988' <- monthly$Y1988 * monthly[,37]
+monthly$'6/1/1988' <- monthly$Y1988 * monthly[,38]
+monthly$'7/1/1988' <- monthly$Y1988 * monthly[,39]
+monthly$'8/1/1988' <- monthly$Y1988 * monthly[,40]
+monthly$'9/1/1988' <- monthly$Y1988 * monthly[,41]
+monthly$'10/1/1988' <- monthly$Y1988 * monthly[,42]
+monthly$'11/1/1988' <- monthly$Y1988 * monthly[,43]
+monthly$'12/1/1988' <- monthly$Y1988 * monthly[,44]
+
+monthly$'1/1/1989' <- monthly$Y1989 * monthly[,33]
+monthly$'2/1/1989' <- monthly$Y1989 * monthly[,34]
+monthly$'3/1/1989' <- monthly$Y1989 * monthly[,35]
+monthly$'4/1/1989' <- monthly$Y1989 * monthly[,36]
+monthly$'5/1/1989' <- monthly$Y1989 * monthly[,37]
+monthly$'6/1/1989' <- monthly$Y1989 * monthly[,38]
+monthly$'7/1/1989' <- monthly$Y1989 * monthly[,39]
+monthly$'8/1/1989' <- monthly$Y1989 * monthly[,40]
+monthly$'9/1/1989' <- monthly$Y1989 * monthly[,41]
+monthly$'10/1/1989' <- monthly$Y1989 * monthly[,42]
+monthly$'11/1/1989' <- monthly$Y1989 * monthly[,43]
+monthly$'12/1/1989' <- monthly$Y1989 * monthly[,44]
+
+monthly$'1/1/1990' <- monthly$Y1990 * monthly[,33]
+monthly$'2/1/1990' <- monthly$Y1990 * monthly[,34]
+monthly$'3/1/1990' <- monthly$Y1990 * monthly[,35]
+monthly$'4/1/1990' <- monthly$Y1990 * monthly[,36]
+monthly$'5/1/1990' <- monthly$Y1990 * monthly[,37]
+monthly$'6/1/1990' <- monthly$Y1990 * monthly[,38]
+monthly$'7/1/1990' <- monthly$Y1990 * monthly[,39]
+monthly$'8/1/1990' <- monthly$Y1990 * monthly[,40]
+monthly$'9/1/1990' <- monthly$Y1990 * monthly[,41]
+monthly$'10/1/1990' <- monthly$Y1990 * monthly[,42]
+monthly$'11/1/1990' <- monthly$Y1990 * monthly[,43]
+monthly$'12/1/1990' <- monthly$Y1990 * monthly[,44]
+
+monthly$'1/1/1991' <- monthly$Y1991 * monthly[,33]
+monthly$'2/1/1991' <- monthly$Y1991 * monthly[,34]
+monthly$'3/1/1991' <- monthly$Y1991 * monthly[,35]
+monthly$'4/1/1991' <- monthly$Y1991 * monthly[,36]
+monthly$'5/1/1991' <- monthly$Y1991 * monthly[,37]
+monthly$'6/1/1991' <- monthly$Y1991 * monthly[,38]
+monthly$'7/1/1991' <- monthly$Y1991 * monthly[,39]
+monthly$'8/1/1991' <- monthly$Y1991 * monthly[,40]
+monthly$'9/1/1991' <- monthly$Y1991 * monthly[,41]
+monthly$'10/1/1991' <- monthly$Y1991 * monthly[,42]
+monthly$'11/1/1991' <- monthly$Y1991 * monthly[,43]
+monthly$'12/1/1991' <- monthly$Y1991 * monthly[,44]
+
+monthly$'1/1/1992' <- monthly$Y1992 * monthly[,33]
+monthly$'2/1/1992' <- monthly$Y1992 * monthly[,34]
+monthly$'3/1/1992' <- monthly$Y1992 * monthly[,35]
+monthly$'4/1/1992' <- monthly$Y1992 * monthly[,36]
+monthly$'5/1/1992' <- monthly$Y1992 * monthly[,37]
+monthly$'6/1/1992' <- monthly$Y1992 * monthly[,38]
+monthly$'7/1/1992' <- monthly$Y1992 * monthly[,39]
+monthly$'8/1/1992' <- monthly$Y1992 * monthly[,40]
+monthly$'9/1/1992' <- monthly$Y1992 * monthly[,41]
+monthly$'10/1/1992' <- monthly$Y1992 * monthly[,42]
+monthly$'11/1/1992' <- monthly$Y1992 * monthly[,43]
+monthly$'12/1/1992' <- monthly$Y1992 * monthly[,44]
+
+monthly$'1/1/1993' <- monthly$Y1993 * monthly[,33]
+monthly$'2/1/1993' <- monthly$Y1993 * monthly[,34]
+monthly$'3/1/1993' <- monthly$Y1993 * monthly[,35]
+monthly$'4/1/1993' <- monthly$Y1993 * monthly[,36]
+monthly$'5/1/1993' <- monthly$Y1993 * monthly[,37]
+monthly$'6/1/1993' <- monthly$Y1993 * monthly[,38]
+monthly$'7/1/1993' <- monthly$Y1993 * monthly[,39]
+monthly$'8/1/1993' <- monthly$Y1993 * monthly[,40]
+monthly$'9/1/1993' <- monthly$Y1993 * monthly[,41]
+monthly$'10/1/1993' <- monthly$Y1993 * monthly[,42]
+monthly$'11/1/1993' <- monthly$Y1993 * monthly[,43]
+monthly$'12/1/1993' <- monthly$Y1993 * monthly[,44]
+
+monthly$'1/1/1994' <- monthly$Y1994 * monthly[,33]
+monthly$'2/1/1994' <- monthly$Y1994 * monthly[,34]
+monthly$'3/1/1994' <- monthly$Y1994 * monthly[,35]
+monthly$'4/1/1994' <- monthly$Y1994 * monthly[,36]
+monthly$'5/1/1994' <- monthly$Y1994 * monthly[,37]
+monthly$'6/1/1994' <- monthly$Y1994 * monthly[,38]
+monthly$'7/1/1994' <- monthly$Y1994 * monthly[,39]
+monthly$'8/1/1994' <- monthly$Y1994 * monthly[,40]
+monthly$'9/1/1994' <- monthly$Y1994 * monthly[,41]
+monthly$'10/1/1994' <- monthly$Y1994 * monthly[,42]
+monthly$'11/1/1994' <- monthly$Y1994 * monthly[,43]
+monthly$'12/1/1994' <- monthly$Y1994 * monthly[,44]
+
+monthly$'1/1/1995' <- monthly$Y1995 * monthly[,33]
+monthly$'2/1/1995' <- monthly$Y1995 * monthly[,34]
+monthly$'3/1/1995' <- monthly$Y1995 * monthly[,35]
+monthly$'4/1/1995' <- monthly$Y1995 * monthly[,36]
+monthly$'5/1/1995' <- monthly$Y1995 * monthly[,37]
+monthly$'6/1/1995' <- monthly$Y1995 * monthly[,38]
+monthly$'7/1/1995' <- monthly$Y1995 * monthly[,39]
+monthly$'8/1/1995' <- monthly$Y1995 * monthly[,40]
+monthly$'9/1/1995' <- monthly$Y1995 * monthly[,41]
+monthly$'10/1/1995' <- monthly$Y1995 * monthly[,42]
+monthly$'11/1/1995' <- monthly$Y1995 * monthly[,43]
+monthly$'12/1/1995' <- monthly$Y1995 * monthly[,44]
+
+monthly$'1/1/1996' <- monthly$Y1996 * monthly[,33]
+monthly$'2/1/1996' <- monthly$Y1996 * monthly[,34]
+monthly$'3/1/1996' <- monthly$Y1996 * monthly[,35]
+monthly$'4/1/1996' <- monthly$Y1996 * monthly[,36]
+monthly$'5/1/1996' <- monthly$Y1996 * monthly[,37]
+monthly$'6/1/1996' <- monthly$Y1996 * monthly[,38]
+monthly$'7/1/1996' <- monthly$Y1996 * monthly[,39]
+monthly$'8/1/1996' <- monthly$Y1996 * monthly[,40]
+monthly$'9/1/1996' <- monthly$Y1996 * monthly[,41]
+monthly$'10/1/1996' <- monthly$Y1996 * monthly[,42]
+monthly$'11/1/1996' <- monthly$Y1996 * monthly[,43]
+monthly$'12/1/1996' <- monthly$Y1996 * monthly[,44]
+
+monthly$'1/1/1997' <- monthly$Y1997 * monthly[,33]
+monthly$'2/1/1997' <- monthly$Y1997 * monthly[,34]
+monthly$'3/1/1997' <- monthly$Y1997 * monthly[,35]
+monthly$'4/1/1997' <- monthly$Y1997 * monthly[,36]
+monthly$'5/1/1997' <- monthly$Y1997 * monthly[,37]
+monthly$'6/1/1997' <- monthly$Y1997 * monthly[,38]
+monthly$'7/1/1997' <- monthly$Y1997 * monthly[,39]
+monthly$'8/1/1997' <- monthly$Y1997 * monthly[,40]
+monthly$'9/1/1997' <- monthly$Y1997 * monthly[,41]
+monthly$'10/1/1997' <- monthly$Y1997 * monthly[,42]
+monthly$'11/1/1997' <- monthly$Y1997 * monthly[,43]
+monthly$'12/1/1997' <- monthly$Y1997 * monthly[,44]
+
+monthly$'1/1/1998' <- monthly$Y1998 * monthly[,33]
+monthly$'2/1/1998' <- monthly$Y1998 * monthly[,34]
+monthly$'3/1/1998' <- monthly$Y1998 * monthly[,35]
+monthly$'4/1/1998' <- monthly$Y1998 * monthly[,36]
+monthly$'5/1/1998' <- monthly$Y1998 * monthly[,37]
+monthly$'6/1/1998' <- monthly$Y1998 * monthly[,38]
+monthly$'7/1/1998' <- monthly$Y1998 * monthly[,39]
+monthly$'8/1/1998' <- monthly$Y1998 * monthly[,40]
+monthly$'9/1/1998' <- monthly$Y1998 * monthly[,41]
+monthly$'10/1/1998' <- monthly$Y1998 * monthly[,42]
+monthly$'11/1/1998' <- monthly$Y1998 * monthly[,43]
+monthly$'12/1/1998' <- monthly$Y1998 * monthly[,44]
+
+monthly$'1/1/1999' <- monthly$Y1999 * monthly[,33]
+monthly$'2/1/1999' <- monthly$Y1999 * monthly[,34]
+monthly$'3/1/1999' <- monthly$Y1999 * monthly[,35]
+monthly$'4/1/1999' <- monthly$Y1999 * monthly[,36]
+monthly$'5/1/1999' <- monthly$Y1999 * monthly[,37]
+monthly$'6/1/1999' <- monthly$Y1999 * monthly[,38]
+monthly$'7/1/1999' <- monthly$Y1999 * monthly[,39]
+monthly$'8/1/1999' <- monthly$Y1999 * monthly[,40]
+monthly$'9/1/1999' <- monthly$Y1999 * monthly[,41]
+monthly$'10/1/1999' <- monthly$Y1999 * monthly[,42]
+monthly$'11/1/1999' <- monthly$Y1999 * monthly[,43]
+monthly$'12/1/1999' <- monthly$Y1999 * monthly[,44]
+
+monthly$'1/1/2000' <- monthly$Y2000 * monthly[,33]
+monthly$'2/1/2000' <- monthly$Y2000 * monthly[,34]
+monthly$'3/1/2000' <- monthly$Y2000 * monthly[,35]
+monthly$'4/1/2000' <- monthly$Y2000 * monthly[,36]
+monthly$'5/1/2000' <- monthly$Y2000 * monthly[,37]
+monthly$'6/1/2000' <- monthly$Y2000 * monthly[,38]
+monthly$'7/1/2000' <- monthly$Y2000 * monthly[,39]
+monthly$'8/1/2000' <- monthly$Y2000 * monthly[,40]
+monthly$'9/1/2000' <- monthly$Y2000 * monthly[,41]
+monthly$'10/1/2000' <- monthly$Y2000 * monthly[,42]
+monthly$'11/1/2000' <- monthly$Y2000 * monthly[,43]
+monthly$'12/1/2000' <- monthly$Y2000 * monthly[,44]
+
+monthly$'1/1/2001' <- monthly$Y2001 * monthly[,33]
+monthly$'2/1/2001' <- monthly$Y2001 * monthly[,34]
+monthly$'3/1/2001' <- monthly$Y2001 * monthly[,35]
+monthly$'4/1/2001' <- monthly$Y2001 * monthly[,36]
+monthly$'5/1/2001' <- monthly$Y2001 * monthly[,37]
+monthly$'6/1/2001' <- monthly$Y2001 * monthly[,38]
+monthly$'7/1/2001' <- monthly$Y2001 * monthly[,39]
+monthly$'8/1/2001' <- monthly$Y2001 * monthly[,40]
+monthly$'9/1/2001' <- monthly$Y2001 * monthly[,41]
+monthly$'10/1/2001' <- monthly$Y2001 * monthly[,42]
+monthly$'11/1/2001' <- monthly$Y2001 * monthly[,43]
+monthly$'12/1/2001' <- monthly$Y2001 * monthly[,44]
+
+monthly$'1/1/2002' <- monthly$Y2002 * monthly[,33]
+monthly$'2/1/2002' <- monthly$Y2002 * monthly[,34]
+monthly$'3/1/2002' <- monthly$Y2002 * monthly[,35]
+monthly$'4/1/2002' <- monthly$Y2002 * monthly[,36]
+monthly$'5/1/2002' <- monthly$Y2002 * monthly[,37]
+monthly$'6/1/2002' <- monthly$Y2002 * monthly[,38]
+monthly$'7/1/2002' <- monthly$Y2002 * monthly[,39]
+monthly$'8/1/2002' <- monthly$Y2002 * monthly[,40]
+monthly$'9/1/2002' <- monthly$Y2002 * monthly[,41]
+monthly$'10/1/2002' <- monthly$Y2002 * monthly[,42]
+monthly$'11/1/2002' <- monthly$Y2002 * monthly[,43]
+monthly$'12/1/2002' <- monthly$Y2002 * monthly[,44]
+
+monthly$'1/1/2003' <- monthly$Y2003 * monthly[,33]
+monthly$'2/1/2003' <- monthly$Y2003 * monthly[,34]
+monthly$'3/1/2003' <- monthly$Y2003 * monthly[,35]
+monthly$'4/1/2003' <- monthly$Y2003 * monthly[,36]
+monthly$'5/1/2003' <- monthly$Y2003 * monthly[,37]
+monthly$'6/1/2003' <- monthly$Y2003 * monthly[,38]
+monthly$'7/1/2003' <- monthly$Y2003 * monthly[,39]
+monthly$'8/1/2003' <- monthly$Y2003 * monthly[,40]
+monthly$'9/1/2003' <- monthly$Y2003 * monthly[,41]
+monthly$'10/1/2003' <- monthly$Y2003 * monthly[,42]
+monthly$'11/1/2003' <- monthly$Y2003 * monthly[,43]
+monthly$'12/1/2003' <- monthly$Y2003 * monthly[,44]
+
+
+monthly$'1/1/2004' <- monthly$Y2004 * monthly[,33]
+monthly$'2/1/2004' <- monthly$Y2004 * monthly[,34]
+monthly$'3/1/2004' <- monthly$Y2004 * monthly[,35]
+monthly$'4/1/2004' <- monthly$Y2004 * monthly[,36]
+monthly$'5/1/2004' <- monthly$Y2004 * monthly[,37]
+monthly$'6/1/2004' <- monthly$Y2004 * monthly[,38]
+monthly$'7/1/2004' <- monthly$Y2004 * monthly[,39]
+monthly$'8/1/2004' <- monthly$Y2004 * monthly[,40]
+monthly$'9/1/2004' <- monthly$Y2004 * monthly[,41]
+monthly$'10/1/2004' <- monthly$Y2004 * monthly[,42]
+monthly$'11/1/2004' <- monthly$Y2004 * monthly[,43]
+monthly$'12/1/2004' <- monthly$Y2004 * monthly[,44]
+
+
+monthly$'1/1/2005' <- monthly$Y2005 * monthly[,33]
+monthly$'2/1/2005' <- monthly$Y2005 * monthly[,34]
+monthly$'3/1/2005' <- monthly$Y2005 * monthly[,35]
+monthly$'4/1/2005' <- monthly$Y2005 * monthly[,36]
+monthly$'5/1/2005' <- monthly$Y2005 * monthly[,37]
+monthly$'6/1/2005' <- monthly$Y2005 * monthly[,38]
+monthly$'7/1/2005' <- monthly$Y2005 * monthly[,39]
+monthly$'8/1/2005' <- monthly$Y2005 * monthly[,40]
+monthly$'9/1/2005' <- monthly$Y2005 * monthly[,41]
+monthly$'10/1/2005' <- monthly$Y2005 * monthly[,42]
+monthly$'11/1/2005' <- monthly$Y2005 * monthly[,43]
+monthly$'12/1/2005' <- monthly$Y2005 * monthly[,44]
+
+
+monthly$'1/1/2006' <- monthly$Y2006 * monthly[,33]
+monthly$'2/1/2006' <- monthly$Y2006 * monthly[,34]
+monthly$'3/1/2006' <- monthly$Y2006 * monthly[,35]
+monthly$'4/1/2006' <- monthly$Y2006 * monthly[,36]
+monthly$'5/1/2006' <- monthly$Y2006 * monthly[,37]
+monthly$'6/1/2006' <- monthly$Y2006 * monthly[,38]
+monthly$'7/1/2006' <- monthly$Y2006 * monthly[,39]
+monthly$'8/1/2006' <- monthly$Y2006 * monthly[,40]
+monthly$'9/1/2006' <- monthly$Y2006 * monthly[,41]
+monthly$'10/1/2006' <- monthly$Y2006 * monthly[,42]
+monthly$'11/1/2006' <- monthly$Y2006 * monthly[,43]
+monthly$'12/1/2006' <- monthly$Y2006 * monthly[,44]
+
+
+monthly$'1/1/2007' <- monthly$Y2007 * monthly[,33]
+monthly$'2/1/2007' <- monthly$Y2007 * monthly[,34]
+monthly$'3/1/2007' <- monthly$Y2007 * monthly[,35]
+monthly$'4/1/2007' <- monthly$Y2007 * monthly[,36]
+monthly$'5/1/2007' <- monthly$Y2007 * monthly[,37]
+monthly$'6/1/2007' <- monthly$Y2007 * monthly[,38]
+monthly$'7/1/2007' <- monthly$Y2007 * monthly[,39]
+monthly$'8/1/2007' <- monthly$Y2007 * monthly[,40]
+monthly$'9/1/2007' <- monthly$Y2007 * monthly[,41]
+monthly$'10/1/2007' <- monthly$Y2007 * monthly[,42]
+monthly$'11/1/2007' <- monthly$Y2007 * monthly[,43]
+monthly$'12/1/2007' <- monthly$Y2007 * monthly[,44]
+
+
+monthly$'1/1/2008' <- monthly$Y2008 * monthly[,33]
+monthly$'2/1/2008' <- monthly$Y2008 * monthly[,34]
+monthly$'3/1/2008' <- monthly$Y2008 * monthly[,35]
+monthly$'4/1/2008' <- monthly$Y2008 * monthly[,36]
+monthly$'5/1/2008' <- monthly$Y2008 * monthly[,37]
+monthly$'6/1/2008' <- monthly$Y2008 * monthly[,38]
+monthly$'7/1/2008' <- monthly$Y2008 * monthly[,39]
+monthly$'8/1/2008' <- monthly$Y2008 * monthly[,40]
+monthly$'9/1/2008' <- monthly$Y2008 * monthly[,41]
+monthly$'10/1/2008' <- monthly$Y2008 * monthly[,42]
+monthly$'11/1/2008' <- monthly$Y2008 * monthly[,43]
+monthly$'12/1/2008' <- monthly$Y2008 * monthly[,44]
+
+
+monthly$'1/1/2009' <- monthly$Y2009 * monthly[,33]
+monthly$'2/1/2009' <- monthly$Y2009 * monthly[,34]
+monthly$'3/1/2009' <- monthly$Y2009 * monthly[,35]
+monthly$'4/1/2009' <- monthly$Y2009 * monthly[,36]
+monthly$'5/1/2009' <- monthly$Y2009 * monthly[,37]
+monthly$'6/1/2009' <- monthly$Y2009 * monthly[,38]
+monthly$'7/1/2009' <- monthly$Y2009 * monthly[,39]
+monthly$'8/1/2009' <- monthly$Y2009 * monthly[,40]
+monthly$'9/1/2009' <- monthly$Y2009 * monthly[,41]
+monthly$'10/1/2009' <- monthly$Y2009 * monthly[,42]
+monthly$'11/1/2009' <- monthly$Y2009 * monthly[,43]
+monthly$'12/1/2009' <- monthly$Y2009 * monthly[,44]
+
+monthly$'1/1/2010' <- monthly$Y2010 * monthly[,33]
+monthly$'2/1/2010' <- monthly$Y2010 * monthly[,34]
+monthly$'3/1/2010' <- monthly$Y2010 * monthly[,35]
+monthly$'4/1/2010' <- monthly$Y2010 * monthly[,36]
+monthly$'5/1/2010' <- monthly$Y2010 * monthly[,37]
+monthly$'6/1/2010' <- monthly$Y2010 * monthly[,38]
+monthly$'7/1/2010' <- monthly$Y2010 * monthly[,39]
+monthly$'8/1/2010' <- monthly$Y2010 * monthly[,40]
+monthly$'9/1/2010' <- monthly$Y2010 * monthly[,41]
+monthly$'10/1/2010' <- monthly$Y2010 * monthly[,42]
+monthly$'11/1/2010' <- monthly$Y2010 * monthly[,43]
+monthly$'12/1/2010' <- monthly$Y2010 * monthly[,44]
+
+monthly$'1/1/2011' <- monthly$Y2011 * monthly[,33]
+monthly$'2/1/2011' <- monthly$Y2011 * monthly[,34]
+monthly$'3/1/2011' <- monthly$Y2011 * monthly[,35]
+monthly$'4/1/2011' <- monthly$Y2011 * monthly[,36]
+monthly$'5/1/2011' <- monthly$Y2011 * monthly[,37]
+monthly$'6/1/2011' <- monthly$Y2011 * monthly[,38]
+monthly$'7/1/2011' <- monthly$Y2011 * monthly[,39]
+monthly$'8/1/2011' <- monthly$Y2011 * monthly[,40]
+monthly$'9/1/2011' <- monthly$Y2011 * monthly[,41]
+monthly$'10/1/2011' <- monthly$Y2011 * monthly[,42]
+monthly$'11/1/2011' <- monthly$Y2011 * monthly[,43]
+monthly$'12/1/2011' <- monthly$Y2011 * monthly[,44]
+
+monthly$'1/1/2012' <- monthly$Y2012 * monthly[,33]
+monthly$'2/1/2012' <- monthly$Y2012 * monthly[,34]
+monthly$'3/1/2012' <- monthly$Y2012 * monthly[,35]
+monthly$'4/1/2012' <- monthly$Y2012 * monthly[,36]
+monthly$'5/1/2012' <- monthly$Y2012 * monthly[,37]
+monthly$'6/1/2012' <- monthly$Y2012 * monthly[,38]
+monthly$'7/1/2012' <- monthly$Y2012 * monthly[,39]
+monthly$'8/1/2012' <- monthly$Y2012 * monthly[,40]
+monthly$'9/1/2012' <- monthly$Y2012 * monthly[,41]
+monthly$'10/1/2012' <- monthly$Y2012 * monthly[,42]
+monthly$'11/1/2012' <- monthly$Y2012 * monthly[,43]
+monthly$'12/1/2012' <- monthly$Y2012 * monthly[,44]
+
+monthly$'1/1/2013' <- monthly$Y2013 * monthly[,33]
+monthly$'2/1/2013' <- monthly$Y2013 * monthly[,34]
+monthly$'3/1/2013' <- monthly$Y2013 * monthly[,35]
+monthly$'4/1/2013' <- monthly$Y2013 * monthly[,36]
+monthly$'5/1/2013' <- monthly$Y2013 * monthly[,37]
+monthly$'6/1/2013' <- monthly$Y2013 * monthly[,38]
+monthly$'7/1/2013' <- monthly$Y2013 * monthly[,39]
+monthly$'8/1/2013' <- monthly$Y2013 * monthly[,40]
+monthly$'9/1/2013' <- monthly$Y2013 * monthly[,41]
+monthly$'10/1/2013' <- monthly$Y2013 * monthly[,42]
+monthly$'11/1/2013' <- monthly$Y2013 * monthly[,43]
+monthly$'12/1/2013' <- monthly$Y2013 * monthly[,44]
+
+monthly$'1/1/2014' <- monthly$Y2014 * monthly[,33]
+monthly$'2/1/2014' <- monthly$Y2014 * monthly[,34]
+monthly$'3/1/2014' <- monthly$Y2014 * monthly[,35]
+monthly$'4/1/2014' <- monthly$Y2014 * monthly[,36]
+monthly$'5/1/2014' <- monthly$Y2014 * monthly[,37]
+monthly$'6/1/2014' <- monthly$Y2014 * monthly[,38]
+monthly$'7/1/2014' <- monthly$Y2014 * monthly[,39]
+monthly$'8/1/2014' <- monthly$Y2014 * monthly[,40]
+monthly$'9/1/2014' <- monthly$Y2014 * monthly[,41]
+monthly$'10/1/2014' <- monthly$Y2014 * monthly[,42]
+monthly$'11/1/2014' <- monthly$Y2014 * monthly[,43]
+monthly$'12/1/2014' <- monthly$Y2014 * monthly[,44]
+
+monthly$'1/1/2015' <- monthly$Y2015 * monthly[,33]
+monthly$'2/1/2015' <- monthly$Y2015 * monthly[,34]
+monthly$'3/1/2015' <- monthly$Y2015 * monthly[,35]
+monthly$'4/1/2015' <- monthly$Y2015 * monthly[,36]
+monthly$'5/1/2015' <- monthly$Y2015 * monthly[,37]
+monthly$'6/1/2015' <- monthly$Y2015 * monthly[,38]
+monthly$'7/1/2015' <- monthly$Y2015 * monthly[,39]
+monthly$'8/1/2015' <- monthly$Y2015 * monthly[,40]
+monthly$'9/1/2015' <- monthly$Y2015 * monthly[,41]
+monthly$'10/1/2015' <- monthly$Y2015 * monthly[,42]
+monthly$'11/1/2015' <- monthly$Y2015 * monthly[,43]
+monthly$'12/1/2015' <- monthly$Y2015 * monthly[,44]
+
+monthly$sector <- 'ir'
+monthly <- select(monthly, 1,417,45:416)
+ir.historic.monthly <- monthly
+
+
+
+#------------------------------------------------------------------------------------------.
+######## Livestock sector #######
+DF <- ls %>%
+  gather(key, value, ls.cu) %>%
+  spread(year, value)
+DF<-plyr::rename(DF,c("key"="sector","1985"="Y1985","1990"="Y1990","1995"="Y1995","2000"="Y2000","2005"="Y2005","2010"="Y2010","2015"="Y2015"))
+DF <- select(DF, HUC4, Y1985, Y1990, Y1995, Y2000, Y2005, Y2010, Y2015)
+# Convert any NAs to 0 so we can summarize based on the HUC
+DF[is.na(DF)] <- 0
+# This sums values for each HUC
+DF <- DF%>% group_by(HUC4) %>% summarise_all(funs(sum))
+
+# Now perform linear approximations
+DF$Y1986 <- DF$Y1985 + 1*(DF$Y1990 - DF$Y1985)/5
+DF$Y1987 <- DF$Y1985 + 2*(DF$Y1990 - DF$Y1985)/5
+DF$Y1988 <- DF$Y1985 + 3*(DF$Y1990 - DF$Y1985)/5
+DF$Y1989 <- DF$Y1985 + 4*(DF$Y1990 - DF$Y1985)/5
+
+DF$Y1991 <- DF$Y1990 + 1*(DF$Y1995 - DF$Y1990)/5
+DF$Y1992 <- DF$Y1990 + 2*(DF$Y1995 - DF$Y1990)/5
+DF$Y1993 <- DF$Y1990 + 3*(DF$Y1995 - DF$Y1990)/5
+DF$Y1994 <- DF$Y1990 + 4*(DF$Y1995 - DF$Y1990)/5
+
+DF$Y1996 <- DF$Y1995 + 1*(DF$Y2000 - DF$Y1995)/5
+DF$Y1997 <- DF$Y1995 + 2*(DF$Y2000 - DF$Y1995)/5
+DF$Y1998 <- DF$Y1995 + 3*(DF$Y2000 - DF$Y1995)/5
+DF$Y1999 <- DF$Y1995 + 4*(DF$Y2000 - DF$Y1995)/5
+
+DF$Y2001 <- DF$Y2000 + 1*(DF$Y2005 - DF$Y2000)/5
+DF$Y2002 <- DF$Y2000 + 2*(DF$Y2005 - DF$Y2000)/5
+DF$Y2003 <- DF$Y2000 + 3*(DF$Y2005 - DF$Y2000)/5
+DF$Y2004 <- DF$Y2000 + 4*(DF$Y2005 - DF$Y2000)/5
+
+DF$Y2006 <- DF$Y2005 + 1*(DF$Y2010 - DF$Y2005)/5
+DF$Y2007 <- DF$Y2005 + 2*(DF$Y2010 - DF$Y2005)/5
+DF$Y2008 <- DF$Y2005 + 3*(DF$Y2010 - DF$Y2005)/5
+DF$Y2009 <- DF$Y2005 + 4*(DF$Y2010 - DF$Y2005)/5
+
+DF$Y2011 <- DF$Y2010 + 1*(DF$Y2015 - DF$Y2010)/5
+DF$Y2012 <- DF$Y2010 + 2*(DF$Y2015 - DF$Y2010)/5
+DF$Y2013 <- DF$Y2010 + 3*(DF$Y2015 - DF$Y2010)/5
+DF$Y2014 <- DF$Y2010 + 4*(DF$Y2015 - DF$Y2010)/5
+
+
+col_order <- c("HUC4", "Y1985", "Y1986", "Y1987", "Y1988", "Y1989", "Y1990", "Y1991", "Y1992", "Y1993", "Y1994",
+               "Y1995", "Y1996", "Y1997", "Y1998", "Y1999", "Y2000", "Y2001", "Y2002", "Y2003", "Y2004", "Y2005",
+               "Y2006", "Y2007", "Y2008", "Y2009", "Y2010", "Y2011", "Y2012", "Y2013", "Y2014", "Y2015")
+DF <- DF[,col_order]
+
+# Now convert units from mgal to 1000 cubic meters (this come from Ryan's WEAP input code)
+# (optional unless you are using the output for WEAP)
+# 1 Mgal/day = 1381.6345 (thousand) m^3
+
+for (n in 2:32){
+  DF[,n]<- DF[,n]*(1381.6345)
+}
+
+
+# Now calculate monthly use based on Tom's monthly proportions
+df <- DF
+month.ls <- select(month,1,50:61)
+
+df.month <- merge(df,month.ls, by="HUC4")
+monthly <- df.month
+
+monthly$'1/1/1985' <- monthly$Y1985 * monthly[,33]
+monthly$'2/1/1985' <- monthly$Y1985 * monthly[,34]
+monthly$'3/1/1985' <- monthly$Y1985 * monthly[,35]
+monthly$'4/1/1985' <- monthly$Y1985 * monthly[,36]
+monthly$'5/1/1985' <- monthly$Y1985 * monthly[,37]
+monthly$'6/1/1985' <- monthly$Y1985 * monthly[,38]
+monthly$'7/1/1985' <- monthly$Y1985 * monthly[,39]
+monthly$'8/1/1985' <- monthly$Y1985 * monthly[,40]
+monthly$'9/1/1985' <- monthly$Y1985 * monthly[,41]
+monthly$'10/1/1985' <- monthly$Y1985 * monthly[,42]
+monthly$'11/1/1985' <- monthly$Y1985 * monthly[,43]
+monthly$'12/1/1985' <- monthly$Y1985 * monthly[,44]
+
+monthly$'1/1/1986' <- monthly$Y1986 * monthly[,33]
+monthly$'2/1/1986' <- monthly$Y1986 * monthly[,34]
+monthly$'3/1/1986' <- monthly$Y1986 * monthly[,35]
+monthly$'4/1/1986' <- monthly$Y1986 * monthly[,36]
+monthly$'5/1/1986' <- monthly$Y1986 * monthly[,37]
+monthly$'6/1/1986' <- monthly$Y1986 * monthly[,38]
+monthly$'7/1/1986' <- monthly$Y1986 * monthly[,39]
+monthly$'8/1/1986' <- monthly$Y1986 * monthly[,40]
+monthly$'9/1/1986' <- monthly$Y1986 * monthly[,41]
+monthly$'10/1/1986' <- monthly$Y1986 * monthly[,42]
+monthly$'11/1/1986' <- monthly$Y1986 * monthly[,43]
+monthly$'12/1/1986' <- monthly$Y1986 * monthly[,44]
+
+monthly$'1/1/1987' <- monthly$Y1987 * monthly[,33]
+monthly$'2/1/1987' <- monthly$Y1987 * monthly[,34]
+monthly$'3/1/1987' <- monthly$Y1987 * monthly[,35]
+monthly$'4/1/1987' <- monthly$Y1987 * monthly[,36]
+monthly$'5/1/1987' <- monthly$Y1987 * monthly[,37]
+monthly$'6/1/1987' <- monthly$Y1987 * monthly[,38]
+monthly$'7/1/1987' <- monthly$Y1987 * monthly[,39]
+monthly$'8/1/1987' <- monthly$Y1987 * monthly[,40]
+monthly$'9/1/1987' <- monthly$Y1987 * monthly[,41]
+monthly$'10/1/1987' <- monthly$Y1987 * monthly[,42]
+monthly$'11/1/1987' <- monthly$Y1987 * monthly[,43]
+monthly$'12/1/1987' <- monthly$Y1987 * monthly[,44]
+
+monthly$'1/1/1988' <- monthly$Y1988 * monthly[,33]
+monthly$'2/1/1988' <- monthly$Y1988 * monthly[,34]
+monthly$'3/1/1988' <- monthly$Y1988 * monthly[,35]
+monthly$'4/1/1988' <- monthly$Y1988 * monthly[,36]
+monthly$'5/1/1988' <- monthly$Y1988 * monthly[,37]
+monthly$'6/1/1988' <- monthly$Y1988 * monthly[,38]
+monthly$'7/1/1988' <- monthly$Y1988 * monthly[,39]
+monthly$'8/1/1988' <- monthly$Y1988 * monthly[,40]
+monthly$'9/1/1988' <- monthly$Y1988 * monthly[,41]
+monthly$'10/1/1988' <- monthly$Y1988 * monthly[,42]
+monthly$'11/1/1988' <- monthly$Y1988 * monthly[,43]
+monthly$'12/1/1988' <- monthly$Y1988 * monthly[,44]
+
+monthly$'1/1/1989' <- monthly$Y1989 * monthly[,33]
+monthly$'2/1/1989' <- monthly$Y1989 * monthly[,34]
+monthly$'3/1/1989' <- monthly$Y1989 * monthly[,35]
+monthly$'4/1/1989' <- monthly$Y1989 * monthly[,36]
+monthly$'5/1/1989' <- monthly$Y1989 * monthly[,37]
+monthly$'6/1/1989' <- monthly$Y1989 * monthly[,38]
+monthly$'7/1/1989' <- monthly$Y1989 * monthly[,39]
+monthly$'8/1/1989' <- monthly$Y1989 * monthly[,40]
+monthly$'9/1/1989' <- monthly$Y1989 * monthly[,41]
+monthly$'10/1/1989' <- monthly$Y1989 * monthly[,42]
+monthly$'11/1/1989' <- monthly$Y1989 * monthly[,43]
+monthly$'12/1/1989' <- monthly$Y1989 * monthly[,44]
+
+monthly$'1/1/1990' <- monthly$Y1990 * monthly[,33]
+monthly$'2/1/1990' <- monthly$Y1990 * monthly[,34]
+monthly$'3/1/1990' <- monthly$Y1990 * monthly[,35]
+monthly$'4/1/1990' <- monthly$Y1990 * monthly[,36]
+monthly$'5/1/1990' <- monthly$Y1990 * monthly[,37]
+monthly$'6/1/1990' <- monthly$Y1990 * monthly[,38]
+monthly$'7/1/1990' <- monthly$Y1990 * monthly[,39]
+monthly$'8/1/1990' <- monthly$Y1990 * monthly[,40]
+monthly$'9/1/1990' <- monthly$Y1990 * monthly[,41]
+monthly$'10/1/1990' <- monthly$Y1990 * monthly[,42]
+monthly$'11/1/1990' <- monthly$Y1990 * monthly[,43]
+monthly$'12/1/1990' <- monthly$Y1990 * monthly[,44]
+
+monthly$'1/1/1991' <- monthly$Y1991 * monthly[,33]
+monthly$'2/1/1991' <- monthly$Y1991 * monthly[,34]
+monthly$'3/1/1991' <- monthly$Y1991 * monthly[,35]
+monthly$'4/1/1991' <- monthly$Y1991 * monthly[,36]
+monthly$'5/1/1991' <- monthly$Y1991 * monthly[,37]
+monthly$'6/1/1991' <- monthly$Y1991 * monthly[,38]
+monthly$'7/1/1991' <- monthly$Y1991 * monthly[,39]
+monthly$'8/1/1991' <- monthly$Y1991 * monthly[,40]
+monthly$'9/1/1991' <- monthly$Y1991 * monthly[,41]
+monthly$'10/1/1991' <- monthly$Y1991 * monthly[,42]
+monthly$'11/1/1991' <- monthly$Y1991 * monthly[,43]
+monthly$'12/1/1991' <- monthly$Y1991 * monthly[,44]
+
+monthly$'1/1/1992' <- monthly$Y1992 * monthly[,33]
+monthly$'2/1/1992' <- monthly$Y1992 * monthly[,34]
+monthly$'3/1/1992' <- monthly$Y1992 * monthly[,35]
+monthly$'4/1/1992' <- monthly$Y1992 * monthly[,36]
+monthly$'5/1/1992' <- monthly$Y1992 * monthly[,37]
+monthly$'6/1/1992' <- monthly$Y1992 * monthly[,38]
+monthly$'7/1/1992' <- monthly$Y1992 * monthly[,39]
+monthly$'8/1/1992' <- monthly$Y1992 * monthly[,40]
+monthly$'9/1/1992' <- monthly$Y1992 * monthly[,41]
+monthly$'10/1/1992' <- monthly$Y1992 * monthly[,42]
+monthly$'11/1/1992' <- monthly$Y1992 * monthly[,43]
+monthly$'12/1/1992' <- monthly$Y1992 * monthly[,44]
+
+monthly$'1/1/1993' <- monthly$Y1993 * monthly[,33]
+monthly$'2/1/1993' <- monthly$Y1993 * monthly[,34]
+monthly$'3/1/1993' <- monthly$Y1993 * monthly[,35]
+monthly$'4/1/1993' <- monthly$Y1993 * monthly[,36]
+monthly$'5/1/1993' <- monthly$Y1993 * monthly[,37]
+monthly$'6/1/1993' <- monthly$Y1993 * monthly[,38]
+monthly$'7/1/1993' <- monthly$Y1993 * monthly[,39]
+monthly$'8/1/1993' <- monthly$Y1993 * monthly[,40]
+monthly$'9/1/1993' <- monthly$Y1993 * monthly[,41]
+monthly$'10/1/1993' <- monthly$Y1993 * monthly[,42]
+monthly$'11/1/1993' <- monthly$Y1993 * monthly[,43]
+monthly$'12/1/1993' <- monthly$Y1993 * monthly[,44]
+
+monthly$'1/1/1994' <- monthly$Y1994 * monthly[,33]
+monthly$'2/1/1994' <- monthly$Y1994 * monthly[,34]
+monthly$'3/1/1994' <- monthly$Y1994 * monthly[,35]
+monthly$'4/1/1994' <- monthly$Y1994 * monthly[,36]
+monthly$'5/1/1994' <- monthly$Y1994 * monthly[,37]
+monthly$'6/1/1994' <- monthly$Y1994 * monthly[,38]
+monthly$'7/1/1994' <- monthly$Y1994 * monthly[,39]
+monthly$'8/1/1994' <- monthly$Y1994 * monthly[,40]
+monthly$'9/1/1994' <- monthly$Y1994 * monthly[,41]
+monthly$'10/1/1994' <- monthly$Y1994 * monthly[,42]
+monthly$'11/1/1994' <- monthly$Y1994 * monthly[,43]
+monthly$'12/1/1994' <- monthly$Y1994 * monthly[,44]
+
+monthly$'1/1/1995' <- monthly$Y1995 * monthly[,33]
+monthly$'2/1/1995' <- monthly$Y1995 * monthly[,34]
+monthly$'3/1/1995' <- monthly$Y1995 * monthly[,35]
+monthly$'4/1/1995' <- monthly$Y1995 * monthly[,36]
+monthly$'5/1/1995' <- monthly$Y1995 * monthly[,37]
+monthly$'6/1/1995' <- monthly$Y1995 * monthly[,38]
+monthly$'7/1/1995' <- monthly$Y1995 * monthly[,39]
+monthly$'8/1/1995' <- monthly$Y1995 * monthly[,40]
+monthly$'9/1/1995' <- monthly$Y1995 * monthly[,41]
+monthly$'10/1/1995' <- monthly$Y1995 * monthly[,42]
+monthly$'11/1/1995' <- monthly$Y1995 * monthly[,43]
+monthly$'12/1/1995' <- monthly$Y1995 * monthly[,44]
+
+monthly$'1/1/1996' <- monthly$Y1996 * monthly[,33]
+monthly$'2/1/1996' <- monthly$Y1996 * monthly[,34]
+monthly$'3/1/1996' <- monthly$Y1996 * monthly[,35]
+monthly$'4/1/1996' <- monthly$Y1996 * monthly[,36]
+monthly$'5/1/1996' <- monthly$Y1996 * monthly[,37]
+monthly$'6/1/1996' <- monthly$Y1996 * monthly[,38]
+monthly$'7/1/1996' <- monthly$Y1996 * monthly[,39]
+monthly$'8/1/1996' <- monthly$Y1996 * monthly[,40]
+monthly$'9/1/1996' <- monthly$Y1996 * monthly[,41]
+monthly$'10/1/1996' <- monthly$Y1996 * monthly[,42]
+monthly$'11/1/1996' <- monthly$Y1996 * monthly[,43]
+monthly$'12/1/1996' <- monthly$Y1996 * monthly[,44]
+
+monthly$'1/1/1997' <- monthly$Y1997 * monthly[,33]
+monthly$'2/1/1997' <- monthly$Y1997 * monthly[,34]
+monthly$'3/1/1997' <- monthly$Y1997 * monthly[,35]
+monthly$'4/1/1997' <- monthly$Y1997 * monthly[,36]
+monthly$'5/1/1997' <- monthly$Y1997 * monthly[,37]
+monthly$'6/1/1997' <- monthly$Y1997 * monthly[,38]
+monthly$'7/1/1997' <- monthly$Y1997 * monthly[,39]
+monthly$'8/1/1997' <- monthly$Y1997 * monthly[,40]
+monthly$'9/1/1997' <- monthly$Y1997 * monthly[,41]
+monthly$'10/1/1997' <- monthly$Y1997 * monthly[,42]
+monthly$'11/1/1997' <- monthly$Y1997 * monthly[,43]
+monthly$'12/1/1997' <- monthly$Y1997 * monthly[,44]
+
+monthly$'1/1/1998' <- monthly$Y1998 * monthly[,33]
+monthly$'2/1/1998' <- monthly$Y1998 * monthly[,34]
+monthly$'3/1/1998' <- monthly$Y1998 * monthly[,35]
+monthly$'4/1/1998' <- monthly$Y1998 * monthly[,36]
+monthly$'5/1/1998' <- monthly$Y1998 * monthly[,37]
+monthly$'6/1/1998' <- monthly$Y1998 * monthly[,38]
+monthly$'7/1/1998' <- monthly$Y1998 * monthly[,39]
+monthly$'8/1/1998' <- monthly$Y1998 * monthly[,40]
+monthly$'9/1/1998' <- monthly$Y1998 * monthly[,41]
+monthly$'10/1/1998' <- monthly$Y1998 * monthly[,42]
+monthly$'11/1/1998' <- monthly$Y1998 * monthly[,43]
+monthly$'12/1/1998' <- monthly$Y1998 * monthly[,44]
+
+monthly$'1/1/1999' <- monthly$Y1999 * monthly[,33]
+monthly$'2/1/1999' <- monthly$Y1999 * monthly[,34]
+monthly$'3/1/1999' <- monthly$Y1999 * monthly[,35]
+monthly$'4/1/1999' <- monthly$Y1999 * monthly[,36]
+monthly$'5/1/1999' <- monthly$Y1999 * monthly[,37]
+monthly$'6/1/1999' <- monthly$Y1999 * monthly[,38]
+monthly$'7/1/1999' <- monthly$Y1999 * monthly[,39]
+monthly$'8/1/1999' <- monthly$Y1999 * monthly[,40]
+monthly$'9/1/1999' <- monthly$Y1999 * monthly[,41]
+monthly$'10/1/1999' <- monthly$Y1999 * monthly[,42]
+monthly$'11/1/1999' <- monthly$Y1999 * monthly[,43]
+monthly$'12/1/1999' <- monthly$Y1999 * monthly[,44]
+
+monthly$'1/1/2000' <- monthly$Y2000 * monthly[,33]
+monthly$'2/1/2000' <- monthly$Y2000 * monthly[,34]
+monthly$'3/1/2000' <- monthly$Y2000 * monthly[,35]
+monthly$'4/1/2000' <- monthly$Y2000 * monthly[,36]
+monthly$'5/1/2000' <- monthly$Y2000 * monthly[,37]
+monthly$'6/1/2000' <- monthly$Y2000 * monthly[,38]
+monthly$'7/1/2000' <- monthly$Y2000 * monthly[,39]
+monthly$'8/1/2000' <- monthly$Y2000 * monthly[,40]
+monthly$'9/1/2000' <- monthly$Y2000 * monthly[,41]
+monthly$'10/1/2000' <- monthly$Y2000 * monthly[,42]
+monthly$'11/1/2000' <- monthly$Y2000 * monthly[,43]
+monthly$'12/1/2000' <- monthly$Y2000 * monthly[,44]
+
+monthly$'1/1/2001' <- monthly$Y2001 * monthly[,33]
+monthly$'2/1/2001' <- monthly$Y2001 * monthly[,34]
+monthly$'3/1/2001' <- monthly$Y2001 * monthly[,35]
+monthly$'4/1/2001' <- monthly$Y2001 * monthly[,36]
+monthly$'5/1/2001' <- monthly$Y2001 * monthly[,37]
+monthly$'6/1/2001' <- monthly$Y2001 * monthly[,38]
+monthly$'7/1/2001' <- monthly$Y2001 * monthly[,39]
+monthly$'8/1/2001' <- monthly$Y2001 * monthly[,40]
+monthly$'9/1/2001' <- monthly$Y2001 * monthly[,41]
+monthly$'10/1/2001' <- monthly$Y2001 * monthly[,42]
+monthly$'11/1/2001' <- monthly$Y2001 * monthly[,43]
+monthly$'12/1/2001' <- monthly$Y2001 * monthly[,44]
+
+monthly$'1/1/2002' <- monthly$Y2002 * monthly[,33]
+monthly$'2/1/2002' <- monthly$Y2002 * monthly[,34]
+monthly$'3/1/2002' <- monthly$Y2002 * monthly[,35]
+monthly$'4/1/2002' <- monthly$Y2002 * monthly[,36]
+monthly$'5/1/2002' <- monthly$Y2002 * monthly[,37]
+monthly$'6/1/2002' <- monthly$Y2002 * monthly[,38]
+monthly$'7/1/2002' <- monthly$Y2002 * monthly[,39]
+monthly$'8/1/2002' <- monthly$Y2002 * monthly[,40]
+monthly$'9/1/2002' <- monthly$Y2002 * monthly[,41]
+monthly$'10/1/2002' <- monthly$Y2002 * monthly[,42]
+monthly$'11/1/2002' <- monthly$Y2002 * monthly[,43]
+monthly$'12/1/2002' <- monthly$Y2002 * monthly[,44]
+
+monthly$'1/1/2003' <- monthly$Y2003 * monthly[,33]
+monthly$'2/1/2003' <- monthly$Y2003 * monthly[,34]
+monthly$'3/1/2003' <- monthly$Y2003 * monthly[,35]
+monthly$'4/1/2003' <- monthly$Y2003 * monthly[,36]
+monthly$'5/1/2003' <- monthly$Y2003 * monthly[,37]
+monthly$'6/1/2003' <- monthly$Y2003 * monthly[,38]
+monthly$'7/1/2003' <- monthly$Y2003 * monthly[,39]
+monthly$'8/1/2003' <- monthly$Y2003 * monthly[,40]
+monthly$'9/1/2003' <- monthly$Y2003 * monthly[,41]
+monthly$'10/1/2003' <- monthly$Y2003 * monthly[,42]
+monthly$'11/1/2003' <- monthly$Y2003 * monthly[,43]
+monthly$'12/1/2003' <- monthly$Y2003 * monthly[,44]
+
+
+monthly$'1/1/2004' <- monthly$Y2004 * monthly[,33]
+monthly$'2/1/2004' <- monthly$Y2004 * monthly[,34]
+monthly$'3/1/2004' <- monthly$Y2004 * monthly[,35]
+monthly$'4/1/2004' <- monthly$Y2004 * monthly[,36]
+monthly$'5/1/2004' <- monthly$Y2004 * monthly[,37]
+monthly$'6/1/2004' <- monthly$Y2004 * monthly[,38]
+monthly$'7/1/2004' <- monthly$Y2004 * monthly[,39]
+monthly$'8/1/2004' <- monthly$Y2004 * monthly[,40]
+monthly$'9/1/2004' <- monthly$Y2004 * monthly[,41]
+monthly$'10/1/2004' <- monthly$Y2004 * monthly[,42]
+monthly$'11/1/2004' <- monthly$Y2004 * monthly[,43]
+monthly$'12/1/2004' <- monthly$Y2004 * monthly[,44]
+
+
+monthly$'1/1/2005' <- monthly$Y2005 * monthly[,33]
+monthly$'2/1/2005' <- monthly$Y2005 * monthly[,34]
+monthly$'3/1/2005' <- monthly$Y2005 * monthly[,35]
+monthly$'4/1/2005' <- monthly$Y2005 * monthly[,36]
+monthly$'5/1/2005' <- monthly$Y2005 * monthly[,37]
+monthly$'6/1/2005' <- monthly$Y2005 * monthly[,38]
+monthly$'7/1/2005' <- monthly$Y2005 * monthly[,39]
+monthly$'8/1/2005' <- monthly$Y2005 * monthly[,40]
+monthly$'9/1/2005' <- monthly$Y2005 * monthly[,41]
+monthly$'10/1/2005' <- monthly$Y2005 * monthly[,42]
+monthly$'11/1/2005' <- monthly$Y2005 * monthly[,43]
+monthly$'12/1/2005' <- monthly$Y2005 * monthly[,44]
+
+
+monthly$'1/1/2006' <- monthly$Y2006 * monthly[,33]
+monthly$'2/1/2006' <- monthly$Y2006 * monthly[,34]
+monthly$'3/1/2006' <- monthly$Y2006 * monthly[,35]
+monthly$'4/1/2006' <- monthly$Y2006 * monthly[,36]
+monthly$'5/1/2006' <- monthly$Y2006 * monthly[,37]
+monthly$'6/1/2006' <- monthly$Y2006 * monthly[,38]
+monthly$'7/1/2006' <- monthly$Y2006 * monthly[,39]
+monthly$'8/1/2006' <- monthly$Y2006 * monthly[,40]
+monthly$'9/1/2006' <- monthly$Y2006 * monthly[,41]
+monthly$'10/1/2006' <- monthly$Y2006 * monthly[,42]
+monthly$'11/1/2006' <- monthly$Y2006 * monthly[,43]
+monthly$'12/1/2006' <- monthly$Y2006 * monthly[,44]
+
+
+monthly$'1/1/2007' <- monthly$Y2007 * monthly[,33]
+monthly$'2/1/2007' <- monthly$Y2007 * monthly[,34]
+monthly$'3/1/2007' <- monthly$Y2007 * monthly[,35]
+monthly$'4/1/2007' <- monthly$Y2007 * monthly[,36]
+monthly$'5/1/2007' <- monthly$Y2007 * monthly[,37]
+monthly$'6/1/2007' <- monthly$Y2007 * monthly[,38]
+monthly$'7/1/2007' <- monthly$Y2007 * monthly[,39]
+monthly$'8/1/2007' <- monthly$Y2007 * monthly[,40]
+monthly$'9/1/2007' <- monthly$Y2007 * monthly[,41]
+monthly$'10/1/2007' <- monthly$Y2007 * monthly[,42]
+monthly$'11/1/2007' <- monthly$Y2007 * monthly[,43]
+monthly$'12/1/2007' <- monthly$Y2007 * monthly[,44]
+
+
+monthly$'1/1/2008' <- monthly$Y2008 * monthly[,33]
+monthly$'2/1/2008' <- monthly$Y2008 * monthly[,34]
+monthly$'3/1/2008' <- monthly$Y2008 * monthly[,35]
+monthly$'4/1/2008' <- monthly$Y2008 * monthly[,36]
+monthly$'5/1/2008' <- monthly$Y2008 * monthly[,37]
+monthly$'6/1/2008' <- monthly$Y2008 * monthly[,38]
+monthly$'7/1/2008' <- monthly$Y2008 * monthly[,39]
+monthly$'8/1/2008' <- monthly$Y2008 * monthly[,40]
+monthly$'9/1/2008' <- monthly$Y2008 * monthly[,41]
+monthly$'10/1/2008' <- monthly$Y2008 * monthly[,42]
+monthly$'11/1/2008' <- monthly$Y2008 * monthly[,43]
+monthly$'12/1/2008' <- monthly$Y2008 * monthly[,44]
+
+
+monthly$'1/1/2009' <- monthly$Y2009 * monthly[,33]
+monthly$'2/1/2009' <- monthly$Y2009 * monthly[,34]
+monthly$'3/1/2009' <- monthly$Y2009 * monthly[,35]
+monthly$'4/1/2009' <- monthly$Y2009 * monthly[,36]
+monthly$'5/1/2009' <- monthly$Y2009 * monthly[,37]
+monthly$'6/1/2009' <- monthly$Y2009 * monthly[,38]
+monthly$'7/1/2009' <- monthly$Y2009 * monthly[,39]
+monthly$'8/1/2009' <- monthly$Y2009 * monthly[,40]
+monthly$'9/1/2009' <- monthly$Y2009 * monthly[,41]
+monthly$'10/1/2009' <- monthly$Y2009 * monthly[,42]
+monthly$'11/1/2009' <- monthly$Y2009 * monthly[,43]
+monthly$'12/1/2009' <- monthly$Y2009 * monthly[,44]
+
+monthly$'1/1/2010' <- monthly$Y2010 * monthly[,33]
+monthly$'2/1/2010' <- monthly$Y2010 * monthly[,34]
+monthly$'3/1/2010' <- monthly$Y2010 * monthly[,35]
+monthly$'4/1/2010' <- monthly$Y2010 * monthly[,36]
+monthly$'5/1/2010' <- monthly$Y2010 * monthly[,37]
+monthly$'6/1/2010' <- monthly$Y2010 * monthly[,38]
+monthly$'7/1/2010' <- monthly$Y2010 * monthly[,39]
+monthly$'8/1/2010' <- monthly$Y2010 * monthly[,40]
+monthly$'9/1/2010' <- monthly$Y2010 * monthly[,41]
+monthly$'10/1/2010' <- monthly$Y2010 * monthly[,42]
+monthly$'11/1/2010' <- monthly$Y2010 * monthly[,43]
+monthly$'12/1/2010' <- monthly$Y2010 * monthly[,44]
+
+monthly$'1/1/2011' <- monthly$Y2011 * monthly[,33]
+monthly$'2/1/2011' <- monthly$Y2011 * monthly[,34]
+monthly$'3/1/2011' <- monthly$Y2011 * monthly[,35]
+monthly$'4/1/2011' <- monthly$Y2011 * monthly[,36]
+monthly$'5/1/2011' <- monthly$Y2011 * monthly[,37]
+monthly$'6/1/2011' <- monthly$Y2011 * monthly[,38]
+monthly$'7/1/2011' <- monthly$Y2011 * monthly[,39]
+monthly$'8/1/2011' <- monthly$Y2011 * monthly[,40]
+monthly$'9/1/2011' <- monthly$Y2011 * monthly[,41]
+monthly$'10/1/2011' <- monthly$Y2011 * monthly[,42]
+monthly$'11/1/2011' <- monthly$Y2011 * monthly[,43]
+monthly$'12/1/2011' <- monthly$Y2011 * monthly[,44]
+
+monthly$'1/1/2012' <- monthly$Y2012 * monthly[,33]
+monthly$'2/1/2012' <- monthly$Y2012 * monthly[,34]
+monthly$'3/1/2012' <- monthly$Y2012 * monthly[,35]
+monthly$'4/1/2012' <- monthly$Y2012 * monthly[,36]
+monthly$'5/1/2012' <- monthly$Y2012 * monthly[,37]
+monthly$'6/1/2012' <- monthly$Y2012 * monthly[,38]
+monthly$'7/1/2012' <- monthly$Y2012 * monthly[,39]
+monthly$'8/1/2012' <- monthly$Y2012 * monthly[,40]
+monthly$'9/1/2012' <- monthly$Y2012 * monthly[,41]
+monthly$'10/1/2012' <- monthly$Y2012 * monthly[,42]
+monthly$'11/1/2012' <- monthly$Y2012 * monthly[,43]
+monthly$'12/1/2012' <- monthly$Y2012 * monthly[,44]
+
+monthly$'1/1/2013' <- monthly$Y2013 * monthly[,33]
+monthly$'2/1/2013' <- monthly$Y2013 * monthly[,34]
+monthly$'3/1/2013' <- monthly$Y2013 * monthly[,35]
+monthly$'4/1/2013' <- monthly$Y2013 * monthly[,36]
+monthly$'5/1/2013' <- monthly$Y2013 * monthly[,37]
+monthly$'6/1/2013' <- monthly$Y2013 * monthly[,38]
+monthly$'7/1/2013' <- monthly$Y2013 * monthly[,39]
+monthly$'8/1/2013' <- monthly$Y2013 * monthly[,40]
+monthly$'9/1/2013' <- monthly$Y2013 * monthly[,41]
+monthly$'10/1/2013' <- monthly$Y2013 * monthly[,42]
+monthly$'11/1/2013' <- monthly$Y2013 * monthly[,43]
+monthly$'12/1/2013' <- monthly$Y2013 * monthly[,44]
+
+monthly$'1/1/2014' <- monthly$Y2014 * monthly[,33]
+monthly$'2/1/2014' <- monthly$Y2014 * monthly[,34]
+monthly$'3/1/2014' <- monthly$Y2014 * monthly[,35]
+monthly$'4/1/2014' <- monthly$Y2014 * monthly[,36]
+monthly$'5/1/2014' <- monthly$Y2014 * monthly[,37]
+monthly$'6/1/2014' <- monthly$Y2014 * monthly[,38]
+monthly$'7/1/2014' <- monthly$Y2014 * monthly[,39]
+monthly$'8/1/2014' <- monthly$Y2014 * monthly[,40]
+monthly$'9/1/2014' <- monthly$Y2014 * monthly[,41]
+monthly$'10/1/2014' <- monthly$Y2014 * monthly[,42]
+monthly$'11/1/2014' <- monthly$Y2014 * monthly[,43]
+monthly$'12/1/2014' <- monthly$Y2014 * monthly[,44]
+
+monthly$'1/1/2015' <- monthly$Y2015 * monthly[,33]
+monthly$'2/1/2015' <- monthly$Y2015 * monthly[,34]
+monthly$'3/1/2015' <- monthly$Y2015 * monthly[,35]
+monthly$'4/1/2015' <- monthly$Y2015 * monthly[,36]
+monthly$'5/1/2015' <- monthly$Y2015 * monthly[,37]
+monthly$'6/1/2015' <- monthly$Y2015 * monthly[,38]
+monthly$'7/1/2015' <- monthly$Y2015 * monthly[,39]
+monthly$'8/1/2015' <- monthly$Y2015 * monthly[,40]
+monthly$'9/1/2015' <- monthly$Y2015 * monthly[,41]
+monthly$'10/1/2015' <- monthly$Y2015 * monthly[,42]
+monthly$'11/1/2015' <- monthly$Y2015 * monthly[,43]
+monthly$'12/1/2015' <- monthly$Y2015 * monthly[,44]
+
+monthly$sector <- 'ls'
+monthly <- select(monthly, 1,417,45:416)
+ls.historic.monthly <- monthly
+
+
+
+#------------------------------------------------------------------------------------------.
+######## Thermo sector ########
+DF <- th %>%
+  gather(key, value, th.cu) %>%
+  spread(year, value)
+DF<-plyr::rename(DF,c("key"="sector","1985"="Y1985","1990"="Y1990","1995"="Y1995","2000"="Y2000","2005"="Y2005","2010"="Y2010","2015"="Y2015"))
+DF <- select(DF, HUC4, Y1985, Y1990, Y1995, Y2000, Y2005, Y2010, Y2015)
+# Convert any NAs to 0 so we can summarize based on the HUC
+DF[is.na(DF)] <- 0
+# This sums values for each HUC
+DF <- DF%>% group_by(HUC4) %>% summarise_all(funs(sum))
+
+# Now perform linear approximations
+DF$Y1986 <- DF$Y1985 + 1*(DF$Y1990 - DF$Y1985)/5
+DF$Y1987 <- DF$Y1985 + 2*(DF$Y1990 - DF$Y1985)/5
+DF$Y1988 <- DF$Y1985 + 3*(DF$Y1990 - DF$Y1985)/5
+DF$Y1989 <- DF$Y1985 + 4*(DF$Y1990 - DF$Y1985)/5
+
+DF$Y1991 <- DF$Y1990 + 1*(DF$Y1995 - DF$Y1990)/5
+DF$Y1992 <- DF$Y1990 + 2*(DF$Y1995 - DF$Y1990)/5
+DF$Y1993 <- DF$Y1990 + 3*(DF$Y1995 - DF$Y1990)/5
+DF$Y1994 <- DF$Y1990 + 4*(DF$Y1995 - DF$Y1990)/5
+
+DF$Y1996 <- DF$Y1995 + 1*(DF$Y2000 - DF$Y1995)/5
+DF$Y1997 <- DF$Y1995 + 2*(DF$Y2000 - DF$Y1995)/5
+DF$Y1998 <- DF$Y1995 + 3*(DF$Y2000 - DF$Y1995)/5
+DF$Y1999 <- DF$Y1995 + 4*(DF$Y2000 - DF$Y1995)/5
+
+DF$Y2001 <- DF$Y2000 + 1*(DF$Y2005 - DF$Y2000)/5
+DF$Y2002 <- DF$Y2000 + 2*(DF$Y2005 - DF$Y2000)/5
+DF$Y2003 <- DF$Y2000 + 3*(DF$Y2005 - DF$Y2000)/5
+DF$Y2004 <- DF$Y2000 + 4*(DF$Y2005 - DF$Y2000)/5
+
+DF$Y2006 <- DF$Y2005 + 1*(DF$Y2010 - DF$Y2005)/5
+DF$Y2007 <- DF$Y2005 + 2*(DF$Y2010 - DF$Y2005)/5
+DF$Y2008 <- DF$Y2005 + 3*(DF$Y2010 - DF$Y2005)/5
+DF$Y2009 <- DF$Y2005 + 4*(DF$Y2010 - DF$Y2005)/5
+
+DF$Y2011 <- DF$Y2010 + 1*(DF$Y2015 - DF$Y2010)/5
+DF$Y2012 <- DF$Y2010 + 2*(DF$Y2015 - DF$Y2010)/5
+DF$Y2013 <- DF$Y2010 + 3*(DF$Y2015 - DF$Y2010)/5
+DF$Y2014 <- DF$Y2010 + 4*(DF$Y2015 - DF$Y2010)/5
+
+
+col_order <- c("HUC4", "Y1985", "Y1986", "Y1987", "Y1988", "Y1989", "Y1990", "Y1991", "Y1992", "Y1993", "Y1994",
+               "Y1995", "Y1996", "Y1997", "Y1998", "Y1999", "Y2000", "Y2001", "Y2002", "Y2003", "Y2004", "Y2005",
+               "Y2006", "Y2007", "Y2008", "Y2009", "Y2010", "Y2011", "Y2012", "Y2013", "Y2014", "Y2015")
+DF <- DF[,col_order]
+
+# Now convert units from mgal to 1000 cubic meters (this come from Ryan's WEAP input code)
+# (optional unless you are using the output for WEAP)
+# 1 Mgal/day = 1381.6345 (thousand) m^3
+
+for (n in 2:32){
+  DF[,n]<- DF[,n]*(1381.6345)
+}
+
+
+# Now calculate monthly use based on Tom's monthly proportions
+df <- DF
+month.th <- select(month,1,26:37)
+
+df.month <- merge(df,month.th, by="HUC4")
+monthly <- df.month
+
+monthly$'1/1/1985' <- monthly$Y1985 * monthly[,33]
+monthly$'2/1/1985' <- monthly$Y1985 * monthly[,34]
+monthly$'3/1/1985' <- monthly$Y1985 * monthly[,35]
+monthly$'4/1/1985' <- monthly$Y1985 * monthly[,36]
+monthly$'5/1/1985' <- monthly$Y1985 * monthly[,37]
+monthly$'6/1/1985' <- monthly$Y1985 * monthly[,38]
+monthly$'7/1/1985' <- monthly$Y1985 * monthly[,39]
+monthly$'8/1/1985' <- monthly$Y1985 * monthly[,40]
+monthly$'9/1/1985' <- monthly$Y1985 * monthly[,41]
+monthly$'10/1/1985' <- monthly$Y1985 * monthly[,42]
+monthly$'11/1/1985' <- monthly$Y1985 * monthly[,43]
+monthly$'12/1/1985' <- monthly$Y1985 * monthly[,44]
+
+monthly$'1/1/1986' <- monthly$Y1986 * monthly[,33]
+monthly$'2/1/1986' <- monthly$Y1986 * monthly[,34]
+monthly$'3/1/1986' <- monthly$Y1986 * monthly[,35]
+monthly$'4/1/1986' <- monthly$Y1986 * monthly[,36]
+monthly$'5/1/1986' <- monthly$Y1986 * monthly[,37]
+monthly$'6/1/1986' <- monthly$Y1986 * monthly[,38]
+monthly$'7/1/1986' <- monthly$Y1986 * monthly[,39]
+monthly$'8/1/1986' <- monthly$Y1986 * monthly[,40]
+monthly$'9/1/1986' <- monthly$Y1986 * monthly[,41]
+monthly$'10/1/1986' <- monthly$Y1986 * monthly[,42]
+monthly$'11/1/1986' <- monthly$Y1986 * monthly[,43]
+monthly$'12/1/1986' <- monthly$Y1986 * monthly[,44]
+
+monthly$'1/1/1987' <- monthly$Y1987 * monthly[,33]
+monthly$'2/1/1987' <- monthly$Y1987 * monthly[,34]
+monthly$'3/1/1987' <- monthly$Y1987 * monthly[,35]
+monthly$'4/1/1987' <- monthly$Y1987 * monthly[,36]
+monthly$'5/1/1987' <- monthly$Y1987 * monthly[,37]
+monthly$'6/1/1987' <- monthly$Y1987 * monthly[,38]
+monthly$'7/1/1987' <- monthly$Y1987 * monthly[,39]
+monthly$'8/1/1987' <- monthly$Y1987 * monthly[,40]
+monthly$'9/1/1987' <- monthly$Y1987 * monthly[,41]
+monthly$'10/1/1987' <- monthly$Y1987 * monthly[,42]
+monthly$'11/1/1987' <- monthly$Y1987 * monthly[,43]
+monthly$'12/1/1987' <- monthly$Y1987 * monthly[,44]
+
+monthly$'1/1/1988' <- monthly$Y1988 * monthly[,33]
+monthly$'2/1/1988' <- monthly$Y1988 * monthly[,34]
+monthly$'3/1/1988' <- monthly$Y1988 * monthly[,35]
+monthly$'4/1/1988' <- monthly$Y1988 * monthly[,36]
+monthly$'5/1/1988' <- monthly$Y1988 * monthly[,37]
+monthly$'6/1/1988' <- monthly$Y1988 * monthly[,38]
+monthly$'7/1/1988' <- monthly$Y1988 * monthly[,39]
+monthly$'8/1/1988' <- monthly$Y1988 * monthly[,40]
+monthly$'9/1/1988' <- monthly$Y1988 * monthly[,41]
+monthly$'10/1/1988' <- monthly$Y1988 * monthly[,42]
+monthly$'11/1/1988' <- monthly$Y1988 * monthly[,43]
+monthly$'12/1/1988' <- monthly$Y1988 * monthly[,44]
+
+monthly$'1/1/1989' <- monthly$Y1989 * monthly[,33]
+monthly$'2/1/1989' <- monthly$Y1989 * monthly[,34]
+monthly$'3/1/1989' <- monthly$Y1989 * monthly[,35]
+monthly$'4/1/1989' <- monthly$Y1989 * monthly[,36]
+monthly$'5/1/1989' <- monthly$Y1989 * monthly[,37]
+monthly$'6/1/1989' <- monthly$Y1989 * monthly[,38]
+monthly$'7/1/1989' <- monthly$Y1989 * monthly[,39]
+monthly$'8/1/1989' <- monthly$Y1989 * monthly[,40]
+monthly$'9/1/1989' <- monthly$Y1989 * monthly[,41]
+monthly$'10/1/1989' <- monthly$Y1989 * monthly[,42]
+monthly$'11/1/1989' <- monthly$Y1989 * monthly[,43]
+monthly$'12/1/1989' <- monthly$Y1989 * monthly[,44]
+
+monthly$'1/1/1990' <- monthly$Y1990 * monthly[,33]
+monthly$'2/1/1990' <- monthly$Y1990 * monthly[,34]
+monthly$'3/1/1990' <- monthly$Y1990 * monthly[,35]
+monthly$'4/1/1990' <- monthly$Y1990 * monthly[,36]
+monthly$'5/1/1990' <- monthly$Y1990 * monthly[,37]
+monthly$'6/1/1990' <- monthly$Y1990 * monthly[,38]
+monthly$'7/1/1990' <- monthly$Y1990 * monthly[,39]
+monthly$'8/1/1990' <- monthly$Y1990 * monthly[,40]
+monthly$'9/1/1990' <- monthly$Y1990 * monthly[,41]
+monthly$'10/1/1990' <- monthly$Y1990 * monthly[,42]
+monthly$'11/1/1990' <- monthly$Y1990 * monthly[,43]
+monthly$'12/1/1990' <- monthly$Y1990 * monthly[,44]
+
+monthly$'1/1/1991' <- monthly$Y1991 * monthly[,33]
+monthly$'2/1/1991' <- monthly$Y1991 * monthly[,34]
+monthly$'3/1/1991' <- monthly$Y1991 * monthly[,35]
+monthly$'4/1/1991' <- monthly$Y1991 * monthly[,36]
+monthly$'5/1/1991' <- monthly$Y1991 * monthly[,37]
+monthly$'6/1/1991' <- monthly$Y1991 * monthly[,38]
+monthly$'7/1/1991' <- monthly$Y1991 * monthly[,39]
+monthly$'8/1/1991' <- monthly$Y1991 * monthly[,40]
+monthly$'9/1/1991' <- monthly$Y1991 * monthly[,41]
+monthly$'10/1/1991' <- monthly$Y1991 * monthly[,42]
+monthly$'11/1/1991' <- monthly$Y1991 * monthly[,43]
+monthly$'12/1/1991' <- monthly$Y1991 * monthly[,44]
+
+monthly$'1/1/1992' <- monthly$Y1992 * monthly[,33]
+monthly$'2/1/1992' <- monthly$Y1992 * monthly[,34]
+monthly$'3/1/1992' <- monthly$Y1992 * monthly[,35]
+monthly$'4/1/1992' <- monthly$Y1992 * monthly[,36]
+monthly$'5/1/1992' <- monthly$Y1992 * monthly[,37]
+monthly$'6/1/1992' <- monthly$Y1992 * monthly[,38]
+monthly$'7/1/1992' <- monthly$Y1992 * monthly[,39]
+monthly$'8/1/1992' <- monthly$Y1992 * monthly[,40]
+monthly$'9/1/1992' <- monthly$Y1992 * monthly[,41]
+monthly$'10/1/1992' <- monthly$Y1992 * monthly[,42]
+monthly$'11/1/1992' <- monthly$Y1992 * monthly[,43]
+monthly$'12/1/1992' <- monthly$Y1992 * monthly[,44]
+
+monthly$'1/1/1993' <- monthly$Y1993 * monthly[,33]
+monthly$'2/1/1993' <- monthly$Y1993 * monthly[,34]
+monthly$'3/1/1993' <- monthly$Y1993 * monthly[,35]
+monthly$'4/1/1993' <- monthly$Y1993 * monthly[,36]
+monthly$'5/1/1993' <- monthly$Y1993 * monthly[,37]
+monthly$'6/1/1993' <- monthly$Y1993 * monthly[,38]
+monthly$'7/1/1993' <- monthly$Y1993 * monthly[,39]
+monthly$'8/1/1993' <- monthly$Y1993 * monthly[,40]
+monthly$'9/1/1993' <- monthly$Y1993 * monthly[,41]
+monthly$'10/1/1993' <- monthly$Y1993 * monthly[,42]
+monthly$'11/1/1993' <- monthly$Y1993 * monthly[,43]
+monthly$'12/1/1993' <- monthly$Y1993 * monthly[,44]
+
+monthly$'1/1/1994' <- monthly$Y1994 * monthly[,33]
+monthly$'2/1/1994' <- monthly$Y1994 * monthly[,34]
+monthly$'3/1/1994' <- monthly$Y1994 * monthly[,35]
+monthly$'4/1/1994' <- monthly$Y1994 * monthly[,36]
+monthly$'5/1/1994' <- monthly$Y1994 * monthly[,37]
+monthly$'6/1/1994' <- monthly$Y1994 * monthly[,38]
+monthly$'7/1/1994' <- monthly$Y1994 * monthly[,39]
+monthly$'8/1/1994' <- monthly$Y1994 * monthly[,40]
+monthly$'9/1/1994' <- monthly$Y1994 * monthly[,41]
+monthly$'10/1/1994' <- monthly$Y1994 * monthly[,42]
+monthly$'11/1/1994' <- monthly$Y1994 * monthly[,43]
+monthly$'12/1/1994' <- monthly$Y1994 * monthly[,44]
+
+monthly$'1/1/1995' <- monthly$Y1995 * monthly[,33]
+monthly$'2/1/1995' <- monthly$Y1995 * monthly[,34]
+monthly$'3/1/1995' <- monthly$Y1995 * monthly[,35]
+monthly$'4/1/1995' <- monthly$Y1995 * monthly[,36]
+monthly$'5/1/1995' <- monthly$Y1995 * monthly[,37]
+monthly$'6/1/1995' <- monthly$Y1995 * monthly[,38]
+monthly$'7/1/1995' <- monthly$Y1995 * monthly[,39]
+monthly$'8/1/1995' <- monthly$Y1995 * monthly[,40]
+monthly$'9/1/1995' <- monthly$Y1995 * monthly[,41]
+monthly$'10/1/1995' <- monthly$Y1995 * monthly[,42]
+monthly$'11/1/1995' <- monthly$Y1995 * monthly[,43]
+monthly$'12/1/1995' <- monthly$Y1995 * monthly[,44]
+
+monthly$'1/1/1996' <- monthly$Y1996 * monthly[,33]
+monthly$'2/1/1996' <- monthly$Y1996 * monthly[,34]
+monthly$'3/1/1996' <- monthly$Y1996 * monthly[,35]
+monthly$'4/1/1996' <- monthly$Y1996 * monthly[,36]
+monthly$'5/1/1996' <- monthly$Y1996 * monthly[,37]
+monthly$'6/1/1996' <- monthly$Y1996 * monthly[,38]
+monthly$'7/1/1996' <- monthly$Y1996 * monthly[,39]
+monthly$'8/1/1996' <- monthly$Y1996 * monthly[,40]
+monthly$'9/1/1996' <- monthly$Y1996 * monthly[,41]
+monthly$'10/1/1996' <- monthly$Y1996 * monthly[,42]
+monthly$'11/1/1996' <- monthly$Y1996 * monthly[,43]
+monthly$'12/1/1996' <- monthly$Y1996 * monthly[,44]
+
+monthly$'1/1/1997' <- monthly$Y1997 * monthly[,33]
+monthly$'2/1/1997' <- monthly$Y1997 * monthly[,34]
+monthly$'3/1/1997' <- monthly$Y1997 * monthly[,35]
+monthly$'4/1/1997' <- monthly$Y1997 * monthly[,36]
+monthly$'5/1/1997' <- monthly$Y1997 * monthly[,37]
+monthly$'6/1/1997' <- monthly$Y1997 * monthly[,38]
+monthly$'7/1/1997' <- monthly$Y1997 * monthly[,39]
+monthly$'8/1/1997' <- monthly$Y1997 * monthly[,40]
+monthly$'9/1/1997' <- monthly$Y1997 * monthly[,41]
+monthly$'10/1/1997' <- monthly$Y1997 * monthly[,42]
+monthly$'11/1/1997' <- monthly$Y1997 * monthly[,43]
+monthly$'12/1/1997' <- monthly$Y1997 * monthly[,44]
+
+monthly$'1/1/1998' <- monthly$Y1998 * monthly[,33]
+monthly$'2/1/1998' <- monthly$Y1998 * monthly[,34]
+monthly$'3/1/1998' <- monthly$Y1998 * monthly[,35]
+monthly$'4/1/1998' <- monthly$Y1998 * monthly[,36]
+monthly$'5/1/1998' <- monthly$Y1998 * monthly[,37]
+monthly$'6/1/1998' <- monthly$Y1998 * monthly[,38]
+monthly$'7/1/1998' <- monthly$Y1998 * monthly[,39]
+monthly$'8/1/1998' <- monthly$Y1998 * monthly[,40]
+monthly$'9/1/1998' <- monthly$Y1998 * monthly[,41]
+monthly$'10/1/1998' <- monthly$Y1998 * monthly[,42]
+monthly$'11/1/1998' <- monthly$Y1998 * monthly[,43]
+monthly$'12/1/1998' <- monthly$Y1998 * monthly[,44]
+
+monthly$'1/1/1999' <- monthly$Y1999 * monthly[,33]
+monthly$'2/1/1999' <- monthly$Y1999 * monthly[,34]
+monthly$'3/1/1999' <- monthly$Y1999 * monthly[,35]
+monthly$'4/1/1999' <- monthly$Y1999 * monthly[,36]
+monthly$'5/1/1999' <- monthly$Y1999 * monthly[,37]
+monthly$'6/1/1999' <- monthly$Y1999 * monthly[,38]
+monthly$'7/1/1999' <- monthly$Y1999 * monthly[,39]
+monthly$'8/1/1999' <- monthly$Y1999 * monthly[,40]
+monthly$'9/1/1999' <- monthly$Y1999 * monthly[,41]
+monthly$'10/1/1999' <- monthly$Y1999 * monthly[,42]
+monthly$'11/1/1999' <- monthly$Y1999 * monthly[,43]
+monthly$'12/1/1999' <- monthly$Y1999 * monthly[,44]
+
+monthly$'1/1/2000' <- monthly$Y2000 * monthly[,33]
+monthly$'2/1/2000' <- monthly$Y2000 * monthly[,34]
+monthly$'3/1/2000' <- monthly$Y2000 * monthly[,35]
+monthly$'4/1/2000' <- monthly$Y2000 * monthly[,36]
+monthly$'5/1/2000' <- monthly$Y2000 * monthly[,37]
+monthly$'6/1/2000' <- monthly$Y2000 * monthly[,38]
+monthly$'7/1/2000' <- monthly$Y2000 * monthly[,39]
+monthly$'8/1/2000' <- monthly$Y2000 * monthly[,40]
+monthly$'9/1/2000' <- monthly$Y2000 * monthly[,41]
+monthly$'10/1/2000' <- monthly$Y2000 * monthly[,42]
+monthly$'11/1/2000' <- monthly$Y2000 * monthly[,43]
+monthly$'12/1/2000' <- monthly$Y2000 * monthly[,44]
+
+monthly$'1/1/2001' <- monthly$Y2001 * monthly[,33]
+monthly$'2/1/2001' <- monthly$Y2001 * monthly[,34]
+monthly$'3/1/2001' <- monthly$Y2001 * monthly[,35]
+monthly$'4/1/2001' <- monthly$Y2001 * monthly[,36]
+monthly$'5/1/2001' <- monthly$Y2001 * monthly[,37]
+monthly$'6/1/2001' <- monthly$Y2001 * monthly[,38]
+monthly$'7/1/2001' <- monthly$Y2001 * monthly[,39]
+monthly$'8/1/2001' <- monthly$Y2001 * monthly[,40]
+monthly$'9/1/2001' <- monthly$Y2001 * monthly[,41]
+monthly$'10/1/2001' <- monthly$Y2001 * monthly[,42]
+monthly$'11/1/2001' <- monthly$Y2001 * monthly[,43]
+monthly$'12/1/2001' <- monthly$Y2001 * monthly[,44]
+
+monthly$'1/1/2002' <- monthly$Y2002 * monthly[,33]
+monthly$'2/1/2002' <- monthly$Y2002 * monthly[,34]
+monthly$'3/1/2002' <- monthly$Y2002 * monthly[,35]
+monthly$'4/1/2002' <- monthly$Y2002 * monthly[,36]
+monthly$'5/1/2002' <- monthly$Y2002 * monthly[,37]
+monthly$'6/1/2002' <- monthly$Y2002 * monthly[,38]
+monthly$'7/1/2002' <- monthly$Y2002 * monthly[,39]
+monthly$'8/1/2002' <- monthly$Y2002 * monthly[,40]
+monthly$'9/1/2002' <- monthly$Y2002 * monthly[,41]
+monthly$'10/1/2002' <- monthly$Y2002 * monthly[,42]
+monthly$'11/1/2002' <- monthly$Y2002 * monthly[,43]
+monthly$'12/1/2002' <- monthly$Y2002 * monthly[,44]
+
+monthly$'1/1/2003' <- monthly$Y2003 * monthly[,33]
+monthly$'2/1/2003' <- monthly$Y2003 * monthly[,34]
+monthly$'3/1/2003' <- monthly$Y2003 * monthly[,35]
+monthly$'4/1/2003' <- monthly$Y2003 * monthly[,36]
+monthly$'5/1/2003' <- monthly$Y2003 * monthly[,37]
+monthly$'6/1/2003' <- monthly$Y2003 * monthly[,38]
+monthly$'7/1/2003' <- monthly$Y2003 * monthly[,39]
+monthly$'8/1/2003' <- monthly$Y2003 * monthly[,40]
+monthly$'9/1/2003' <- monthly$Y2003 * monthly[,41]
+monthly$'10/1/2003' <- monthly$Y2003 * monthly[,42]
+monthly$'11/1/2003' <- monthly$Y2003 * monthly[,43]
+monthly$'12/1/2003' <- monthly$Y2003 * monthly[,44]
+
+
+monthly$'1/1/2004' <- monthly$Y2004 * monthly[,33]
+monthly$'2/1/2004' <- monthly$Y2004 * monthly[,34]
+monthly$'3/1/2004' <- monthly$Y2004 * monthly[,35]
+monthly$'4/1/2004' <- monthly$Y2004 * monthly[,36]
+monthly$'5/1/2004' <- monthly$Y2004 * monthly[,37]
+monthly$'6/1/2004' <- monthly$Y2004 * monthly[,38]
+monthly$'7/1/2004' <- monthly$Y2004 * monthly[,39]
+monthly$'8/1/2004' <- monthly$Y2004 * monthly[,40]
+monthly$'9/1/2004' <- monthly$Y2004 * monthly[,41]
+monthly$'10/1/2004' <- monthly$Y2004 * monthly[,42]
+monthly$'11/1/2004' <- monthly$Y2004 * monthly[,43]
+monthly$'12/1/2004' <- monthly$Y2004 * monthly[,44]
+
+
+monthly$'1/1/2005' <- monthly$Y2005 * monthly[,33]
+monthly$'2/1/2005' <- monthly$Y2005 * monthly[,34]
+monthly$'3/1/2005' <- monthly$Y2005 * monthly[,35]
+monthly$'4/1/2005' <- monthly$Y2005 * monthly[,36]
+monthly$'5/1/2005' <- monthly$Y2005 * monthly[,37]
+monthly$'6/1/2005' <- monthly$Y2005 * monthly[,38]
+monthly$'7/1/2005' <- monthly$Y2005 * monthly[,39]
+monthly$'8/1/2005' <- monthly$Y2005 * monthly[,40]
+monthly$'9/1/2005' <- monthly$Y2005 * monthly[,41]
+monthly$'10/1/2005' <- monthly$Y2005 * monthly[,42]
+monthly$'11/1/2005' <- monthly$Y2005 * monthly[,43]
+monthly$'12/1/2005' <- monthly$Y2005 * monthly[,44]
+
+
+monthly$'1/1/2006' <- monthly$Y2006 * monthly[,33]
+monthly$'2/1/2006' <- monthly$Y2006 * monthly[,34]
+monthly$'3/1/2006' <- monthly$Y2006 * monthly[,35]
+monthly$'4/1/2006' <- monthly$Y2006 * monthly[,36]
+monthly$'5/1/2006' <- monthly$Y2006 * monthly[,37]
+monthly$'6/1/2006' <- monthly$Y2006 * monthly[,38]
+monthly$'7/1/2006' <- monthly$Y2006 * monthly[,39]
+monthly$'8/1/2006' <- monthly$Y2006 * monthly[,40]
+monthly$'9/1/2006' <- monthly$Y2006 * monthly[,41]
+monthly$'10/1/2006' <- monthly$Y2006 * monthly[,42]
+monthly$'11/1/2006' <- monthly$Y2006 * monthly[,43]
+monthly$'12/1/2006' <- monthly$Y2006 * monthly[,44]
+
+
+monthly$'1/1/2007' <- monthly$Y2007 * monthly[,33]
+monthly$'2/1/2007' <- monthly$Y2007 * monthly[,34]
+monthly$'3/1/2007' <- monthly$Y2007 * monthly[,35]
+monthly$'4/1/2007' <- monthly$Y2007 * monthly[,36]
+monthly$'5/1/2007' <- monthly$Y2007 * monthly[,37]
+monthly$'6/1/2007' <- monthly$Y2007 * monthly[,38]
+monthly$'7/1/2007' <- monthly$Y2007 * monthly[,39]
+monthly$'8/1/2007' <- monthly$Y2007 * monthly[,40]
+monthly$'9/1/2007' <- monthly$Y2007 * monthly[,41]
+monthly$'10/1/2007' <- monthly$Y2007 * monthly[,42]
+monthly$'11/1/2007' <- monthly$Y2007 * monthly[,43]
+monthly$'12/1/2007' <- monthly$Y2007 * monthly[,44]
+
+
+monthly$'1/1/2008' <- monthly$Y2008 * monthly[,33]
+monthly$'2/1/2008' <- monthly$Y2008 * monthly[,34]
+monthly$'3/1/2008' <- monthly$Y2008 * monthly[,35]
+monthly$'4/1/2008' <- monthly$Y2008 * monthly[,36]
+monthly$'5/1/2008' <- monthly$Y2008 * monthly[,37]
+monthly$'6/1/2008' <- monthly$Y2008 * monthly[,38]
+monthly$'7/1/2008' <- monthly$Y2008 * monthly[,39]
+monthly$'8/1/2008' <- monthly$Y2008 * monthly[,40]
+monthly$'9/1/2008' <- monthly$Y2008 * monthly[,41]
+monthly$'10/1/2008' <- monthly$Y2008 * monthly[,42]
+monthly$'11/1/2008' <- monthly$Y2008 * monthly[,43]
+monthly$'12/1/2008' <- monthly$Y2008 * monthly[,44]
+
+
+monthly$'1/1/2009' <- monthly$Y2009 * monthly[,33]
+monthly$'2/1/2009' <- monthly$Y2009 * monthly[,34]
+monthly$'3/1/2009' <- monthly$Y2009 * monthly[,35]
+monthly$'4/1/2009' <- monthly$Y2009 * monthly[,36]
+monthly$'5/1/2009' <- monthly$Y2009 * monthly[,37]
+monthly$'6/1/2009' <- monthly$Y2009 * monthly[,38]
+monthly$'7/1/2009' <- monthly$Y2009 * monthly[,39]
+monthly$'8/1/2009' <- monthly$Y2009 * monthly[,40]
+monthly$'9/1/2009' <- monthly$Y2009 * monthly[,41]
+monthly$'10/1/2009' <- monthly$Y2009 * monthly[,42]
+monthly$'11/1/2009' <- monthly$Y2009 * monthly[,43]
+monthly$'12/1/2009' <- monthly$Y2009 * monthly[,44]
+
+monthly$'1/1/2010' <- monthly$Y2010 * monthly[,33]
+monthly$'2/1/2010' <- monthly$Y2010 * monthly[,34]
+monthly$'3/1/2010' <- monthly$Y2010 * monthly[,35]
+monthly$'4/1/2010' <- monthly$Y2010 * monthly[,36]
+monthly$'5/1/2010' <- monthly$Y2010 * monthly[,37]
+monthly$'6/1/2010' <- monthly$Y2010 * monthly[,38]
+monthly$'7/1/2010' <- monthly$Y2010 * monthly[,39]
+monthly$'8/1/2010' <- monthly$Y2010 * monthly[,40]
+monthly$'9/1/2010' <- monthly$Y2010 * monthly[,41]
+monthly$'10/1/2010' <- monthly$Y2010 * monthly[,42]
+monthly$'11/1/2010' <- monthly$Y2010 * monthly[,43]
+monthly$'12/1/2010' <- monthly$Y2010 * monthly[,44]
+
+monthly$'1/1/2011' <- monthly$Y2011 * monthly[,33]
+monthly$'2/1/2011' <- monthly$Y2011 * monthly[,34]
+monthly$'3/1/2011' <- monthly$Y2011 * monthly[,35]
+monthly$'4/1/2011' <- monthly$Y2011 * monthly[,36]
+monthly$'5/1/2011' <- monthly$Y2011 * monthly[,37]
+monthly$'6/1/2011' <- monthly$Y2011 * monthly[,38]
+monthly$'7/1/2011' <- monthly$Y2011 * monthly[,39]
+monthly$'8/1/2011' <- monthly$Y2011 * monthly[,40]
+monthly$'9/1/2011' <- monthly$Y2011 * monthly[,41]
+monthly$'10/1/2011' <- monthly$Y2011 * monthly[,42]
+monthly$'11/1/2011' <- monthly$Y2011 * monthly[,43]
+monthly$'12/1/2011' <- monthly$Y2011 * monthly[,44]
+
+monthly$'1/1/2012' <- monthly$Y2012 * monthly[,33]
+monthly$'2/1/2012' <- monthly$Y2012 * monthly[,34]
+monthly$'3/1/2012' <- monthly$Y2012 * monthly[,35]
+monthly$'4/1/2012' <- monthly$Y2012 * monthly[,36]
+monthly$'5/1/2012' <- monthly$Y2012 * monthly[,37]
+monthly$'6/1/2012' <- monthly$Y2012 * monthly[,38]
+monthly$'7/1/2012' <- monthly$Y2012 * monthly[,39]
+monthly$'8/1/2012' <- monthly$Y2012 * monthly[,40]
+monthly$'9/1/2012' <- monthly$Y2012 * monthly[,41]
+monthly$'10/1/2012' <- monthly$Y2012 * monthly[,42]
+monthly$'11/1/2012' <- monthly$Y2012 * monthly[,43]
+monthly$'12/1/2012' <- monthly$Y2012 * monthly[,44]
+
+monthly$'1/1/2013' <- monthly$Y2013 * monthly[,33]
+monthly$'2/1/2013' <- monthly$Y2013 * monthly[,34]
+monthly$'3/1/2013' <- monthly$Y2013 * monthly[,35]
+monthly$'4/1/2013' <- monthly$Y2013 * monthly[,36]
+monthly$'5/1/2013' <- monthly$Y2013 * monthly[,37]
+monthly$'6/1/2013' <- monthly$Y2013 * monthly[,38]
+monthly$'7/1/2013' <- monthly$Y2013 * monthly[,39]
+monthly$'8/1/2013' <- monthly$Y2013 * monthly[,40]
+monthly$'9/1/2013' <- monthly$Y2013 * monthly[,41]
+monthly$'10/1/2013' <- monthly$Y2013 * monthly[,42]
+monthly$'11/1/2013' <- monthly$Y2013 * monthly[,43]
+monthly$'12/1/2013' <- monthly$Y2013 * monthly[,44]
+
+monthly$'1/1/2014' <- monthly$Y2014 * monthly[,33]
+monthly$'2/1/2014' <- monthly$Y2014 * monthly[,34]
+monthly$'3/1/2014' <- monthly$Y2014 * monthly[,35]
+monthly$'4/1/2014' <- monthly$Y2014 * monthly[,36]
+monthly$'5/1/2014' <- monthly$Y2014 * monthly[,37]
+monthly$'6/1/2014' <- monthly$Y2014 * monthly[,38]
+monthly$'7/1/2014' <- monthly$Y2014 * monthly[,39]
+monthly$'8/1/2014' <- monthly$Y2014 * monthly[,40]
+monthly$'9/1/2014' <- monthly$Y2014 * monthly[,41]
+monthly$'10/1/2014' <- monthly$Y2014 * monthly[,42]
+monthly$'11/1/2014' <- monthly$Y2014 * monthly[,43]
+monthly$'12/1/2014' <- monthly$Y2014 * monthly[,44]
+
+monthly$'1/1/2015' <- monthly$Y2015 * monthly[,33]
+monthly$'2/1/2015' <- monthly$Y2015 * monthly[,34]
+monthly$'3/1/2015' <- monthly$Y2015 * monthly[,35]
+monthly$'4/1/2015' <- monthly$Y2015 * monthly[,36]
+monthly$'5/1/2015' <- monthly$Y2015 * monthly[,37]
+monthly$'6/1/2015' <- monthly$Y2015 * monthly[,38]
+monthly$'7/1/2015' <- monthly$Y2015 * monthly[,39]
+monthly$'8/1/2015' <- monthly$Y2015 * monthly[,40]
+monthly$'9/1/2015' <- monthly$Y2015 * monthly[,41]
+monthly$'10/1/2015' <- monthly$Y2015 * monthly[,42]
+monthly$'11/1/2015' <- monthly$Y2015 * monthly[,43]
+monthly$'12/1/2015' <- monthly$Y2015 * monthly[,44]
+
+monthly$sector <- 'th'
+monthly <- select(monthly, 1,417,45:416)
+th.historic.monthly <- monthly
+
+
+
+#------------------------------------------------------------------------------------------.
+####### Aquaculture sector #######
+# Note: monthly proportions are not available for AQ, so instead used the same proportions as LS
+DF <- aq %>%
+  gather(key, value, aq.cu) %>%
+  spread(year, value)
+DF<-plyr::rename(DF,c("key"="sector","1985"="Y1985","1990"="Y1990","1995"="Y1995","2000"="Y2000","2005"="Y2005","2010"="Y2010","2015"="Y2015"))
+DF <- select(DF, HUC4, Y1985, Y1990, Y1995, Y2000, Y2005, Y2010, Y2015)
+# Convert any NAs to 0 so we can summarize based on the HUC
+DF[is.na(DF)] <- 0
+# This sums values for each HUC
+DF <- DF%>% group_by(HUC4) %>% summarise_all(funs(sum))
+
+# Now perform linear approximations
+DF$Y1986 <- DF$Y1985 + 1*(DF$Y1990 - DF$Y1985)/5
+DF$Y1987 <- DF$Y1985 + 2*(DF$Y1990 - DF$Y1985)/5
+DF$Y1988 <- DF$Y1985 + 3*(DF$Y1990 - DF$Y1985)/5
+DF$Y1989 <- DF$Y1985 + 4*(DF$Y1990 - DF$Y1985)/5
+
+DF$Y1991 <- DF$Y1990 + 1*(DF$Y1995 - DF$Y1990)/5
+DF$Y1992 <- DF$Y1990 + 2*(DF$Y1995 - DF$Y1990)/5
+DF$Y1993 <- DF$Y1990 + 3*(DF$Y1995 - DF$Y1990)/5
+DF$Y1994 <- DF$Y1990 + 4*(DF$Y1995 - DF$Y1990)/5
+
+DF$Y1996 <- DF$Y1995 + 1*(DF$Y2000 - DF$Y1995)/5
+DF$Y1997 <- DF$Y1995 + 2*(DF$Y2000 - DF$Y1995)/5
+DF$Y1998 <- DF$Y1995 + 3*(DF$Y2000 - DF$Y1995)/5
+DF$Y1999 <- DF$Y1995 + 4*(DF$Y2000 - DF$Y1995)/5
+
+DF$Y2001 <- DF$Y2000 + 1*(DF$Y2005 - DF$Y2000)/5
+DF$Y2002 <- DF$Y2000 + 2*(DF$Y2005 - DF$Y2000)/5
+DF$Y2003 <- DF$Y2000 + 3*(DF$Y2005 - DF$Y2000)/5
+DF$Y2004 <- DF$Y2000 + 4*(DF$Y2005 - DF$Y2000)/5
+
+DF$Y2006 <- DF$Y2005 + 1*(DF$Y2010 - DF$Y2005)/5
+DF$Y2007 <- DF$Y2005 + 2*(DF$Y2010 - DF$Y2005)/5
+DF$Y2008 <- DF$Y2005 + 3*(DF$Y2010 - DF$Y2005)/5
+DF$Y2009 <- DF$Y2005 + 4*(DF$Y2010 - DF$Y2005)/5
+
+DF$Y2011 <- DF$Y2010 + 1*(DF$Y2015 - DF$Y2010)/5
+DF$Y2012 <- DF$Y2010 + 2*(DF$Y2015 - DF$Y2010)/5
+DF$Y2013 <- DF$Y2010 + 3*(DF$Y2015 - DF$Y2010)/5
+DF$Y2014 <- DF$Y2010 + 4*(DF$Y2015 - DF$Y2010)/5
+
+
+col_order <- c("HUC4", "Y1985", "Y1986", "Y1987", "Y1988", "Y1989", "Y1990", "Y1991", "Y1992", "Y1993", "Y1994",
+               "Y1995", "Y1996", "Y1997", "Y1998", "Y1999", "Y2000", "Y2001", "Y2002", "Y2003", "Y2004", "Y2005",
+               "Y2006", "Y2007", "Y2008", "Y2009", "Y2010", "Y2011", "Y2012", "Y2013", "Y2014", "Y2015")
+DF <- DF[,col_order]
+
+
+# Now convert units from mgal to 1000 cubic meters (this come from Ryan's WEAP input code)
+# (optional unless you are using the output for WEAP)
+# 1 Mgal/day = 1381.6345 (thousand) m^3
+
+for (n in 2:32){
+  DF[,n]<- DF[,n]*(1381.6345)
+}
+
+
+# Now calculate monthly use based on Tom's monthly proportions
+# again, since there are no aq proportions, we are using ls
+df <- DF
+month.aq <- select(month,1,50:61)
+
+df.month <- merge(df,month.aq, by="HUC4")
+monthly <- df.month
+
+monthly$'1/1/1985' <- monthly$Y1985 * monthly[,33]
+monthly$'2/1/1985' <- monthly$Y1985 * monthly[,34]
+monthly$'3/1/1985' <- monthly$Y1985 * monthly[,35]
+monthly$'4/1/1985' <- monthly$Y1985 * monthly[,36]
+monthly$'5/1/1985' <- monthly$Y1985 * monthly[,37]
+monthly$'6/1/1985' <- monthly$Y1985 * monthly[,38]
+monthly$'7/1/1985' <- monthly$Y1985 * monthly[,39]
+monthly$'8/1/1985' <- monthly$Y1985 * monthly[,40]
+monthly$'9/1/1985' <- monthly$Y1985 * monthly[,41]
+monthly$'10/1/1985' <- monthly$Y1985 * monthly[,42]
+monthly$'11/1/1985' <- monthly$Y1985 * monthly[,43]
+monthly$'12/1/1985' <- monthly$Y1985 * monthly[,44]
+
+monthly$'1/1/1986' <- monthly$Y1986 * monthly[,33]
+monthly$'2/1/1986' <- monthly$Y1986 * monthly[,34]
+monthly$'3/1/1986' <- monthly$Y1986 * monthly[,35]
+monthly$'4/1/1986' <- monthly$Y1986 * monthly[,36]
+monthly$'5/1/1986' <- monthly$Y1986 * monthly[,37]
+monthly$'6/1/1986' <- monthly$Y1986 * monthly[,38]
+monthly$'7/1/1986' <- monthly$Y1986 * monthly[,39]
+monthly$'8/1/1986' <- monthly$Y1986 * monthly[,40]
+monthly$'9/1/1986' <- monthly$Y1986 * monthly[,41]
+monthly$'10/1/1986' <- monthly$Y1986 * monthly[,42]
+monthly$'11/1/1986' <- monthly$Y1986 * monthly[,43]
+monthly$'12/1/1986' <- monthly$Y1986 * monthly[,44]
+
+monthly$'1/1/1987' <- monthly$Y1987 * monthly[,33]
+monthly$'2/1/1987' <- monthly$Y1987 * monthly[,34]
+monthly$'3/1/1987' <- monthly$Y1987 * monthly[,35]
+monthly$'4/1/1987' <- monthly$Y1987 * monthly[,36]
+monthly$'5/1/1987' <- monthly$Y1987 * monthly[,37]
+monthly$'6/1/1987' <- monthly$Y1987 * monthly[,38]
+monthly$'7/1/1987' <- monthly$Y1987 * monthly[,39]
+monthly$'8/1/1987' <- monthly$Y1987 * monthly[,40]
+monthly$'9/1/1987' <- monthly$Y1987 * monthly[,41]
+monthly$'10/1/1987' <- monthly$Y1987 * monthly[,42]
+monthly$'11/1/1987' <- monthly$Y1987 * monthly[,43]
+monthly$'12/1/1987' <- monthly$Y1987 * monthly[,44]
+
+monthly$'1/1/1988' <- monthly$Y1988 * monthly[,33]
+monthly$'2/1/1988' <- monthly$Y1988 * monthly[,34]
+monthly$'3/1/1988' <- monthly$Y1988 * monthly[,35]
+monthly$'4/1/1988' <- monthly$Y1988 * monthly[,36]
+monthly$'5/1/1988' <- monthly$Y1988 * monthly[,37]
+monthly$'6/1/1988' <- monthly$Y1988 * monthly[,38]
+monthly$'7/1/1988' <- monthly$Y1988 * monthly[,39]
+monthly$'8/1/1988' <- monthly$Y1988 * monthly[,40]
+monthly$'9/1/1988' <- monthly$Y1988 * monthly[,41]
+monthly$'10/1/1988' <- monthly$Y1988 * monthly[,42]
+monthly$'11/1/1988' <- monthly$Y1988 * monthly[,43]
+monthly$'12/1/1988' <- monthly$Y1988 * monthly[,44]
+
+monthly$'1/1/1989' <- monthly$Y1989 * monthly[,33]
+monthly$'2/1/1989' <- monthly$Y1989 * monthly[,34]
+monthly$'3/1/1989' <- monthly$Y1989 * monthly[,35]
+monthly$'4/1/1989' <- monthly$Y1989 * monthly[,36]
+monthly$'5/1/1989' <- monthly$Y1989 * monthly[,37]
+monthly$'6/1/1989' <- monthly$Y1989 * monthly[,38]
+monthly$'7/1/1989' <- monthly$Y1989 * monthly[,39]
+monthly$'8/1/1989' <- monthly$Y1989 * monthly[,40]
+monthly$'9/1/1989' <- monthly$Y1989 * monthly[,41]
+monthly$'10/1/1989' <- monthly$Y1989 * monthly[,42]
+monthly$'11/1/1989' <- monthly$Y1989 * monthly[,43]
+monthly$'12/1/1989' <- monthly$Y1989 * monthly[,44]
+
+monthly$'1/1/1990' <- monthly$Y1990 * monthly[,33]
+monthly$'2/1/1990' <- monthly$Y1990 * monthly[,34]
+monthly$'3/1/1990' <- monthly$Y1990 * monthly[,35]
+monthly$'4/1/1990' <- monthly$Y1990 * monthly[,36]
+monthly$'5/1/1990' <- monthly$Y1990 * monthly[,37]
+monthly$'6/1/1990' <- monthly$Y1990 * monthly[,38]
+monthly$'7/1/1990' <- monthly$Y1990 * monthly[,39]
+monthly$'8/1/1990' <- monthly$Y1990 * monthly[,40]
+monthly$'9/1/1990' <- monthly$Y1990 * monthly[,41]
+monthly$'10/1/1990' <- monthly$Y1990 * monthly[,42]
+monthly$'11/1/1990' <- monthly$Y1990 * monthly[,43]
+monthly$'12/1/1990' <- monthly$Y1990 * monthly[,44]
+
+monthly$'1/1/1991' <- monthly$Y1991 * monthly[,33]
+monthly$'2/1/1991' <- monthly$Y1991 * monthly[,34]
+monthly$'3/1/1991' <- monthly$Y1991 * monthly[,35]
+monthly$'4/1/1991' <- monthly$Y1991 * monthly[,36]
+monthly$'5/1/1991' <- monthly$Y1991 * monthly[,37]
+monthly$'6/1/1991' <- monthly$Y1991 * monthly[,38]
+monthly$'7/1/1991' <- monthly$Y1991 * monthly[,39]
+monthly$'8/1/1991' <- monthly$Y1991 * monthly[,40]
+monthly$'9/1/1991' <- monthly$Y1991 * monthly[,41]
+monthly$'10/1/1991' <- monthly$Y1991 * monthly[,42]
+monthly$'11/1/1991' <- monthly$Y1991 * monthly[,43]
+monthly$'12/1/1991' <- monthly$Y1991 * monthly[,44]
+
+monthly$'1/1/1992' <- monthly$Y1992 * monthly[,33]
+monthly$'2/1/1992' <- monthly$Y1992 * monthly[,34]
+monthly$'3/1/1992' <- monthly$Y1992 * monthly[,35]
+monthly$'4/1/1992' <- monthly$Y1992 * monthly[,36]
+monthly$'5/1/1992' <- monthly$Y1992 * monthly[,37]
+monthly$'6/1/1992' <- monthly$Y1992 * monthly[,38]
+monthly$'7/1/1992' <- monthly$Y1992 * monthly[,39]
+monthly$'8/1/1992' <- monthly$Y1992 * monthly[,40]
+monthly$'9/1/1992' <- monthly$Y1992 * monthly[,41]
+monthly$'10/1/1992' <- monthly$Y1992 * monthly[,42]
+monthly$'11/1/1992' <- monthly$Y1992 * monthly[,43]
+monthly$'12/1/1992' <- monthly$Y1992 * monthly[,44]
+
+monthly$'1/1/1993' <- monthly$Y1993 * monthly[,33]
+monthly$'2/1/1993' <- monthly$Y1993 * monthly[,34]
+monthly$'3/1/1993' <- monthly$Y1993 * monthly[,35]
+monthly$'4/1/1993' <- monthly$Y1993 * monthly[,36]
+monthly$'5/1/1993' <- monthly$Y1993 * monthly[,37]
+monthly$'6/1/1993' <- monthly$Y1993 * monthly[,38]
+monthly$'7/1/1993' <- monthly$Y1993 * monthly[,39]
+monthly$'8/1/1993' <- monthly$Y1993 * monthly[,40]
+monthly$'9/1/1993' <- monthly$Y1993 * monthly[,41]
+monthly$'10/1/1993' <- monthly$Y1993 * monthly[,42]
+monthly$'11/1/1993' <- monthly$Y1993 * monthly[,43]
+monthly$'12/1/1993' <- monthly$Y1993 * monthly[,44]
+
+monthly$'1/1/1994' <- monthly$Y1994 * monthly[,33]
+monthly$'2/1/1994' <- monthly$Y1994 * monthly[,34]
+monthly$'3/1/1994' <- monthly$Y1994 * monthly[,35]
+monthly$'4/1/1994' <- monthly$Y1994 * monthly[,36]
+monthly$'5/1/1994' <- monthly$Y1994 * monthly[,37]
+monthly$'6/1/1994' <- monthly$Y1994 * monthly[,38]
+monthly$'7/1/1994' <- monthly$Y1994 * monthly[,39]
+monthly$'8/1/1994' <- monthly$Y1994 * monthly[,40]
+monthly$'9/1/1994' <- monthly$Y1994 * monthly[,41]
+monthly$'10/1/1994' <- monthly$Y1994 * monthly[,42]
+monthly$'11/1/1994' <- monthly$Y1994 * monthly[,43]
+monthly$'12/1/1994' <- monthly$Y1994 * monthly[,44]
+
+monthly$'1/1/1995' <- monthly$Y1995 * monthly[,33]
+monthly$'2/1/1995' <- monthly$Y1995 * monthly[,34]
+monthly$'3/1/1995' <- monthly$Y1995 * monthly[,35]
+monthly$'4/1/1995' <- monthly$Y1995 * monthly[,36]
+monthly$'5/1/1995' <- monthly$Y1995 * monthly[,37]
+monthly$'6/1/1995' <- monthly$Y1995 * monthly[,38]
+monthly$'7/1/1995' <- monthly$Y1995 * monthly[,39]
+monthly$'8/1/1995' <- monthly$Y1995 * monthly[,40]
+monthly$'9/1/1995' <- monthly$Y1995 * monthly[,41]
+monthly$'10/1/1995' <- monthly$Y1995 * monthly[,42]
+monthly$'11/1/1995' <- monthly$Y1995 * monthly[,43]
+monthly$'12/1/1995' <- monthly$Y1995 * monthly[,44]
+
+monthly$'1/1/1996' <- monthly$Y1996 * monthly[,33]
+monthly$'2/1/1996' <- monthly$Y1996 * monthly[,34]
+monthly$'3/1/1996' <- monthly$Y1996 * monthly[,35]
+monthly$'4/1/1996' <- monthly$Y1996 * monthly[,36]
+monthly$'5/1/1996' <- monthly$Y1996 * monthly[,37]
+monthly$'6/1/1996' <- monthly$Y1996 * monthly[,38]
+monthly$'7/1/1996' <- monthly$Y1996 * monthly[,39]
+monthly$'8/1/1996' <- monthly$Y1996 * monthly[,40]
+monthly$'9/1/1996' <- monthly$Y1996 * monthly[,41]
+monthly$'10/1/1996' <- monthly$Y1996 * monthly[,42]
+monthly$'11/1/1996' <- monthly$Y1996 * monthly[,43]
+monthly$'12/1/1996' <- monthly$Y1996 * monthly[,44]
+
+monthly$'1/1/1997' <- monthly$Y1997 * monthly[,33]
+monthly$'2/1/1997' <- monthly$Y1997 * monthly[,34]
+monthly$'3/1/1997' <- monthly$Y1997 * monthly[,35]
+monthly$'4/1/1997' <- monthly$Y1997 * monthly[,36]
+monthly$'5/1/1997' <- monthly$Y1997 * monthly[,37]
+monthly$'6/1/1997' <- monthly$Y1997 * monthly[,38]
+monthly$'7/1/1997' <- monthly$Y1997 * monthly[,39]
+monthly$'8/1/1997' <- monthly$Y1997 * monthly[,40]
+monthly$'9/1/1997' <- monthly$Y1997 * monthly[,41]
+monthly$'10/1/1997' <- monthly$Y1997 * monthly[,42]
+monthly$'11/1/1997' <- monthly$Y1997 * monthly[,43]
+monthly$'12/1/1997' <- monthly$Y1997 * monthly[,44]
+
+monthly$'1/1/1998' <- monthly$Y1998 * monthly[,33]
+monthly$'2/1/1998' <- monthly$Y1998 * monthly[,34]
+monthly$'3/1/1998' <- monthly$Y1998 * monthly[,35]
+monthly$'4/1/1998' <- monthly$Y1998 * monthly[,36]
+monthly$'5/1/1998' <- monthly$Y1998 * monthly[,37]
+monthly$'6/1/1998' <- monthly$Y1998 * monthly[,38]
+monthly$'7/1/1998' <- monthly$Y1998 * monthly[,39]
+monthly$'8/1/1998' <- monthly$Y1998 * monthly[,40]
+monthly$'9/1/1998' <- monthly$Y1998 * monthly[,41]
+monthly$'10/1/1998' <- monthly$Y1998 * monthly[,42]
+monthly$'11/1/1998' <- monthly$Y1998 * monthly[,43]
+monthly$'12/1/1998' <- monthly$Y1998 * monthly[,44]
+
+monthly$'1/1/1999' <- monthly$Y1999 * monthly[,33]
+monthly$'2/1/1999' <- monthly$Y1999 * monthly[,34]
+monthly$'3/1/1999' <- monthly$Y1999 * monthly[,35]
+monthly$'4/1/1999' <- monthly$Y1999 * monthly[,36]
+monthly$'5/1/1999' <- monthly$Y1999 * monthly[,37]
+monthly$'6/1/1999' <- monthly$Y1999 * monthly[,38]
+monthly$'7/1/1999' <- monthly$Y1999 * monthly[,39]
+monthly$'8/1/1999' <- monthly$Y1999 * monthly[,40]
+monthly$'9/1/1999' <- monthly$Y1999 * monthly[,41]
+monthly$'10/1/1999' <- monthly$Y1999 * monthly[,42]
+monthly$'11/1/1999' <- monthly$Y1999 * monthly[,43]
+monthly$'12/1/1999' <- monthly$Y1999 * monthly[,44]
+
+monthly$'1/1/2000' <- monthly$Y2000 * monthly[,33]
+monthly$'2/1/2000' <- monthly$Y2000 * monthly[,34]
+monthly$'3/1/2000' <- monthly$Y2000 * monthly[,35]
+monthly$'4/1/2000' <- monthly$Y2000 * monthly[,36]
+monthly$'5/1/2000' <- monthly$Y2000 * monthly[,37]
+monthly$'6/1/2000' <- monthly$Y2000 * monthly[,38]
+monthly$'7/1/2000' <- monthly$Y2000 * monthly[,39]
+monthly$'8/1/2000' <- monthly$Y2000 * monthly[,40]
+monthly$'9/1/2000' <- monthly$Y2000 * monthly[,41]
+monthly$'10/1/2000' <- monthly$Y2000 * monthly[,42]
+monthly$'11/1/2000' <- monthly$Y2000 * monthly[,43]
+monthly$'12/1/2000' <- monthly$Y2000 * monthly[,44]
+
+monthly$'1/1/2001' <- monthly$Y2001 * monthly[,33]
+monthly$'2/1/2001' <- monthly$Y2001 * monthly[,34]
+monthly$'3/1/2001' <- monthly$Y2001 * monthly[,35]
+monthly$'4/1/2001' <- monthly$Y2001 * monthly[,36]
+monthly$'5/1/2001' <- monthly$Y2001 * monthly[,37]
+monthly$'6/1/2001' <- monthly$Y2001 * monthly[,38]
+monthly$'7/1/2001' <- monthly$Y2001 * monthly[,39]
+monthly$'8/1/2001' <- monthly$Y2001 * monthly[,40]
+monthly$'9/1/2001' <- monthly$Y2001 * monthly[,41]
+monthly$'10/1/2001' <- monthly$Y2001 * monthly[,42]
+monthly$'11/1/2001' <- monthly$Y2001 * monthly[,43]
+monthly$'12/1/2001' <- monthly$Y2001 * monthly[,44]
+
+monthly$'1/1/2002' <- monthly$Y2002 * monthly[,33]
+monthly$'2/1/2002' <- monthly$Y2002 * monthly[,34]
+monthly$'3/1/2002' <- monthly$Y2002 * monthly[,35]
+monthly$'4/1/2002' <- monthly$Y2002 * monthly[,36]
+monthly$'5/1/2002' <- monthly$Y2002 * monthly[,37]
+monthly$'6/1/2002' <- monthly$Y2002 * monthly[,38]
+monthly$'7/1/2002' <- monthly$Y2002 * monthly[,39]
+monthly$'8/1/2002' <- monthly$Y2002 * monthly[,40]
+monthly$'9/1/2002' <- monthly$Y2002 * monthly[,41]
+monthly$'10/1/2002' <- monthly$Y2002 * monthly[,42]
+monthly$'11/1/2002' <- monthly$Y2002 * monthly[,43]
+monthly$'12/1/2002' <- monthly$Y2002 * monthly[,44]
+
+monthly$'1/1/2003' <- monthly$Y2003 * monthly[,33]
+monthly$'2/1/2003' <- monthly$Y2003 * monthly[,34]
+monthly$'3/1/2003' <- monthly$Y2003 * monthly[,35]
+monthly$'4/1/2003' <- monthly$Y2003 * monthly[,36]
+monthly$'5/1/2003' <- monthly$Y2003 * monthly[,37]
+monthly$'6/1/2003' <- monthly$Y2003 * monthly[,38]
+monthly$'7/1/2003' <- monthly$Y2003 * monthly[,39]
+monthly$'8/1/2003' <- monthly$Y2003 * monthly[,40]
+monthly$'9/1/2003' <- monthly$Y2003 * monthly[,41]
+monthly$'10/1/2003' <- monthly$Y2003 * monthly[,42]
+monthly$'11/1/2003' <- monthly$Y2003 * monthly[,43]
+monthly$'12/1/2003' <- monthly$Y2003 * monthly[,44]
+
+
+monthly$'1/1/2004' <- monthly$Y2004 * monthly[,33]
+monthly$'2/1/2004' <- monthly$Y2004 * monthly[,34]
+monthly$'3/1/2004' <- monthly$Y2004 * monthly[,35]
+monthly$'4/1/2004' <- monthly$Y2004 * monthly[,36]
+monthly$'5/1/2004' <- monthly$Y2004 * monthly[,37]
+monthly$'6/1/2004' <- monthly$Y2004 * monthly[,38]
+monthly$'7/1/2004' <- monthly$Y2004 * monthly[,39]
+monthly$'8/1/2004' <- monthly$Y2004 * monthly[,40]
+monthly$'9/1/2004' <- monthly$Y2004 * monthly[,41]
+monthly$'10/1/2004' <- monthly$Y2004 * monthly[,42]
+monthly$'11/1/2004' <- monthly$Y2004 * monthly[,43]
+monthly$'12/1/2004' <- monthly$Y2004 * monthly[,44]
+
+
+monthly$'1/1/2005' <- monthly$Y2005 * monthly[,33]
+monthly$'2/1/2005' <- monthly$Y2005 * monthly[,34]
+monthly$'3/1/2005' <- monthly$Y2005 * monthly[,35]
+monthly$'4/1/2005' <- monthly$Y2005 * monthly[,36]
+monthly$'5/1/2005' <- monthly$Y2005 * monthly[,37]
+monthly$'6/1/2005' <- monthly$Y2005 * monthly[,38]
+monthly$'7/1/2005' <- monthly$Y2005 * monthly[,39]
+monthly$'8/1/2005' <- monthly$Y2005 * monthly[,40]
+monthly$'9/1/2005' <- monthly$Y2005 * monthly[,41]
+monthly$'10/1/2005' <- monthly$Y2005 * monthly[,42]
+monthly$'11/1/2005' <- monthly$Y2005 * monthly[,43]
+monthly$'12/1/2005' <- monthly$Y2005 * monthly[,44]
+
+
+monthly$'1/1/2006' <- monthly$Y2006 * monthly[,33]
+monthly$'2/1/2006' <- monthly$Y2006 * monthly[,34]
+monthly$'3/1/2006' <- monthly$Y2006 * monthly[,35]
+monthly$'4/1/2006' <- monthly$Y2006 * monthly[,36]
+monthly$'5/1/2006' <- monthly$Y2006 * monthly[,37]
+monthly$'6/1/2006' <- monthly$Y2006 * monthly[,38]
+monthly$'7/1/2006' <- monthly$Y2006 * monthly[,39]
+monthly$'8/1/2006' <- monthly$Y2006 * monthly[,40]
+monthly$'9/1/2006' <- monthly$Y2006 * monthly[,41]
+monthly$'10/1/2006' <- monthly$Y2006 * monthly[,42]
+monthly$'11/1/2006' <- monthly$Y2006 * monthly[,43]
+monthly$'12/1/2006' <- monthly$Y2006 * monthly[,44]
+
+
+monthly$'1/1/2007' <- monthly$Y2007 * monthly[,33]
+monthly$'2/1/2007' <- monthly$Y2007 * monthly[,34]
+monthly$'3/1/2007' <- monthly$Y2007 * monthly[,35]
+monthly$'4/1/2007' <- monthly$Y2007 * monthly[,36]
+monthly$'5/1/2007' <- monthly$Y2007 * monthly[,37]
+monthly$'6/1/2007' <- monthly$Y2007 * monthly[,38]
+monthly$'7/1/2007' <- monthly$Y2007 * monthly[,39]
+monthly$'8/1/2007' <- monthly$Y2007 * monthly[,40]
+monthly$'9/1/2007' <- monthly$Y2007 * monthly[,41]
+monthly$'10/1/2007' <- monthly$Y2007 * monthly[,42]
+monthly$'11/1/2007' <- monthly$Y2007 * monthly[,43]
+monthly$'12/1/2007' <- monthly$Y2007 * monthly[,44]
+
+
+monthly$'1/1/2008' <- monthly$Y2008 * monthly[,33]
+monthly$'2/1/2008' <- monthly$Y2008 * monthly[,34]
+monthly$'3/1/2008' <- monthly$Y2008 * monthly[,35]
+monthly$'4/1/2008' <- monthly$Y2008 * monthly[,36]
+monthly$'5/1/2008' <- monthly$Y2008 * monthly[,37]
+monthly$'6/1/2008' <- monthly$Y2008 * monthly[,38]
+monthly$'7/1/2008' <- monthly$Y2008 * monthly[,39]
+monthly$'8/1/2008' <- monthly$Y2008 * monthly[,40]
+monthly$'9/1/2008' <- monthly$Y2008 * monthly[,41]
+monthly$'10/1/2008' <- monthly$Y2008 * monthly[,42]
+monthly$'11/1/2008' <- monthly$Y2008 * monthly[,43]
+monthly$'12/1/2008' <- monthly$Y2008 * monthly[,44]
+
+
+monthly$'1/1/2009' <- monthly$Y2009 * monthly[,33]
+monthly$'2/1/2009' <- monthly$Y2009 * monthly[,34]
+monthly$'3/1/2009' <- monthly$Y2009 * monthly[,35]
+monthly$'4/1/2009' <- monthly$Y2009 * monthly[,36]
+monthly$'5/1/2009' <- monthly$Y2009 * monthly[,37]
+monthly$'6/1/2009' <- monthly$Y2009 * monthly[,38]
+monthly$'7/1/2009' <- monthly$Y2009 * monthly[,39]
+monthly$'8/1/2009' <- monthly$Y2009 * monthly[,40]
+monthly$'9/1/2009' <- monthly$Y2009 * monthly[,41]
+monthly$'10/1/2009' <- monthly$Y2009 * monthly[,42]
+monthly$'11/1/2009' <- monthly$Y2009 * monthly[,43]
+monthly$'12/1/2009' <- monthly$Y2009 * monthly[,44]
+
+monthly$'1/1/2010' <- monthly$Y2010 * monthly[,33]
+monthly$'2/1/2010' <- monthly$Y2010 * monthly[,34]
+monthly$'3/1/2010' <- monthly$Y2010 * monthly[,35]
+monthly$'4/1/2010' <- monthly$Y2010 * monthly[,36]
+monthly$'5/1/2010' <- monthly$Y2010 * monthly[,37]
+monthly$'6/1/2010' <- monthly$Y2010 * monthly[,38]
+monthly$'7/1/2010' <- monthly$Y2010 * monthly[,39]
+monthly$'8/1/2010' <- monthly$Y2010 * monthly[,40]
+monthly$'9/1/2010' <- monthly$Y2010 * monthly[,41]
+monthly$'10/1/2010' <- monthly$Y2010 * monthly[,42]
+monthly$'11/1/2010' <- monthly$Y2010 * monthly[,43]
+monthly$'12/1/2010' <- monthly$Y2010 * monthly[,44]
+
+monthly$'1/1/2011' <- monthly$Y2011 * monthly[,33]
+monthly$'2/1/2011' <- monthly$Y2011 * monthly[,34]
+monthly$'3/1/2011' <- monthly$Y2011 * monthly[,35]
+monthly$'4/1/2011' <- monthly$Y2011 * monthly[,36]
+monthly$'5/1/2011' <- monthly$Y2011 * monthly[,37]
+monthly$'6/1/2011' <- monthly$Y2011 * monthly[,38]
+monthly$'7/1/2011' <- monthly$Y2011 * monthly[,39]
+monthly$'8/1/2011' <- monthly$Y2011 * monthly[,40]
+monthly$'9/1/2011' <- monthly$Y2011 * monthly[,41]
+monthly$'10/1/2011' <- monthly$Y2011 * monthly[,42]
+monthly$'11/1/2011' <- monthly$Y2011 * monthly[,43]
+monthly$'12/1/2011' <- monthly$Y2011 * monthly[,44]
+
+monthly$'1/1/2012' <- monthly$Y2012 * monthly[,33]
+monthly$'2/1/2012' <- monthly$Y2012 * monthly[,34]
+monthly$'3/1/2012' <- monthly$Y2012 * monthly[,35]
+monthly$'4/1/2012' <- monthly$Y2012 * monthly[,36]
+monthly$'5/1/2012' <- monthly$Y2012 * monthly[,37]
+monthly$'6/1/2012' <- monthly$Y2012 * monthly[,38]
+monthly$'7/1/2012' <- monthly$Y2012 * monthly[,39]
+monthly$'8/1/2012' <- monthly$Y2012 * monthly[,40]
+monthly$'9/1/2012' <- monthly$Y2012 * monthly[,41]
+monthly$'10/1/2012' <- monthly$Y2012 * monthly[,42]
+monthly$'11/1/2012' <- monthly$Y2012 * monthly[,43]
+monthly$'12/1/2012' <- monthly$Y2012 * monthly[,44]
+
+monthly$'1/1/2013' <- monthly$Y2013 * monthly[,33]
+monthly$'2/1/2013' <- monthly$Y2013 * monthly[,34]
+monthly$'3/1/2013' <- monthly$Y2013 * monthly[,35]
+monthly$'4/1/2013' <- monthly$Y2013 * monthly[,36]
+monthly$'5/1/2013' <- monthly$Y2013 * monthly[,37]
+monthly$'6/1/2013' <- monthly$Y2013 * monthly[,38]
+monthly$'7/1/2013' <- monthly$Y2013 * monthly[,39]
+monthly$'8/1/2013' <- monthly$Y2013 * monthly[,40]
+monthly$'9/1/2013' <- monthly$Y2013 * monthly[,41]
+monthly$'10/1/2013' <- monthly$Y2013 * monthly[,42]
+monthly$'11/1/2013' <- monthly$Y2013 * monthly[,43]
+monthly$'12/1/2013' <- monthly$Y2013 * monthly[,44]
+
+monthly$'1/1/2014' <- monthly$Y2014 * monthly[,33]
+monthly$'2/1/2014' <- monthly$Y2014 * monthly[,34]
+monthly$'3/1/2014' <- monthly$Y2014 * monthly[,35]
+monthly$'4/1/2014' <- monthly$Y2014 * monthly[,36]
+monthly$'5/1/2014' <- monthly$Y2014 * monthly[,37]
+monthly$'6/1/2014' <- monthly$Y2014 * monthly[,38]
+monthly$'7/1/2014' <- monthly$Y2014 * monthly[,39]
+monthly$'8/1/2014' <- monthly$Y2014 * monthly[,40]
+monthly$'9/1/2014' <- monthly$Y2014 * monthly[,41]
+monthly$'10/1/2014' <- monthly$Y2014 * monthly[,42]
+monthly$'11/1/2014' <- monthly$Y2014 * monthly[,43]
+monthly$'12/1/2014' <- monthly$Y2014 * monthly[,44]
+
+monthly$'1/1/2015' <- monthly$Y2015 * monthly[,33]
+monthly$'2/1/2015' <- monthly$Y2015 * monthly[,34]
+monthly$'3/1/2015' <- monthly$Y2015 * monthly[,35]
+monthly$'4/1/2015' <- monthly$Y2015 * monthly[,36]
+monthly$'5/1/2015' <- monthly$Y2015 * monthly[,37]
+monthly$'6/1/2015' <- monthly$Y2015 * monthly[,38]
+monthly$'7/1/2015' <- monthly$Y2015 * monthly[,39]
+monthly$'8/1/2015' <- monthly$Y2015 * monthly[,40]
+monthly$'9/1/2015' <- monthly$Y2015 * monthly[,41]
+monthly$'10/1/2015' <- monthly$Y2015 * monthly[,42]
+monthly$'11/1/2015' <- monthly$Y2015 * monthly[,43]
+monthly$'12/1/2015' <- monthly$Y2015 * monthly[,44]
+
+monthly$sector <- 'aq'
+monthly <- select(monthly, 1,417,45:416)
+aq.historic.monthly <- monthly
+
+
+#--------------------------- Aggregate Sectors -----------------------------
+#This section aggregates sector water uses as needed by WEAP. (from Ryan's WEAP code)
+#consumption.historic is total demand
+#consumption1.historic is high value use (D, IC, TH)
+#consumption2.historic is low value use (IR, LS, AQ)
+
+consumption.historic <- rbind(dp.historic.monthly,ic.historic.monthly,ir.historic.monthly,ls.historic.monthly,th.historic.monthly,aq.historic.monthly)
+consumption.historic <- consumption.historic[-c(2)]
+consumption.historic <- consumption.historic %>% group_by(HUC4) %>% summarise_all(funs(sum))
+
+consumption1.historic <- rbind(dp.historic.monthly,ic.historic.monthly,th.historic.monthly)
+consumption1.historic <- consumption1.historic[-c(2)]
+consumption1.historic <- consumption1.historic %>% group_by(HUC4) %>% summarise_all(funs(sum))
+
+consumption2.historic <- rbind(ir.historic.monthly,ls.historic.monthly,aq.historic.monthly)
+consumption2.historic <- consumption2.historic[-c(2)]
+consumption2.historic <- consumption2.historic %>% group_by(HUC4) %>% summarise_all(funs(sum))
+
+
+#----------------- Transpose data frames ------------
+
+# Now transpose data frames to match WEAP format (also from Ryan's code)
+
+transpose <- function(DF)
+{
+  DF <- t(DF)
+  DF <- as.data.frame(DF)
+  
+  colnames(DF) = DF[1, ]
+  DF = DF[-1, ] 
+  return(DF)
+}
+
+consumption_historic <- transpose(consumption.historic)
+consumption1_historic <- transpose(consumption1.historic)
+consumption2_historic <- transpose(consumption2.historic)
+
+consumption_historic <- consumption_historic[,c(length(colnames(consumption_historic)):1)]
+consumption1_historic <- consumption1_historic[,c(length(colnames(consumption_historic)):1)]
+consumption2_historic <- consumption2_historic[,c(length(colnames(consumption_historic)):1)]
+
+
+# write.csv(consumption_historic, file = "C:/Users/shaun/Desktop/USFS/WaterDemand/WaterDemand/TestingHistoricalMonthly/Historic_outputs/consumption_historic.csv")
+# write.csv(consumption1_historic, file = "C:/Users/shaun/Desktop/USFS/WaterDemand/WaterDemand/TestingHistoricalMonthly/Historic_outputs/consumption1_historic.csv")
+# write.csv(consumption2_historic, file = "C:/Users/shaun/Desktop/USFS/WaterDemand/WaterDemand/TestingHistoricalMonthly/Historic_outputs/consumption2_historic.csv")
+
+
+# Next step will be to combine historic consumption and projections for WEAP
+
+
