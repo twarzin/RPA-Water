@@ -1,10 +1,14 @@
+# Remove objects from environment
 rm(list = ls())
 
 # set working directory to file location
 # for Travis:
-setwd("~/5_RPA/2020 Assessment/Demand model/WEAP Input Creation")
+# setwd("~/5_RPA/2020 Assessment/Demand model/WEAP Input Creation")
 # for Shaunie
-#setwd("C:/Users/shaun/Desktop/USFS/WaterDemand/WaterDemand/WEAPInputCreation")
+# setwd("C:/Users/shaun/Desktop/USFS/WaterDemand/WaterDemand/WEAPInputCreation")
+# Set working directory to file location (for Pam), forward slashes, not escape char.
+# setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
+
 
 library(tidyr)
 library(ggplot2)
@@ -12,85 +16,38 @@ library(reshape2)
 library(dplyr)
 library(data.table)
 
-################## READ IN DATA ###############
+# Define models. -----------------------------------------------------------------------------------
+# * User input to define models ('<-' is an 'assignment operator', shortcut keys are 'Alt-') -------
+# carbon <- readline(prompt="Enter carbon assumption (45 or 85): ")
+# gcm <- readline(prompt="Enter global climate model (cnrm_c5, hadgem, ipsl_cm5a, mri_cgcm3, noresm, or base): ")
+# *  Define models manually. -----------------------------------------------------------------------
+#    carbon=45 or carbon=85 depending on which carbon climate model
+carbon <- 85  # Assign the value 85 to the 'carbon' variable.
+#    Set the global climate model (gcm).
+#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
+gcm <- "noresm"  # Assign the value '85'noresm' to the 'gcm' variable.
 
+# Load population and withdrawal data. -------------------------------------------------------------
+#    Population by FIPS: fields are ID (x), fips, year, pop, ssp, inc; 860,440 records.
 pop.inc <- read.csv("popinc_proj.csv")
+#    Water withdrawals in 2015 (3,075 records):
+#    fields are x, fips, state, county, year, and 22 data fields
 wd.2015 <- read.csv("wd2015.csv")
 # cu.ratios <- read.csv("consumptive use.csv")
 
+# Choose variables that will be common throughout all years. ---------------------------------------
+#    (handy for merging later).
+#    Select 4 fields from the wd.2015 data and save them in a dataset called 'ew'.
+ew <- wd.2015 %>%
+  select(fips, EastWest, DP.growth, DP.decay)
 
-# water <- merge(wd.2015, cu.ratios, by="fips")
-# wd.2015$PD <- wd.2015$Public + wd.2015$Domestic
+# Load new precip data based on choices for the "carbon" and "gcm" variables. ----------------------
+#    (These statements define the new.precip data based on the 'carbon and 'gcm' variable values.)
+#    new.precip has 672 records, fields are date, year (data range from 2015 to 2070),
+#    month (data include all 12), and 3,110 columns (one for each fips).
+#    F in the statements below indicates the logical operator 'FALSE'. Can be spelled
+#    out--in all caps--or just use F. Same thing with TRUE or T.
 
-# pop1 <- read.csv("pop_ssp1.csv")
-# pop2 <- read.csv("pop_ssp2.csv")
-# pop3 <- read.csv("pop_ssp3.csv")
-# pop4 <- read.csv("pop_ssp4.csv")
-# pop5 <- read.csv("pop_ssp5.csv")
-# 
-# water1 <- merge(water, pop1, by="fips")
-# water2 <- merge(water, pop2, by="fips")
-# water3 <- merge(water, pop3, by="fips")
-# water4 <- merge(water, pop4, by="fips")
-# water5 <- merge(water, pop5, by="fips")
-
-############################## SET MODELS ##########################################
-#IMPORTANT: need to set the carbon assumption and global climate model
-#-----------------------------------------------------------------------------------.
-#carbon=45 or carbon=85 depending on which carbon climate model
-carbon <- 85
-
-#set the global climate model. options: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", "base"
-gcm <- "noresm"
-
-# #this is messy, but brings in the corresponding climate data based on setting the model above
-# if(carbon==45 & gcm=="cnrm_c5"){
-# precip <-read.csv("ClimateData/p_cnrm_c5_45.csv", check.names=F)
-# pet <-read.csv("ClimateData/pet_cnrm_c5_45.csv", check.names=F)
-# }
-# if(carbon==85 & gcm=="cnrm_c5"){
-#   precip <-read.csv("ClimateData/p_cnrm_c5_85.csv", check.names=F)
-#   pet <-read.csv("ClimateData/pet_cnrm_c5_85.csv", check.names=F)
-# }
-# if(carbon==45 & gcm=="hadgem"){
-#   precip <-read.csv("ClimateData/p_hadgem_45.csv", check.names=F)
-#   pet <-read.csv("ClimateData/pet_hadgem_45.csv", check.names=F)
-# }
-# if(carbon==85 & gcm=="hadgem"){
-#   precip <-read.csv("ClimateData/p_hadgem_85.csv", check.names=F)
-#   pet <-read.csv("ClimateData/pet_hadgem_85.csv", check.names=F)
-# }
-# if(carbon==45 & gcm=="ipsl_cm5a"){
-#   precip <-read.csv("ClimateData/p_ipsl_cm5a_45.csv", check.names=F)
-#   pet <-read.csv("ClimateData/pet_ipsl_cm5a_45.csv", check.names=F)
-# }
-# if(carbon==85 & gcm=="ipsl_cm5a"){
-#   precip <-read.csv("ClimateData/p_ipsl_cm5a_85.csv", check.names=F)
-#   pet <-read.csv("ClimateData/pet_ipsl_cm5a_85.csv", check.names=F)
-# }
-# if(carbon==45 & gcm=="mri_cgcm3"){
-#   precip <-read.csv("ClimateData/p_mri_cgcm3_45.csv", check.names=F)
-#   pet <-read.csv("ClimateData/pet_mri_cgcm3_45.csv", check.names=F)
-# }
-# if(carbon==85 & gcm=="mri_cgcm3"){
-#   precip <-read.csv("ClimateData/p_mri_cgcm3_85.csv", check.names=F)
-#   pet <-read.csv("ClimateData/pet_mri_cgcm3_85.csv", check.names=F)
-# }
-# if(carbon==45 & gcm=="noresm"){
-#   precip <-read.csv("ClimateData/p_noresm_45.csv", check.names=F)
-#   pet <-read.csv("ClimateData/pet_noresm_45.csv", check.names=F)
-# }
-# if(carbon==85 & gcm=="noresm"){
-#   precip <-read.csv("ClimateData/p_noresm_85.csv", check.names=F)
-#   pet <-read.csv("ClimateData/pet_noresm_85.csv", check.names=F)
-# }
-# #if(gcm=="base"){
-# #  precip <-read.csv("ClimateData/baseline.csv", check.names=F)
-# #  pet <-read.csv("ClimateData/baselinepet.csv", check.names=F)
-# #}
-
-
-### read in new precip data
 
 if(carbon==45 & gcm=="cnrm_c5"){
   new.precip <-read.csv("CountyPrecip/Monthly/pr_CNRM_CM5rcp45_month.csv", check.names=F)
@@ -127,39 +84,78 @@ if(carbon==85 & gcm=="noresm"){
   new.precip <-read.csv("CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
 }
 
-
-# We should call summer precip growing season precip
+# Make a new table where columns = FIPS, rows = year -----------------------------------------------
+#    Same as the original new.precip, except the date column is gone (3,109 columns).
+#    Select from new.precip: all rows and all columns except the first one ('-1' = 'date').
 new.precip <- new.precip[,-1]
-summer.precip <- subset(new.precip, Month >= 4 & Month <= 9) %>% group_by(Year) %>% summarise_all(sum)
+
+# Take the new.precip data and select the summer months only. Then sum ppt data --------------------
+#    by year (56 records, 3109 columns). We should rename 'summer.precip' to 'growing_season_precip'.
+#    The month column values are all 39, which is the sum of 4, 5, 6, 7, 8, and 9.
+#    The fips columns have the sum of annual ppt for each county, for every year from 2015 to 2070.
+summer.precip <- subset(new.precip, Month >= 4 & Month <= 9) %>%
+  group_by(Year) %>%
+  summarise_all(sum)
+
+# Eliminate the month column from the summper.precip data.
+#    The values are no longer useful since they all equal 39.
+#    Select all rows and all columns except the second one ('-2' = 'month').
 summer.precip <- summer.precip[,-2]
 
-# transpose
-
+# Transpose the summer.precip data so that FIPS are in rows and years are in columns. --------------
+#    Values in the first row will be the years and field names are assigned as 'V[n]'.
+#    Transpose columns and rows in summer.precip, save as summer.t.
 summer.t <- t(summer.precip)
+#    Not sure what this does - summer.t looks the same.
 summer.t <- as.data.frame(summer.t)
+#    Renames columns using values in the 1st row of data ([1, ] references the 1st row).
 colnames(summer.t) = summer.t[1, ]
-summer.t = summer.t[-1, ] 
+#    Now that you've renamed the columns, eliminate the first row with the year values.
+#    Removes the 1st-row year labels (selects all rows except the first and all columns).
+summer.t = summer.t[-1, ]
+#    Saves the transposed data back to summer.precip. Both are now the same.
 summer.precip <- summer.t
 
-# there has to be a better way to do this, perhaps outside of R
-# then import summer precip as a data file
-sy15 <- summer.precip %>% select('2015') 
+# Import summer precip as a data file --------------------------------------------------------------
+#    (there has to be a better way to do this, perhaps outside of R)
+#    Select just the data for 2015 and save it to 'sy15'. 2 columns - fips and 2015 ppt data.
+sy15 <- summer.precip %>% select('2015')
+#    Renames the '2015' column to 'summer.precip' (can we replace '.' with '_'?).
 colnames(sy15) = 'summer.precip'
+#    The element of sy15 named fips. Adds a 3rd column called 'fips' and sets it equal to the row names.
 sy15$fips <- rownames(sy15)
+#    The element of sy15 named year. Adds a 4th column called 'year' and sets it equal to 2015.
 sy15$year <- 2015
 
-base <- sy15 %>% select(fips, summer.precip)  # base year precip to calc changes
-colnames(base) = c("fips", "s.precp0")
+# Load sy15 data into 'base'. Select the columns fips and summer.precip.
+base <- sy15 %>%
+  select(fips, summer.precip)  # base year precip to calc changes
+colnames(base) = c("fips", "s.precp0")  # Defines the field names as 'fips' and 's.precp0'.
 
-sy16 <- summer.precip %>% select('2016') 
+# Select the 2016 column from summer.precip and assign it to 'sy16'.
+sy16 <- summer.precip %>%
+  select('2016')
+
+# Rename the 2016 field to summer.precip.
 colnames(sy16) = 'summer.precip'
+
+# Add the fips and year columns and set their values.
+#    The element of sy16 named fips. Set it equal to the row names.
 sy16$fips <- rownames(sy16)
+#    The element of sy16 named year. Set it equal to '2016'.
 sy16$year <- 2016
 
+# Concatenate (like the ArcGIS tool 'Append') the sy15 and sy16 data tables into one.
+#    The year column includes summer.precip data for 2015 and 2016.
 sp.all <- rbind(sy15, sy16)
-sp.all <- merge(sp.all, base, by="fips")
+
+# Merge two tables (join sp.all to base by fips). --------------------------------------------------
+sp.all <- merge(sp.all, base, by="fips")  # The 's.precp0' data is added to sp.all.
+
+# Add and calculate a 'delta.sprecip' field for change in precip values.
+#    Calculate change in summer precip from 2015 to 2016:
+#    'delta.sprecip' = 'summer.precip - 's.precp0'
 sp.all$delta.sprecip <- sp.all$summer.precip - sp.all$s.precp0
- 
 
 
 
@@ -167,11 +163,6 @@ sp.all$delta.sprecip <- sp.all$summer.precip - sp.all$s.precp0
 ######################################################
 
 #######################################################
-
-
-#choosing variables that will be common throughout years. Handy for merging later
-ew <- wd.2015 %>% select(fips, EastWest, DP.growth, DP.decay)
-
 
 
 
@@ -876,6 +867,26 @@ if (carbon==85) {
 if (gcm=="base"){
   climate[,c(114:169)] <- 0
 }
+
+
+
+
+# Clean up -----------------------------------------------------------------------------------------
+#    Clear packages
+detach("packages:datasets", unload = TRUE)  # For base
+
+#    Clear plots
+dev.off()  # But only if there is a plot
+
+#    Clear console
+cat("\014")  # Same as Ctrl-L
+
+#    Clear mind :o)
+
+
+
+
+
 
 
 # #----------------------------------------------------------------------------------------------------.
