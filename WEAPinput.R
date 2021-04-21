@@ -347,76 +347,76 @@ linapprox <- function (DF)
 }
 
 
-## DP -- Travis' attampt
-
-demand.ssp1 <- read.csv('inputs_ssp1.csv')
-demand.ssp1$dpu <- NA
-
-demand.ssp1 <- merge(demand.ssp1, pop1, by='fips')
-
-demand.2020 <- demand.ssp1
-demand.2020$year = 2020
-demand.2020$pop <- demand.2020$pr_pop_2020
-demand.2020$inc.in.thousands <- NA
-demand.2020$AcresIrrig <- NA
-
-demand.2025 <- demand.2020
-demand.2030 <- demand.2020
-demand.2035 <- demand.2020
-demand.2040 <- demand.2020
-demand.2045 <- demand.2020
-demand.2050 <- demand.2020
-demand.2055 <- demand.2020
-demand.2060 <- demand.2020
-demand.2065 <- demand.2020
-demand.2070 <- demand.2020
-
-demand.2025$year <- 2025
-demand.2030$year <- 2030
-demand.2035$year <- 2035
-demand.2040$year <- 2040
-demand.2045$year <- 2045
-demand.2050$year <- 2050
-demand.2055$year <- 2055
-demand.2060$year <- 2060
-demand.2065$year <- 2065
-demand.2070$year <- 2070
-
-demand.2025$pop <- demand.2025$pr_pop_2025
-demand.2030$pop <- demand.2030$pr_pop_2030
-demand.2035$pop <- demand.2035$pr_pop_2035
-demand.2040$pop <- demand.2040$pr_pop_2040
-demand.2045$pop <- demand.2045$pr_pop_2045
-demand.2050$pop <- demand.2050$pr_pop_2050
-demand.2055$pop <- demand.2055$pr_pop_2055
-demand.2060$pop <- demand.2060$pr_pop_2060
-demand.2065$pop <- demand.2065$pr_pop_2065
-demand.2070$pop <- demand.2070$pr_pop_2070
-
-demand.ssp1 <- rbind(demand.ssp1, demand.2020, demand.2025, demand.2030,
-                     demand.2035, demand.2040, demand.2045, demand.2050,
-                     demand.2055, demand.2060, demand.2065, demand.2070)
-
-# this function is not quite right
-demand.ssp1$dpu <- demand.ssp1$DP.perUnit * 
-  (1+demand.ssp1$DP.growth*(1+demand.ssp1$DP.decay)^(demand.ssp1$year-2015))^5
-
-demand.ssp1$dpwd <- demand.ssp1$pop * demand.ssp1$DP.perUnit
-demand.ssp1$dpcu <- demand.ssp1$dpwd * demand.ssp1$DP.cu.ratio
-
-## NEED to add climate effects
-
-demand.east <- subset(demand.ssp1, EastWest == "East")
-demand.west <- subset(demand.ssp1, EastWest == "West")
-dpu.summary <- aggregate(demand.ssp1[, c('dpu')], list(demand.ssp1$year), mean)
-dpu.east <- aggregate(demand.east[, c('dpu')], list(demand.east$year), mean)
-dpu.west <- aggregate(demand.west[, c('dpu')], list(demand.west$year), mean)
-
-plot(dpu.east)
-plot(dpu.west)
-plot(dpu.summary)
-
-### ---- end Travis' attempt
+# ## DP -- Travis' attampt
+# 
+# demand.ssp1 <- read.csv('inputs_ssp1.csv')
+# demand.ssp1$dpu <- NA
+# 
+# demand.ssp1 <- merge(demand.ssp1, pop1, by='fips')
+# 
+# demand.2020 <- demand.ssp1
+# demand.2020$year = 2020
+# demand.2020$pop <- demand.2020$pr_pop_2020
+# demand.2020$inc.in.thousands <- NA
+# demand.2020$AcresIrrig <- NA
+# 
+# demand.2025 <- demand.2020
+# demand.2030 <- demand.2020
+# demand.2035 <- demand.2020
+# demand.2040 <- demand.2020
+# demand.2045 <- demand.2020
+# demand.2050 <- demand.2020
+# demand.2055 <- demand.2020
+# demand.2060 <- demand.2020
+# demand.2065 <- demand.2020
+# demand.2070 <- demand.2020
+# 
+# demand.2025$year <- 2025
+# demand.2030$year <- 2030
+# demand.2035$year <- 2035
+# demand.2040$year <- 2040
+# demand.2045$year <- 2045
+# demand.2050$year <- 2050
+# demand.2055$year <- 2055
+# demand.2060$year <- 2060
+# demand.2065$year <- 2065
+# demand.2070$year <- 2070
+# 
+# demand.2025$pop <- demand.2025$pr_pop_2025
+# demand.2030$pop <- demand.2030$pr_pop_2030
+# demand.2035$pop <- demand.2035$pr_pop_2035
+# demand.2040$pop <- demand.2040$pr_pop_2040
+# demand.2045$pop <- demand.2045$pr_pop_2045
+# demand.2050$pop <- demand.2050$pr_pop_2050
+# demand.2055$pop <- demand.2055$pr_pop_2055
+# demand.2060$pop <- demand.2060$pr_pop_2060
+# demand.2065$pop <- demand.2065$pr_pop_2065
+# demand.2070$pop <- demand.2070$pr_pop_2070
+# 
+# demand.ssp1 <- rbind(demand.ssp1, demand.2020, demand.2025, demand.2030,
+#                      demand.2035, demand.2040, demand.2045, demand.2050,
+#                      demand.2055, demand.2060, demand.2065, demand.2070)
+# 
+# # this function is not quite right
+# demand.ssp1$dpu <- demand.ssp1$DP.perUnit * 
+#   (1+demand.ssp1$DP.growth*(1+demand.ssp1$DP.decay)^(demand.ssp1$year-2015))^5
+# 
+# demand.ssp1$dpwd <- demand.ssp1$pop * demand.ssp1$DP.perUnit
+# demand.ssp1$dpcu <- demand.ssp1$dpwd * demand.ssp1$DP.cu.ratio
+# 
+# ## NEED to add climate effects
+# 
+# demand.east <- subset(demand.ssp1, EastWest == "East")
+# demand.west <- subset(demand.ssp1, EastWest == "West")
+# dpu.summary <- aggregate(demand.ssp1[, c('dpu')], list(demand.ssp1$year), mean)
+# dpu.east <- aggregate(demand.east[, c('dpu')], list(demand.east$year), mean)
+# dpu.west <- aggregate(demand.west[, c('dpu')], list(demand.west$year), mean)
+# 
+# plot(dpu.east)
+# plot(dpu.west)
+# plot(dpu.summary)
+# 
+# ### ---- end Travis' attempt
 
 #This function calculates dp projections out to 2070 using function from Tom's paper (Foti, Ramirez, Brown, 2010 FS RPA Assessment)
 
@@ -465,12 +465,16 @@ return(water1)
 #-----------------------------------------
 #CLIMATE EFFECTS 
 #-----------------------------------------
-#Definitions from function used in Tom's paper
-#plantwater is "a factor for the change due to the direct effect of rising atmospheric CO2 levels on plant water use"
-#precip is "change in effective precipitation, the portion of total growing season precipitation that is useable by the plant, from 2005 to the future year, in cm/y, computed at the basin scale"
-#mup is "the change in DP gallons per capita per day withdrawn for a 1 cm increase in P'  from 2005 to a future year, a constant equal to ???1.415"
-#et is "the change potential evapotranspiration during the growing season, from 2005 to the future year, in cm/y, computed at the basin scale"
-#muet is "the change in DP gallons per capita per day withdrawn for a 1 cm increase in ETp from 2005 to a future year, a constant equal to 0.778"
+# Definitions from function used in Tom's paper
+# plantwater is "a factor for the change due to the direct effect of rising atmospheric
+# CO2 levels on plant water use"
+# precip is "change in effective precipitation, the portion of total growing 
+# season precipitation that is useable by the plant, from 2005 to the future year, 
+# in cm/y, computed at the basin scale"
+# mup is "the change in DP gallons per capita per day withdrawn for a 1 cm increase in P'  from 2005 to a future year, a constant equal to ???1.415"
+# et is "the change potential evapotranspiration during the growing season, from 2005 
+# to the future year, in cm/y, computed at the basin scale"
+# muet is "the change in DP gallons per capita per day withdrawn for a 1 cm increase in ETp from 2005 to a future year, a constant equal to 0.778"
 
 
 #-----------------------------------------
@@ -548,7 +552,8 @@ colnames(outdoor) <- c("fips","outprop")
 #bringing in effective precipitation
 #-----------------------------------------
 #functions for effective precipitation
-#converts to effective precipitation based on the function in Tom's paper. Note that input data is mm/month and the output needs to be in cm/month, hence the dividing by 10.
+#converts to effective precipitation based on the function in Tom's paper. Note that  
+# input data is mm/month and the output needs to be in cm/month, hence the dividing by 10.
 effectiveprecip <- function(df){
   for (i in 2:length(colnames(df))){
     for (j in 1:length(rownames(df))){
@@ -791,22 +796,6 @@ placeholder <- function(fuel1)
 fuel <- read.csv("inputs_ssp1.csv")
 fuel <- placeholder(fuel)
 
-#incorporate climate effects for irrigation sector, this function comes from Tom's paper
-climateir <- function(climate1)
-{
-  for (n in 2:57){
-    j <- n + 56
-    k <- j + 56
-    climate1[,n] <- (-climate1[,n]) + (climate1[,j])*(1-climate1[,k])
-  }
-  
-  climate1 <- climate1[,c(1:57,114:169)]
-  colnames(climate1) <- c("fips","climate15","climate16","climate17","climate18","climate19","climate20","climate21","climate22","climate23","climate24","climate25","climate26","climate27","climate28","climate29","climate30","climate31","climate32","climate33","climate34","climate35","climate36","climate37","climate38","climate39","climate40","climate41","climate42","climate43","climate44","climate45","climate46","climate47","climate48","climate49","climate50","climate51","climate52","climate53","climate54","climate55","climate56","climate57","climate58","climate59","climate60","climate61","climate62","climate63","climate64","climate65","climate66","climate67","climate68","climate69","climate70",
-                          "plantwater15","plantwater16","plantwater17","plantwater18","plantwater19","plantwater20","plantwater21","plantwater22","plantwater23","plantwater24","plantwater25","plantwater26","plantwater27","plantwater28","plantwater29","plantwater30","plantwater31","plantwater32","plantwater33","plantwater34","plantwater35","plantwater36","plantwater37","plantwater38","plantwater39","plantwater40","plantwater41","plantwater42","plantwater43","plantwater44","plantwater45","plantwater46","plantwater47","plantwater48","plantwater49","plantwater50","plantwater51","plantwater52","plantwater53","plantwater54","plantwater55","plantwater56","plantwater57","plantwater58","plantwater59","plantwater60","plantwater61","plantwater62","plantwater63","plantwater64","plantwater65","plantwater66","plantwater67","plantwater68","plantwater69","plantwater70")
-  return(climate1)
-}
-climate.ir <- climateir(climate)
-
 #----------------------------------------------------------------------------------------------------
 
 #bring in water inputs, population, and income
@@ -931,34 +920,292 @@ ir<-ir %>% mutate(ir.wpu.2060 = ir.wpu.2055*(1+IR.growth*(1+IR.decay)^(2060-2015
 ir<-ir %>% mutate(ir.wpu.2065 = ir.wpu.2060*(1+IR.growth*(1+IR.decay)^(2065-2015))^5 )
 ir<-ir %>% mutate(ir.wpu.2070 = ir.wpu.2065*(1+IR.growth*(1+IR.decay)^(2070-2015))^5 )
 
-ir <- merge(ir, acre, by="fips")
-ir <- ir[,c(1,5,2,6:16,18:29)]
-for (n in 3:14){
-  j <- n + 12
-  ir[,n] <- as.numeric(ir[,n])
-  ir[,j] <- as.numeric(ir[,j])
-  ir[,n] <- (ir[,n])*ir[,j]
-}
-ir$sector <- "ir"
-ir <- ir[,c(1,27,3:14)]
-colnames(ir) <- c("fips","sector", "Y2015","Y2020","Y2025","Y2030","Y2035","Y2040","Y2045","Y2050","Y2055","Y2060","Y2065","Y2070")
-ir <- linapprox(ir)
 
 ir <- merge(ir, acre, by="fips")
-ir <- ir[,-59]
-for (n in 59:69){
-  j <- n+1
-  for (r in 1:5){
-  k <- 5*(n-59) + 70 + r
-  ir[,k] <- ir[,n] + r*(ir[,j]-ir[,n])/5
-  }
+
+# exporting to work with this in Excel
+write.csv(ir, 'irout.csv')
+
+
+# ag withdrawals - this was done by an indexed loop
+ir<-ir %>% mutate(ir.wd.2020 = ir.wpu.2020*pr_acre_2020)
+ir<-ir %>% mutate(ir.wd.2025 = ir.wpu.2025*pr_acre_2025)
+ir<-ir %>% mutate(ir.wd.2030 = ir.wpu.2030*pr_acre_2030)
+ir<-ir %>% mutate(ir.wd.2035 = ir.wpu.2035*pr_acre_2035)
+ir<-ir %>% mutate(ir.wd.2040 = ir.wpu.2040*pr_acre_2040)
+ir<-ir %>% mutate(ir.wd.2045 = ir.wpu.2045*pr_acre_2045)
+ir<-ir %>% mutate(ir.wd.2050 = ir.wpu.2050*pr_acre_2050)
+ir<-ir %>% mutate(ir.wd.2055 = ir.wpu.2055*pr_acre_2055)
+ir<-ir %>% mutate(ir.wd.2060 = ir.wpu.2060*pr_acre_2060)
+ir<-ir %>% mutate(ir.wd.2065 = ir.wpu.2065*pr_acre_2065)
+ir<-ir %>% mutate(ir.wd.2070 = ir.wpu.2070*pr_acre_2070)
+
+# 
+# ir <- ir[,c(1,2,5,6:16,18:29)]
+# 
+# for (n in 3:14){
+#   j <- n + 12
+#   ir[,n] <- as.numeric(ir[,n])
+#   ir[,j] <- as.numeric(ir[,j])
+#   ir[,n] <- (ir[,n])*ir[,j]
+# }
+
+ir$sector <- "ir"
+
+# I think the columns have to be in a specific format for linear approximation to work
+# there were some errors around here, so I'm just going brute force calculations
+
+### Currently missing eithdrawals for 2015 in the dataframe
+
+# DF$Y2016 <- DF$Y2015 + 1*(DF$Y2020 - DF$Y2015)/5
+# DF$Y2017 <- DF$Y2015 + 2*(DF$Y2020 - DF$Y2015)/5
+# DF$Y2018 <- DF$Y2015 + 3*(DF$Y2020 - DF$Y2015)/5
+# DF$Y2019 <- DF$Y2015 + 4*(DF$Y2020 - DF$Y2015)/5
+
+ir<-ir %>% mutate(ir.wd.2021 = ir.wd.2020 + (1/5)*(ir.wd.2025 - ir.wd.2020))
+ir<-ir %>% mutate(ir.wd.2022 = ir.wd.2020 + (2/5)*(ir.wd.2025 - ir.wd.2020))
+ir<-ir %>% mutate(ir.wd.2023 = ir.wd.2020 + (3/5)*(ir.wd.2025 - ir.wd.2020))
+ir<-ir %>% mutate(ir.wd.2024 = ir.wd.2020 + (4/5)*(ir.wd.2025 - ir.wd.2020))
+
+ir<-ir %>% mutate(ir.wd.2026 = ir.wd.2025 + (1/5)*(ir.wd.2030 - ir.wd.2025))
+ir<-ir %>% mutate(ir.wd.2027 = ir.wd.2025 + (2/5)*(ir.wd.2030 - ir.wd.2025))
+ir<-ir %>% mutate(ir.wd.2028 = ir.wd.2025 + (3/5)*(ir.wd.2030 - ir.wd.2025))
+ir<-ir %>% mutate(ir.wd.2029 = ir.wd.2025 + (4/5)*(ir.wd.2030 - ir.wd.2025))
+
+ir<-ir %>% mutate(ir.wd.2031 = ir.wd.2030 + (1/5)*(ir.wd.2035 - ir.wd.2030))
+ir<-ir %>% mutate(ir.wd.2032 = ir.wd.2030 + (2/5)*(ir.wd.2035 - ir.wd.2030))
+ir<-ir %>% mutate(ir.wd.2033 = ir.wd.2030 + (3/5)*(ir.wd.2035 - ir.wd.2030))
+ir<-ir %>% mutate(ir.wd.2034 = ir.wd.2030 + (4/5)*(ir.wd.2035 - ir.wd.2030))
+
+ir<-ir %>% mutate(ir.wd.2036 = ir.wd.2035 + (1/5)*(ir.wd.2040 - ir.wd.2035))
+ir<-ir %>% mutate(ir.wd.2037 = ir.wd.2035 + (2/5)*(ir.wd.2040 - ir.wd.2035))
+ir<-ir %>% mutate(ir.wd.2038 = ir.wd.2035 + (3/5)*(ir.wd.2040 - ir.wd.2035))
+ir<-ir %>% mutate(ir.wd.2039 = ir.wd.2035 + (4/5)*(ir.wd.2040 - ir.wd.2035))
+
+ir<-ir %>% mutate(ir.wd.2041 = ir.wd.2040 + (1/5)*(ir.wd.2045 - ir.wd.2040))
+ir<-ir %>% mutate(ir.wd.2042 = ir.wd.2040 + (2/5)*(ir.wd.2045 - ir.wd.2040))
+ir<-ir %>% mutate(ir.wd.2043 = ir.wd.2040 + (3/5)*(ir.wd.2045 - ir.wd.2040))
+ir<-ir %>% mutate(ir.wd.2044 = ir.wd.2040 + (4/5)*(ir.wd.2045 - ir.wd.2040))
+
+ir<-ir %>% mutate(ir.wd.2046 = ir.wd.2045 + (1/5)*(ir.wd.2050 - ir.wd.2045))
+ir<-ir %>% mutate(ir.wd.2047 = ir.wd.2045 + (2/5)*(ir.wd.2050 - ir.wd.2045))
+ir<-ir %>% mutate(ir.wd.2048 = ir.wd.2045 + (3/5)*(ir.wd.2050 - ir.wd.2045))
+ir<-ir %>% mutate(ir.wd.2049 = ir.wd.2045 + (4/5)*(ir.wd.2050 - ir.wd.2045))
+
+ir<-ir %>% mutate(ir.wd.2051 = ir.wd.2050 + (1/5)*(ir.wd.2055 - ir.wd.2050))
+ir<-ir %>% mutate(ir.wd.2052 = ir.wd.2050 + (2/5)*(ir.wd.2055 - ir.wd.2050))
+ir<-ir %>% mutate(ir.wd.2053 = ir.wd.2050 + (3/5)*(ir.wd.2055 - ir.wd.2050))
+ir<-ir %>% mutate(ir.wd.2054 = ir.wd.2050 + (4/5)*(ir.wd.2055 - ir.wd.2050))
+
+ir<-ir %>% mutate(ir.wd.2056 = ir.wd.2055 + (1/5)*(ir.wd.2060 - ir.wd.2055))
+ir<-ir %>% mutate(ir.wd.2057 = ir.wd.2055 + (2/5)*(ir.wd.2060 - ir.wd.2055))
+ir<-ir %>% mutate(ir.wd.2058 = ir.wd.2055 + (3/5)*(ir.wd.2060 - ir.wd.2055))
+ir<-ir %>% mutate(ir.wd.2059 = ir.wd.2055 + (4/5)*(ir.wd.2060 - ir.wd.2055))
+
+ir<-ir %>% mutate(ir.wd.2061 = ir.wd.2060 + (1/5)*(ir.wd.2065 - ir.wd.2060))
+ir<-ir %>% mutate(ir.wd.2062 = ir.wd.2060 + (2/5)*(ir.wd.2065 - ir.wd.2060))
+ir<-ir %>% mutate(ir.wd.2063 = ir.wd.2060 + (3/5)*(ir.wd.2065 - ir.wd.2060))
+ir<-ir %>% mutate(ir.wd.2064 = ir.wd.2060 + (4/5)*(ir.wd.2065 - ir.wd.2060))
+
+ir<-ir %>% mutate(ir.wd.2066 = ir.wd.2065 + (1/5)*(ir.wd.2070 - ir.wd.2065))
+ir<-ir %>% mutate(ir.wd.2067 = ir.wd.2065 + (2/5)*(ir.wd.2070 - ir.wd.2065))
+ir<-ir %>% mutate(ir.wd.2068 = ir.wd.2065 + (3/5)*(ir.wd.2070 - ir.wd.2065))
+ir<-ir %>% mutate(ir.wd.2069 = ir.wd.2065 + (4/5)*(ir.wd.2070 - ir.wd.2065))
+
+
+# ir <- ir[,c(1,27,3:14)]
+# colnames(ir) <- c("fips","sector", "Y2015","Y2020","Y2025","Y2030","Y2035","Y2040","Y2045","Y2050","Y2055","Y2060","Y2065","Y2070")
+# ir <- linapprox(ir)
+
+
+# ir <- merge(ir, acre, by="fips")
+# ir <- ir[,-59]
+# for (n in 59:69){
+#   j <- n+1
+#   for (r in 1:5){
+#   k <- 5*(n-59) + 70 + r
+#   ir[,k] <- ir[,n] + r*(ir[,j]-ir[,n])/5
+#   }
+# }
+# 
+
+# Definitions from function used in Tom's paper
+# plantwater is "a factor for the change due to the direct effect of rising atmospheric
+# CO2 levels on plant water use"
+# precip is "change in effective precipitation, the portion of total growing 
+# season precipitation that is useable by the plant, from 2005 to the future year, 
+# in cm/y, computed at the basin scale"
+# et is "the change potential evapotranspiration during the growing season, from 2005 
+# to the future year, in cm/y, computed at the basin scale"
+
+# incorporate climate effects for irrigation sector, this function comes from 
+# Tom's paper
+
+#-----------------------------------------
+#bringing in effective precipitation
+#-----------------------------------------
+#functions for effective precipitation
+#converts to effective precipitation based on the function in Tom's paper. Note that  
+# effectiveprecip <- function(df){
+#   for (i in 2:length(colnames(df))){
+#     for (j in 1:length(rownames(df))){
+#       df[j,i] <- df[j,i] /10
+#       df[j,i] <- ifelse(df[j,i] >= 25, 12.5+0.1*df[j,i] , (df[j,i]*(12.5-0.2*df[j,i]))/12.5   )
+#     }
+#   }
+#   return(df)
+# }
+
+length(colnames(precip))
+
+# input data is mm/month and the output needs to be in cm/month, 
+# hence the dividing by 10.
+for (i in 2:length(colnames(precip))){
+  for (j in 1:length(rownames(precip))){
+    precip[j,i] <- precip[j,i] /10
+#    precip[j,i] <- ifelse(precip[j,i] >= 25, 12.5+0.1*precip[j,i] , (precip[j,i]*(12.5-0.2*df[j,i]))/12.5   )
+  }}
+
+# See 2010 Assessment. This is the proportion of precip usable by plants
+# this is p.prime in the text. Maybe change name here
+# This is usable precip, so I think I need to compare what is usable with historic?
+# In the 2010 Assessment, it reads, p' is the part that does not need to be met by
+# irrigation. So (p1' - p2') is new crop needs
+for (i in 2:length(colnames(precip))){
+  for (j in 1:length(rownames(precip))){
+#    precip[j,i] <- precip[j,i] /10
+        precip[j,i] <- ifelse(precip[j,i] >= 25, 12.5+0.1*precip[j,i] , (precip[j,i]*(12.5-0.2*precip[j,i]))/12.5   )
+  }}
+
+county <- function(climate,cnty){
+  forlater <- cnty
+  #first check that both datasets have the same HUC8s 
+  check <- as.list(colnames(cnty))
+  check3 <- as.list(colnames(climate))
+  #climate data has but county does not
+  check1 <- check3[! check3 %in% check]
+  #county data has but climate does not
+  check2 <- check[!  check %in% as.list(colnames(climate))]
+  # make sure dataframes are ordered correctly
+  cnty <- cnty[,order(as.numeric(as.character(colnames(cnty))))]
+  climate <- climate[,order(as.numeric(as.character(colnames(climate))))]
+  #removing bad HUC8s
+  fixed <- climate[,!(names(climate)%in% check1)]
+  cnty <- cnty[,!(names(cnty)%in% check2)]
+  
+  
+  #make dataframes into matrices
+  fixed <- t(as.matrix(fixed))
+  cnty <- as.matrix(cnty)
+  
+  fixed <- cnty %*% fixed
+  fixed <- as.data.frame(t(fixed))
+  fixed[,(length(colnames(fixed))+1)] <- climate[,c(length(colnames(climate)))]
+  colnames(fixed) <- c(forlater$FIPS,"year")
+  
+  fixed <- fixed[,c(length(colnames(fixed)),1:(length(colnames(fixed))-1))]
+  
+  return(fixed)
 }
+
+#converts precipitation to effective precipitation
+
+precip.county <- subset(precip, month >=4 & month <= 9) %>% group_by(year) %>% summarise_all(mean)
+# months are weird decimals - not quite right
+
+
+  df <- df[,-2]
+  
+  df <- county(df,converthuc)
+  df <- as.data.frame(t(df))
+  colnames(df) <- df[1,]
+  df$fips <- rownames(df)
+  df <- df[-1,]
+  df <- df[,c(151,66:121)]
+  
+  df <- effectiveprecip(df)
+  
+  for(i in 3:length(colnames(df))){
+    df[,i] <- df[,i] - df[,2]
+  }
+  df[,2] <- 0
+  return(df)
+}
+
+#converts pet to the correct units
+convertpet <- function(df,converthuc){
+  df <- county(df,converthuc)
+  df <- as.data.frame(t(df))
+  colnames(df) <- df[1,]
+  df$fips <- rownames(df)
+  df <- df[-1,]
+  df <- df[,c(151,66:121)]
+  
+  for (i in 2:length(colnames(df))){
+    for (j in 1:length(rownames(df))){
+      df[j,i] <- df[j,i]/10
+    }
+  }
+  
+  
+  for(i in 3:length(colnames(df))){
+    df[,i] <- df[,i] - df[,2]
+  }
+  df[,2] <- 0
+  return(df)
+}
+
+precip <- converteffective(precip, converthuc)
+colnames(precip) <- c("fips","precip15","precip16","precip17","precip18","precip19","precip20","precip21","precip22","precip23","precip24","precip25","precip26","precip27","precip28","precip29","precip30","precip31","precip32","precip33","precip34","precip35","precip36","precip37","precip38","precip39","precip40","precip41","precip42","precip43","precip44","precip45","precip46","precip47","precip48","precip49","precip50","precip51","precip52","precip53","precip54","precip55","precip56","precip57","precip58","precip59","precip60","precip61","precip62","precip63","precip64","precip65","precip66","precip67","precip68","precip69","precip70")
+
+pet <- convertpet(pet,converthuc)
+colnames(pet) <- c("fips","et15","et16","et17","et18","et19","et20","et21","et22","et23","et24","et25","et26","et27","et28","et29","et30","et31","et32","et33","et34","et35","et36","et37","et38","et39","et40","et41","et42","et43","et44","et45","et46","et47","et48","et49","et50","et51","et52","et53","et54","et55","et56","et57","et58","et59","et60","et61","et62","et63","et64","et65","et66","et67","et68","et69","et70")
+
+
+
+
+climateir <- function(climate1)
+{
+  for (n in 2:57){
+    j <- n + 56
+    k <- j + 56
+    climate1[,n] <- (-climate1[,n]) + (climate1[,j])*(1-climate1[,k])
+  }
+  
+  climate1 <- climate1[,c(1:57,114:169)]
+#  colnames(climate1) <- c("fips","climate15","climate16","climate17","climate18","climate19","climate20","climate21","climate22","climate23","climate24","climate25","climate26","climate27","climate28","climate29","climate30","climate31","climate32","climate33","climate34","climate35","climate36","climate37","climate38","climate39","climate40","climate41","climate42","climate43","climate44","climate45","climate46","climate47","climate48","climate49","climate50","climate51","climate52","climate53","climate54","climate55","climate56","climate57","climate58","climate59","climate60","climate61","climate62","climate63","climate64","climate65","climate66","climate67","climate68","climate69","climate70",
+#                          "plantwater15","plantwater16","plantwater17","plantwater18","plantwater19","plantwater20","plantwater21","plantwater22","plantwater23","plantwater24","plantwater25","plantwater26","plantwater27","plantwater28","plantwater29","plantwater30","plantwater31","plantwater32","plantwater33","plantwater34","plantwater35","plantwater36","plantwater37","plantwater38","plantwater39","plantwater40","plantwater41","plantwater42","plantwater43","plantwater44","plantwater45","plantwater46","plantwater47","plantwater48","plantwater49","plantwater50","plantwater51","plantwater52","plantwater53","plantwater54","plantwater55","plantwater56","plantwater57","plantwater58","plantwater59","plantwater60","plantwater61","plantwater62","plantwater63","plantwater64","plantwater65","plantwater66","plantwater67","plantwater68","plantwater69","plantwater70")
+  return(climate1)
+}
+climate.ir <- climateir(climate)
+
+
+
+
 ir <- ir[,c(1:59,71:125)]
 ir <-merge(ir,climate.ir, by="fips")
 ir <- merge(ir,ir.climate, by="fips")
 for (n in 115:170){
   ir[,n] <- ir[,n]/ir[,227]
 }
+
+
+# climate impacts on wpu
+ir<-ir %>% mutate(ir.wpuc.2020 = ir.wpu.2020 * 1)
+ir<-ir %>% mutate(ir.wpuc.2025 = ir.wpu.2020)
+ir<-ir %>% mutate(ir.wpuc.2030 = ir.wpu.2025)
+ir<-ir %>% mutate(ir.wpuc.2035 = ir.wpu.2030)
+ir<-ir %>% mutate(ir.wpuc.2040 = ir.wpu.2035)
+ir<-ir %>% mutate(ir.wpuc.2045 = ir.wpu.2040)
+ir<-ir %>% mutate(ir.wpuc.2050 = ir.wpu.2045)
+ir<-ir %>% mutate(ir.wpuc.2055 = ir.wpu.2050)
+ir<-ir %>% mutate(ir.wpuc.2060 = ir.wpu.2055)
+ir<-ir %>% mutate(ir.wpuc.2065 = ir.wpu.2060)
+ir<-ir %>% mutate(ir.wpuc.2070 = ir.wpu.2065)
+
+
+
+
 
 ir <- ir[,-c(171:227)]
 
