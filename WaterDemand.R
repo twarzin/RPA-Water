@@ -3,7 +3,7 @@ rm(list = ls())
 
 # set working directory to file location
 # for Travis:
-# setwd("~/5_RPA/2020 Assessment/Demand model/WEAP Input Creation")
+setwd("~/5_RPA/2020 Assessment/Demand model/WEAP Input Creation")
 # for Shaunie
 # setwd("C:/Users/shaun/Desktop/USFS/WaterDemand/WaterDemand/WEAPInputCreation")
 # Set working directory to file location (for Pam), forward slashes, not escape char.
@@ -230,10 +230,6 @@ demand$wpu.dp.cc <- (cc.dp1*demand$delta.sprecip + cc.dp2*demand$delta.spet) / 1
 # the original code did not have the last term and divided by 1000
 
 demand$dp.cc <- demand$pop * demand$wpu.dp.cc
-
-
-
-
 
 
 #takes output from WaterUsedatacleanup.R, population and income projections and creates input for WEAP
