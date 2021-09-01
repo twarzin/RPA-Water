@@ -14,15 +14,14 @@ library(dplyr)  # Has the pipe operator %>%.
 library(data.table)
 
 # Define models. -----------------------------------------------------------------------------------
-# * User input to define models ('<-' is an 'assignment operator', shortcut keys are 'Alt-') -------
 # carbon <- readline(prompt="Enter carbon assumption (45 or 85): ")
 # gcm <- readline(prompt="Enter global climate model (cnrm_c5, hadgem, ipsl_cm5a, mri_cgcm3, noresm, or base): ")
 # *  Define models manually. -----------------------------------------------------------------------
 #    carbon=45 or carbon=85 depending on which carbon climate model
-carbon <- 85  # Assign the value 85 to the 'carbon' variable.
+carbon <- 85  
 #    Set the global climate model (gcm).
 #    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
-gcm <- "noresm"  # Assign the value '85'noresm' to the 'gcm' variable.
+gcm <- "noresm"  
 
 # Load population and withdrawal data. -------------------------------------------------------------
 #    Population by FIPS: fields are ID (x), fips, year, pop, ssp, inc; 860,440 records.
