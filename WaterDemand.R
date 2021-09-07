@@ -4,8 +4,10 @@ rm(list = ls())  # clears memory
 
 # Set working directory to file location (for Pam), forward slashes, not escape char.
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
-# for Travis:
-setwd("D:/Demand model/WEAP Input Creation")
+# for Travis desktop:
+# setwd("D:/Demand model/WEAP Input Creation")
+# for Travis laptop
+setwd("C:/Users/twwarziniack/OneDrive - USDA/RPA water assessment - 2020/Demand Model")
 
 library(tidyr)
 library(ggplot2)
@@ -40,12 +42,6 @@ ew <- wd.2015 %>%
 # water <- merge(wd.2015, cu.ratios, by="fips")
 # wd.2015$PD <- wd.2015$Public + wd.2015$Domestic
 
-# pop1 <- read.csv("pop_ssp1.csv")
-# pop2 <- read.csv("pop_ssp2.csv")
-# pop3 <- read.csv("pop_ssp3.csv")
-# pop4 <- read.csv("pop_ssp4.csv")
-# pop5 <- read.csv("pop_ssp5.csv")
-# 
 # water1 <- merge(water, pop1, by="fips")
 # water2 <- merge(water, pop2, by="fips")
 # water3 <- merge(water, pop3, by="fips")
@@ -174,8 +170,6 @@ cat("\014")  # Same as Ctrl-L
 
 #    Clear mind :o)
 
-
-
 #---------------------------------------------------------------------------------.
 ################# DOMESTIC/PUBLIC PROJECTIONS TO 2070 #########################
 #This function calculates dp projections out to 2070 using function from Tom's paper (Foti, Ramirez, Brown, 2010 FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT)
@@ -192,7 +186,6 @@ demand.base <- demand.base[,names(demand.base) %in% keeps]
 #why did year fall off?
 demand.base$year <- 2015
 
-
 demand.proj <- subset(pop.inc, year != 2015)
 
 demand.proj$wpu.dp <- NA
@@ -205,7 +198,6 @@ demand.proj$mining <- NA
 demand.proj$livestock <- NA
 demand.proj$irrigation <- NA
 demand.proj$IR.acres <- NA
-
 
 drops <- c("X")
 demand.proj <- demand.proj[,!names(demand.proj) %in% drops]
@@ -233,17 +225,12 @@ demand$dp.t <- demand$pop * demand$wpu.dp
 cc.dp1 <- -1.415    # coefficient on change in summertime precip
 cc.dp2 <- 0.778     # coefficient on change in pet
 
-
 demand$delta.sprecip <- rnorm(1, mean=1, sd=1)
 demand$delta.spet <- rnorm(1, mean=1, sd=1)
 demand$wpu.dp.cc <- (cc.dp1*demand$delta.sprecip + cc.dp2*demand$delta.spet) / 1000
 # the original code did not have the last term and divided by 1000
 
 demand$dp.cc <- demand$pop * demand$wpu.dp.cc
-
-
-
-
 
 
 #takes output from WaterUsedatacleanup.R, population and income projections and creates input for WEAP
