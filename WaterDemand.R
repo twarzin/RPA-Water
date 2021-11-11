@@ -1,13 +1,13 @@
 # Program file for RPA Water Demand Model
 
 rm(list = ls())  # clears memory
-# adding text
-# Set working directory to file location (for Pam), forward slashes, not escape char.
+# Set working directory to file location
+# for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 # for Travis desktop:
-# setwd("D:/Demand model/WEAP Input Creation")
+setwd("D:/Demand model/WEAP Input Creation")
 # for Travis laptop
-setwd("C:/Users/twwarziniack/OneDrive - USDA/RPA water assessment - 2020/Demand Model")
+# setwd("C:/Users/twwarziniack/OneDrive - USDA/RPA water assessment - 2020/Demand Model")
 
 library(tidyr)
 library(ggplot2)
@@ -16,10 +16,8 @@ library(dplyr)  # Has the pipe operator %>%.
 library(data.table)
 
 # Define models. -----------------------------------------------------------------------------------
-# carbon <- readline(prompt="Enter carbon assumption (45 or 85): ")
-# gcm <- readline(prompt="Enter global climate model (cnrm_c5, hadgem, ipsl_cm5a, mri_cgcm3, noresm, or base): ")
-# *  Define models manually. -----------------------------------------------------------------------
-#    carbon=45 or carbon=85 depending on which carbon climate model
+# Define models manually. -----------------------------------------------------------------------
+# carbon=45 or carbon=85 depending on which carbon climate model
 carbon <- 85  
 #    Set the global climate model (gcm).
 #    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
@@ -28,14 +26,13 @@ gcm <- "noresm"
 # Load population and withdrawal data. -------------------------------------------------------------
 #    Population by FIPS: fields are ID (x), fips, year, pop, ssp, inc; 860,440 records.
 pop.inc <- read.csv("popinc_proj.csv")
+
 #    Water withdrawals in 2015 (3,075 records):
 #    fields are x, fips, state, county, year, and 22 data fields
 wd.2015 <- read.csv("wd2015.csv")
 # cu.ratios <- read.csv("consumptive use.csv")
 
 # Choose variables that will be common throughout all years. ---------------------------------------
-#    (handy for merging later).
-#    Select 4 fields from the wd.2015 data and save them in a dataset called 'ew'.
 ew <- wd.2015 %>%
   select(fips, EastWest, DP.growth, DP.decay)
 
@@ -83,7 +80,8 @@ if(carbon==45 & gcm=="noresm"){
 }
 if(carbon==85 & gcm=="noresm"){
   new.precip <-read.csv("CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
-}
+  pet <-read.csv("ClimateData/pet_noresm_85.csv", check.names=F)
+  }
 
 # Make a new table where columns = FIPS, rows = year -----------------------------------------------
 #    Same as the original new.precip, except the date column is gone (3,109 columns).
