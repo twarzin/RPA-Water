@@ -3,8 +3,8 @@
 
 rm(list = ls())
 
-setwd("C:/Users/twwarziniack/Documents/5_RPA/Subregions")
-#setwd("D:/Demand model/Demand Results - Supplemental for Publication/ConsumptiveOnly")
+#setwd("C:/Users/twwarziniack/Documents/5_RPA/Subregions")
+setwd("D:/Demand model/Demand Results - Supplemental for Publication/ConsumptiveOnly")
 
 library(tidyr)
 library(ggplot2)
@@ -83,11 +83,11 @@ df <- rbind(cnrm45ssp1,
             mri45ssp1,
             mri85ssp2,
             mri85ssp3,
-            mri85ssp5)
-#            noresm45ssp1,
-#            noresm85ssp2,
-#            noresm85ssp3,
-#            noresm85ssp5
+            mri85ssp5,
+            noresm45ssp1,
+            noresm85ssp2,
+            noresm85ssp3,
+            noresm85ssp5)
             
 
 df$change <- (df$Y2070 / df$Y2015) - 1
@@ -378,7 +378,8 @@ county_choropleth(joined, num_colors = 0)
 #   summarise(no_rows = length(sector))
 
 ##### Read in subregion data #####
-setwd("C:/wherever you are saving it/Subregions")
+
+setwd("D:/Demand model/Demand Results - Supplemental for Publication/Subregions")
 subregions <- read.csv("Counties_Subregions.csv")%>%
   select(GEOID, RPA_SubReg)
 names(subregions) <- c("fips","subregion")
@@ -665,6 +666,300 @@ noresm <- merge(noresm, current)
 # LM <- merge(LM,mri45ssp1)
 # LM <- merge(LM, noresm45ssp1)
 # #write.csv(LM, file = "C:/Users/shaun/Desktop/USFS/WaterDemand/WaterDemand/WEAPInputCreation/Updated/Scenario Totals/Using2070/LM.csv")
+
+# ----------------------------------
+# Sector calc for consumptive use
+# ----------------------------------
+
+# calculating current use - first merge with subregions
+dp.sub <- merge(dp, subregions, by = "fips")
+
+dp.sub.mri45.1 <- subset(dp.sub, dp.sub$model == "mri45-1")
+dp.sub.mri45.1 <- dp.sub.mri45.1 %>%
+  group_by(subregion) %>%
+  summarise(
+    dp15 = sum(dp15),
+    dp70 = sum(dp70))
+
+
+
+
+
+
+# ----------------------------------------------------------------.
+##### livestock and aquaculture #####
+
+
+# livestock and aquaculture are being combined into one sector
+# these two sectors do not change based on climate - only SSP
+
+livestock1 <- read.csv("./Projections_noresm45/ls_ssp1.csv")
+livestock2 <- read.csv("./Projections_noresm85/ls_ssp2.csv")
+livestock3 <- read.csv("./Projections_noresm85/ls_ssp3.csv")
+livestock5 <- read.csv("./Projections_noresm85/ls_ssp5.csv")
+
+aqua1 <- read.csv("./Projections_noresm45/aq_ssp1.csv")
+aqua2 <- read.csv("./Projections_noresm85/aq_ssp2.csv")
+aqua3 <- read.csv("./Projections_noresm85/aq_ssp3.csv")
+aqua5 <- read.csv("./Projections_noresm85/aq_ssp5.csv")
+
+fips <- select(aqua1, fips)
+aqls1 <- aqua1[,4:59] + livestock1[,4:59]
+aqls1$sector <- "LsAq"
+aqls1 <- aqls1 %>%
+  select(sector, everything())
+aqls1 <- cbind(fips, aqls1)
+
+aqls2 <- aqua2[,4:59] + livestock2[,4:59]
+aqls2$sector <- "LsAq"
+aqls2 <- aqls2 %>%
+  select(sector, everything())
+aqls2 <- cbind(fips, aqls2)
+
+aqls3 <- aqua3[,4:59] + livestock3[,4:59]
+aqls3$sector <- "LsAq"
+aqls3 <- aqls3 %>%
+  select(sector, everything())
+aqls3 <- cbind(fips, aqls3)
+
+aqls5 <- aqua5[,4:59] + livestock5[,4:59]
+aqls5$sector <- "LsAq"
+aqls5 <- aqls5 %>%
+  select(sector, everything())
+aqls5 <- cbind(fips, aqls5)
+
+aqlsssp1 <- merge(aqls1, subregions, by = "fips")%>%
+  select(fips,Y2015,Y2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(Y2015 = sum(Y2015),Y2070 = sum(Y2070))
+names(aqlsssp1) <- c("subregion", "Y2015","Y2070ssp1")
+aqlsssp2 <- merge(aqls2, subregions, by = "fips")%>%
+  select(fips,Y2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(Y2070 = sum(Y2070))
+names(aqlsssp2) <- c("subregion", "Y2070ssp2")
+aqlsssp3 <- merge(aqls3, subregions, by = "fips")%>%
+  select(fips,Y2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(Y2070 = sum(Y2070))
+names(aqlsssp3) <- c("subregion", "Y2070ssp3")
+aqlsssp5 <- merge(aqls5, subregions, by = "fips")%>%
+  select(fips,Y2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(Y2070 = sum(Y2070))
+names(aqlsssp5) <- c("subregion", "Y2070ssp5")
+
+aqlstot <- merge(aqlsssp1, aqlsssp2, by = "subregion")
+aqlstot <- merge(aqlstot, aqlsssp3, by = "subregion")
+aqlstot <- merge(aqlstot, aqlsssp5, by = "subregion")
+#write.csv(aqlstot, file = "/Sector Totals/aqLs.csv")
+
+
+
+# -----------------------------------------------------------.
+
+##### thermo #####
+
+# noresm
+thermo1 <- read.csv("./Projections_Noresm45/th_ssp1.csv")
+thermo1[, 4:59][is.na(thermo1[, 4:59])] <- 0
+thermo2 <- read.csv("./Projections_Noresm85/th_ssp2.csv")
+thermo2[, 4:59][is.na(thermo2[, 4:59])] <- 0
+thermo3 <- read.csv("./Projections_Noresm85/th_ssp3.csv")
+thermo3[, 4:59][is.na(thermo3[, 4:59])] <- 0
+thermo5 <- read.csv("./Projections_Noresm85/th_ssp5.csv")
+thermo5[, 4:59][is.na(thermo5[, 4:59])] <- 0
+
+thermossp1 <- merge(thermo1, subregions, by = "fips")%>%
+  select(fips,th2015,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2015 = sum(th2015),th2070 = sum(th2070))
+names(thermossp1) <- c("subregion", "Y2015","Y2070ssp1")
+thermossp2 <- merge(thermo2, subregions, by = "fips")%>%
+  select(fips,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2070 = sum(th2070))
+names(thermossp2) <- c("subregion", "Y2070ssp2")
+thermossp3 <- merge(thermo3, subregions, by = "fips")%>%
+  select(fips,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2070 = sum(th2070))
+names(thermossp3) <- c("subregion", "Y2070ssp3")
+thermossp5 <- merge(thermo5, subregions, by = "fips")%>%
+  select(fips,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2070 = sum(th2070))
+names(thermossp5) <- c("subregion", "Y2070ssp5")
+
+thermotot <- merge(thermossp1, thermossp2, by = "subregion")
+thermotot <- merge(thermotot, thermossp3, by = "subregion")
+thermotot <- merge(thermotot, thermossp5, by = "subregion")
+#write.csv(thermotot, file = "/Sector Totals/thermo_noresm.csv")
+
+
+
+# cnrm
+thermo1 <- read.csv("./Projections_cnrm45/th_ssp1.csv")
+thermo1[, 4:59][is.na(thermo1[, 4:59])] <- 0
+thermo2 <- read.csv("./Projections_cnrm85/th_ssp2.csv")
+thermo2[, 4:59][is.na(thermo2[, 4:59])] <- 0
+thermo3 <- read.csv("./Projections_cnrm85/th_ssp3.csv")
+thermo3[, 4:59][is.na(thermo3[, 4:59])] <- 0
+thermo5 <- read.csv("./Projections_cnrm85/th_ssp5.csv")
+thermo5[, 4:59][is.na(thermo5[, 4:59])] <- 0
+
+thermossp1 <- merge(thermo1, subregions, by = "fips")%>%
+  select(fips,th2015,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2015 = sum(th2015),th2070 = sum(th2070))
+names(thermossp1) <- c("subregion", "Y2015","Y2070ssp1")
+thermossp2 <- merge(thermo2, subregions, by = "fips")%>%
+  select(fips,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2070 = sum(th2070))
+names(thermossp2) <- c("subregion", "Y2070ssp2")
+thermossp3 <- merge(thermo3, subregions, by = "fips")%>%
+  select(fips,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2070 = sum(th2070))
+names(thermossp3) <- c("subregion", "Y2070ssp3")
+thermossp5 <- merge(thermo5, subregions, by = "fips")%>%
+  select(fips,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2070 = sum(th2070))
+names(thermossp5) <- c("subregion", "Y2070ssp5")
+
+thermotot <- merge(thermossp1, thermossp2, by = "subregion")
+thermotot <- merge(thermotot, thermossp3, by = "subregion")
+thermotot <- merge(thermotot, thermossp5, by = "subregion")
+#write.csv(thermotot, file = "/Sector Totals/thermo_cnrm.csv")
+
+
+
+# hadgem
+thermo1 <- read.csv("./Projections_hadgem45/th_ssp1.csv")
+thermo1[, 4:59][is.na(thermo1[, 4:59])] <- 0
+thermo2 <- read.csv("./Projections_hadgem85/th_ssp2.csv")
+thermo2[, 4:59][is.na(thermo2[, 4:59])] <- 0
+thermo3 <- read.csv("./Projections_hadgem85/th_ssp3.csv")
+thermo3[, 4:59][is.na(thermo3[, 4:59])] <- 0
+thermo5 <- read.csv("./Projections_hadgem85/th_ssp5.csv")
+thermo5[, 4:59][is.na(thermo5[, 4:59])] <- 0
+
+thermossp1 <- merge(thermo1, subregions, by = "fips")%>%
+  select(fips,th2015,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2015 = sum(th2015),th2070 = sum(th2070))
+names(thermossp1) <- c("subregion", "Y2015","Y2070ssp1")
+thermossp2 <- merge(thermo2, subregions, by = "fips")%>%
+  select(fips,Y2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(Y2070 = sum(Y2070))
+names(thermossp2) <- c("subregion", "Y2070ssp2")
+thermossp3 <- merge(thermo3, subregions, by = "fips")%>%
+  select(fips,Y2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(Y2070 = sum(Y2070))
+names(thermossp3) <- c("subregion", "Y2070ssp3")
+thermossp5 <- merge(thermo5, subregions, by = "fips")%>%
+  select(fips,Y2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(Y2070 = sum(Y2070))
+names(thermossp5) <- c("subregion", "Y2070ssp5")
+
+thermotot <- merge(thermossp1, thermossp2, by = "subregion")
+thermotot <- merge(thermotot, thermossp3, by = "subregion")
+thermotot <- merge(thermotot, thermossp5, by = "subregion")
+#write.csv(thermotot, file = "/Sector Totals/thermo_hadgem.csv")
+
+
+
+# ipsl
+thermo1 <- read.csv("./Projections_ipsl45/th_ssp1.csv")
+thermo1[, 4:59][is.na(thermo1[, 4:59])] <- 0
+thermo2 <- read.csv("./Projections_ipsl85/th_ssp2.csv")
+thermo2[, 4:59][is.na(thermo2[, 4:59])] <- 0
+thermo3 <- read.csv("./Projections_ipsl85/th_ssp3.csv")
+thermo3[, 4:59][is.na(thermo3[, 4:59])] <- 0
+thermo5 <- read.csv("./Projections_ipsl85/th_ssp5.csv")
+thermo5[, 4:59][is.na(thermo5[, 4:59])] <- 0
+
+thermossp1 <- merge(thermo1, subregions, by = "fips")%>%
+  select(fips,th2015,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2015 = sum(th2015),th2070 = sum(th2070))
+names(thermossp1) <- c("subregion", "Y2015","Y2070ssp1")
+thermossp2 <- merge(thermo2, subregions, by = "fips")%>%
+  select(fips,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2070 = sum(th2070))
+names(thermossp2) <- c("subregion", "Y2070ssp2")
+thermossp3 <- merge(thermo3, subregions, by = "fips")%>%
+  select(fips,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2070 = sum(th2070))
+names(thermossp3) <- c("subregion", "Y2070ssp3")
+thermossp5 <- merge(thermo5, subregions, by = "fips")%>%
+  select(fips,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2070 = sum(th2070))
+names(thermossp5) <- c("subregion", "Y2070ssp5")
+
+thermotot <- merge(thermossp1, thermossp2, by = "subregion")
+thermotot <- merge(thermotot, thermossp3, by = "subregion")
+thermotot <- merge(thermotot, thermossp5, by = "subregion")
+#write.csv(thermotot, file = "/Sector Totals/thermo_ipsl.csv")
+
+
+
+# mri
+thermo1 <- read.csv("./Projections_mri45/th_ssp1.csv")
+thermo1[, 4:59][is.na(thermo1[, 4:59])] <- 0
+thermo2 <- read.csv("./Projections_mri85/th_ssp2.csv")
+thermo2[, 4:59][is.na(thermo2[, 4:59])] <- 0
+thermo3 <- read.csv("./Projections_mri85/th_ssp3.csv")
+thermo3[, 4:59][is.na(thermo3[, 4:59])] <- 0
+thermo5 <- read.csv("./Projections_mri85/th_ssp5.csv")
+thermo5[, 4:59][is.na(thermo5[, 4:59])] <- 0
+
+thermossp1 <- merge(thermo1, subregions, by = "fips")%>%
+  select(fips,th2015,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2015 = sum(th2015),th2070 = sum(th2070))
+names(thermossp1) <- c("subregion", "Y2015","Y2070ssp1")
+thermossp2 <- merge(thermo2, subregions, by = "fips")%>%
+  select(fips,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2070 = sum(th2070))
+names(thermossp2) <- c("subregion", "Y2070ssp2")
+thermossp3 <- merge(thermo3, subregions, by = "fips")%>%
+  select(fips,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2070 = sum(th2070))
+names(thermossp3) <- c("subregion", "Y2070ssp3")
+thermossp5 <- merge(thermo5, subregions, by = "fips")%>%
+  select(fips,th2070,subregion)%>%
+  group_by(subregion) %>%
+  summarise(th2070 = sum(th2070))
+names(thermossp5) <- c("subregion", "Y2070ssp5")
+
+thermotot <- merge(thermossp1, thermossp2, by = "subregion")
+thermotot <- merge(thermotot, thermossp3, by = "subregion")
+thermotot <- merge(thermotot, thermossp5, by = "subregion")
+#write.csv(thermotot, file = "/Sector Totals/thermo_mri.csv")
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # -----------------------------------------------------------.
@@ -1259,6 +1554,9 @@ thermotot <- merge(thermossp1, thermossp2, by = "subregion")
 thermotot <- merge(thermotot, thermossp3, by = "subregion")
 thermotot <- merge(thermotot, thermossp5, by = "subregion")
 #write.csv(thermotot, file = "/Sector Totals/thermo_mri.csv")
+
+
+### may not beed -- already done above
 
 
 #### Aggregating consumptive use
