@@ -1,4 +1,7 @@
 # Program file for RPA Water Demand Model
+# Travis Warziniack
+# US Forest Service
+# travis.w.warziniack@usda.gov
 
 rm(list = ls())  # clears memory
 # Set working directory to file location
@@ -170,7 +173,8 @@ cat("\014")  # Same as Ctrl-L
 
 #---------------------------------------------------------------------------------.
 ################# DOMESTIC/PUBLIC PROJECTIONS TO 2070 #########################
-#This function calculates dp projections out to 2070 using function from Tom's paper (Foti, Ramirez, Brown, 2010 FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT)
+# This function calculates dp projections out to 2070 using function from 
+# Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
 
 demand.base <- subset(pop.inc, year == 2015)
 demand.base <- merge(demand.base, wd.2015, by = "fips")
@@ -205,6 +209,7 @@ base <- demand.base %>% select(fips, wpu.dp)
 demand <- rbind(demand.base, demand.proj)
 
 demand <- merge(demand, ew, by="fips")
+# check baseline wpu here and the multiple listing of ssps
 demand <- merge(demand, base, by="fips")
 
 attach(demand)
@@ -218,6 +223,12 @@ demand$dp.t <- demand$pop * demand$wpu.dp
 # At this point first year dp is slight off for some SSPs. I think the 
 # baseline wpu.dp might be off for some SSPs. You can see this by comparing dp
 # and dp.t for year=2015
+
+# extracting wpu estimates
+dp.wpu <- subset(demand, ssp=="ssp1")
+dp.wpu <- dp.wpu %>% 
+  group_by(fips,year) %>%
+  summarise(wpu = mean(wpu.dp))
 
 # dp demand with climate
 cc.dp1 <- -1.415    # coefficient on change in summertime precip
