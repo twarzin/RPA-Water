@@ -4,6 +4,7 @@
 # travis.w.warziniack@usda.gov
 
 rm(list = ls())  # clears memory
+
 # Set working directory to file location
 # for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
@@ -18,16 +19,10 @@ library(reshape2)
 library(dplyr)  # Has the pipe operator %>%.
 library(data.table)
 
-# Define models. -----------------------------------------------------------------------------------
-# Define models manually. -----------------------------------------------------------------------
-# carbon=45 or carbon=85 depending on which carbon climate model
-carbon <- 85  
-#    Set the global climate model (gcm).
-#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
-gcm <- "noresm"  
+# ------------------------ 
+# load baseline data
 
-# Load population and withdrawal data. -------------------------------------------------------------
-#    Population by FIPS: fields are ID (x), fips, year, pop, ssp, inc; 860,440 records.
+# Population by FIPS: fields are ID (x), fips, year, pop, ssp, inc; 860,440 records.
 pop.inc <- read.csv("popinc_proj.csv")
 
 #    Water withdrawals in 2015 (3,075 records):
@@ -35,18 +30,21 @@ pop.inc <- read.csv("popinc_proj.csv")
 wd.2015 <- read.csv("wd2015.csv")
 # cu.ratios <- read.csv("consumptive use.csv")
 
+
+
+# load climate data
+
+
+# Define models manually. -----------------------------------------------------------------------
+# carbon=45 or carbon=85 depending on which carbon climate model
+carbon <- 85  
+#    Set the global climate model (gcm).
+#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
+gcm <- "noresm"  
+
 # Choose variables that will be common throughout all years. ---------------------------------------
 ew <- wd.2015 %>%
   select(fips, EastWest, DP.growth, DP.decay)
-
-# water <- merge(wd.2015, cu.ratios, by="fips")
-# wd.2015$PD <- wd.2015$Public + wd.2015$Domestic
-
-# water1 <- merge(water, pop1, by="fips")
-# water2 <- merge(water, pop2, by="fips")
-# water3 <- merge(water, pop3, by="fips")
-# water4 <- merge(water, pop4, by="fips")
-# water5 <- merge(water, pop5, by="fips")
 
 # Load new precip data based on choices for the "carbon" and "gcm" variables. ----------------------
 #    (These statements define the new.precip data based on the 'carbon and 'gcm' variable values.)
