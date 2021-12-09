@@ -22,17 +22,18 @@ library(data.table)
 # ------------------------ 
 # load baseline data
 
-# Population by FIPS: fields are ID (x), fips, year, pop, ssp, inc; 860,440 records.
+# Population by FIPS: fields are ID (x), fips, year, pop, ssp, inc; 860,440 records
+# Population is in thousands
+# Income is in __________
 pop.inc <- read.csv("popinc_proj.csv")
 
-#    Water withdrawals in 2015 (3,075 records):
-#    fields are x, fips, state, county, year, and 22 data fields
+# Water withdrawals in 2015 from USGS (3,075 records):
+# fields are x, fips, state, county, year, and 22 data fields
+# Withdrawals are in MGD
 wd.2015 <- read.csv("wd2015.csv")
-# cu.ratios <- read.csv("consumptive use.csv")
 
-
-
-# load climate data
+# load climate data:
+# variables needed for model: Precip, growing season precip, temp, ET
 
 
 # Define models manually. -----------------------------------------------------------------------
@@ -174,17 +175,19 @@ cat("\014")  # Same as Ctrl-L
 # This function calculates dp projections out to 2070 using function from 
 # Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
 
-demand.base <- subset(pop.inc, year == 2015)
-demand.base <- merge(demand.base, wd.2015, by = "fips")
-demand.base$wpu.dp <- demand.base$dp / demand.base$pop
-demand.base$wpu.ind <- demand.base$indust / demand.base$inc
+
+demand.init <- subset(pop.inc, year == 2015)
+demand.init <- merge(demand.init, wd.2015, by = "fips")
+demand.init$dp <- demand.init$dp
+
+demand.init$wpu.dp <- (demand.init$dp) / (demand.init$pop)
 
 keeps <- c("fips","year","pop","ssp","inc","wpu.dp","state","indust","dp","thermo", "thermo.gWh","mining","livestock",
            "irrigation","IR.acres")
 
-demand.base <- demand.base[,names(demand.base) %in% keeps]
+demand.init <- demand.init[,names(demand.init) %in% keeps]
 #why did year fall off?
-demand.base$year <- 2015
+demand.init$year <- 2015
 
 demand.proj <- subset(pop.inc, year != 2015)
 
@@ -203,8 +206,8 @@ drops <- c("X")
 demand.proj <- demand.proj[,!names(demand.proj) %in% drops]
 
 #select all base year values
-base <- demand.base %>% select(fips, wpu.dp) 
-demand <- rbind(demand.base, demand.proj)
+base <- demand.init %>% select(fips, wpu.dp) 
+demand <- rbind(demand.init, demand.proj)
 
 demand <- merge(demand, ew, by="fips")
 # check baseline wpu here and the multiple listing of ssps
@@ -226,7 +229,8 @@ demand$dp.t <- demand$pop * demand$wpu.dp
 dp.wpu <- subset(demand, ssp=="ssp1")
 dp.wpu <- dp.wpu %>% 
   group_by(fips,year) %>%
-  summarise(wpu = mean(wpu.dp))
+  summarise(wpu = mean(wpu.dp*1000), pop = mean(pop*1000), domestic = mean(dp.t*1000000))
+
 
 # dp demand with climate
 cc.dp1 <- -1.415    # coefficient on change in summertime precip
@@ -238,6 +242,12 @@ demand$wpu.dp.cc <- (cc.dp1*demand$delta.sprecip + cc.dp2*demand$delta.spet) / 1
 # the original code did not have the last term and divided by 1000
 
 demand$dp.cc <- demand$pop * demand$wpu.dp.cc
+
+
+
+# This is needed later for industrial water use
+demand.init$wpu.ind <- demand.init$indust / demand.init$inc
+
 
 
 #takes output from WaterUsedatacleanup.R, population and income projections and creates input for WEAP
