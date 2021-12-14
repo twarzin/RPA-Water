@@ -35,7 +35,6 @@ wd.2015 <- read.csv("wd2015.csv")
 # load climate data:
 # variables needed for model: Precip, growing season precip, temp, ET
 
-
 # Define models manually. -----------------------------------------------------------------------
 # carbon=45 or carbon=85 depending on which carbon climate model
 carbon <- 85  
@@ -175,7 +174,6 @@ cat("\014")  # Same as Ctrl-L
 # This function calculates dp projections out to 2070 using function from 
 # Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
 
-
 demand.init <- subset(pop.inc, year == 2015)
 demand.init <- merge(demand.init, wd.2015, by = "fips")
 demand.init$dp <- demand.init$dp
@@ -206,20 +204,36 @@ drops <- c("X")
 demand.proj <- demand.proj[,!names(demand.proj) %in% drops]
 
 #select all base year values
-base <- demand.init %>% select(fips, wpu.dp) 
+base <- demand.init %>% select(fips, wpu.dp, ssp) 
 demand <- rbind(demand.init, demand.proj)
 
 demand <- merge(demand, ew, by="fips")
-# check baseline wpu here and the multiple listing of ssps
-demand <- merge(demand, base, by="fips")
+# demand <- merge(demand, base, by="fips")
 
 attach(demand)
 demand <- demand[order(fips,ssp,year),]
 detach(demand)
 
-demand$wpu.dp0 <- demand$wpu.dp.y
+# I don't think I need to subset for ssp1 if loop has all data
+dem1 <- subset(demand, ssp == "ssp1")
 
-demand$wpu.dp <- demand$wpu.dp0 * (1+demand$DP.growth*(1+demand$DP.decay))^(demand$year-2015)
+# should probably sort first
+nobs <- dim(demand)[1]
+for(i in 1:nobs) {
+  if (demand$year[i] != 2015) {
+    demand$wpu.dp[i] <- demand$wpu.dp[(i-1)] * (1+demand$DP.growth[i]*(1+demand$DP.decay[i])^(demand$year[i]-2015))
+  }
+  }
+
+
+# demand$wpu.dp0 <- demand$wpu.dp.y
+
+# need to fix wpu to use lag
+# demand$wpu.dp <- demand$wpu.dp0 * (1+demand$DP.growth*(1+demand$DP.decay))^(demand$year-2015)
+
+
+
+
 demand$dp.t <- demand$pop * demand$wpu.dp
 # At this point first year dp is slight off for some SSPs. I think the 
 # baseline wpu.dp might be off for some SSPs. You can see this by comparing dp
