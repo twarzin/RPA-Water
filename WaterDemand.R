@@ -9,7 +9,7 @@ rm(list = ls())  # clears memory
 # for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 # for Travis desktop:
-setwd("D:/Demand model/WEAP Input Creation")
+setwd("D:/WEAP Input Creation")
 # for Travis laptop
 setwd("C:/Users/twwarziniack/OneDrive - USDA/RPA water assessment - 2020/Demand Model")
 
