@@ -9,9 +9,10 @@ rm(list = ls())  # clears memory
 # for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 # for Travis desktop:
-setwd("D:/WEAP Input Creation")
+setwd("D:/Demand model/WEAP Input Creation")
 # for Travis laptop
-setwd("C:/Users/twwarziniack/OneDrive - USDA/RPA water assessment - 2020/Demand Model")
+# setwd("C:/Users/twwarziniack/OneDrive - USDA/RPA water assessment - 2020/Demand Model")
+# setwd("D:/WEAP Input Creation")
 
 library(tidyr)
 library(ggplot2)
@@ -230,9 +231,6 @@ for(i in 1:nobs) {
 
 # need to fix wpu to use lag
 # demand$wpu.dp <- demand$wpu.dp0 * (1+demand$DP.growth*(1+demand$DP.decay))^(demand$year-2015)
-
-
-
 
 demand$dp.t <- demand$pop * demand$wpu.dp
 # At this point first year dp is slight off for some SSPs. I think the 
