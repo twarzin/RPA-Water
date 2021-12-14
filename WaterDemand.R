@@ -11,7 +11,7 @@ rm(list = ls())  # clears memory
 # for Travis desktop:
 setwd("D:/Demand model/WEAP Input Creation")
 # for Travis laptop
-# setwd("C:/Users/twwarziniack/OneDrive - USDA/RPA water assessment - 2020/Demand Model")
+setwd("C:/Users/twwarziniack/OneDrive - USDA/RPA water assessment - 2020/Demand Model")
 
 library(tidyr)
 library(ggplot2)
@@ -226,10 +226,11 @@ demand$dp.t <- demand$pop * demand$wpu.dp
 # and dp.t for year=2015
 
 # extracting wpu estimates
-dp.wpu <- subset(demand, ssp=="ssp1")
+dp.wpu <- demand
+  #subset(demand, ssp=="ssp1")
 dp.wpu <- dp.wpu %>% 
-  group_by(fips,year) %>%
-  summarise(wpu = mean(wpu.dp*1000), pop = mean(pop*1000), domestic = mean(dp.t*1000000))
+  group_by(fips,year,ssp) %>%
+  summarise(wpu = mean(wpu.dp.y*1000), pop = mean(pop*1000), domestic = mean(dp.t*1000000))
 
 
 # dp demand with climate
