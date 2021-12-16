@@ -11,7 +11,7 @@ rm(list = ls())  # clears memory
 # for Travis desktop:
 setwd("D:/Demand model/WEAP Input Creation")
 # for Travis laptop
-# setwd("C:/Users/twwarziniack/OneDrive - USDA/RPA water assessment - 2020/Demand Model")
+setwd("C:/Users/twwarziniack/OneDrive - USDA/RPA water assessment - 2020/Demand Model")
 # setwd("D:/WEAP Input Creation")
 
 library(tidyr)
@@ -216,7 +216,7 @@ demand <- demand[order(fips,ssp,year),]
 detach(demand)
 
 # I don't think I need to subset for ssp1 if loop has all data
-dem1 <- subset(demand, ssp == "ssp1")
+# dem1 <- subset(demand, ssp == "ssp1")
 
 # should probably sort first
 nobs <- dim(demand)[1]
@@ -227,8 +227,11 @@ for(i in 1:nobs) {
   }
 
 
-# demand$wpu.dp0 <- demand$wpu.dp.y
+demand$precip <- NA
+demand$temp <- NA
+demand$ET <- NA
 
+# demand$wpu.dp0 <- demand$wpu.dp.y
 # need to fix wpu to use lag
 # demand$wpu.dp <- demand$wpu.dp0 * (1+demand$DP.growth*(1+demand$DP.decay))^(demand$year-2015)
 
@@ -236,14 +239,6 @@ demand$dp.t <- demand$pop * demand$wpu.dp
 # At this point first year dp is slight off for some SSPs. I think the 
 # baseline wpu.dp might be off for some SSPs. You can see this by comparing dp
 # and dp.t for year=2015
-
-# extracting wpu estimates
-dp.wpu <- demand
-  #subset(demand, ssp=="ssp1")
-dp.wpu <- dp.wpu %>% 
-  group_by(fips,year,ssp) %>%
-  summarise(wpu = mean(wpu.dp.y*1000), pop = mean(pop*1000), domestic = mean(dp.t*1000000))
-
 
 # dp demand with climate
 cc.dp1 <- -1.415    # coefficient on change in summertime precip
@@ -255,6 +250,29 @@ demand$wpu.dp.cc <- (cc.dp1*demand$delta.sprecip + cc.dp2*demand$delta.spet) / 1
 # the original code did not have the last term and divided by 1000
 
 demand$dp.cc <- demand$pop * demand$wpu.dp.cc
+
+# extracting wpu estimates
+dp.wpu <- demand
+  #subset(demand, ssp=="ssp1")
+
+dp.wpu1 <- dp.wpu %>% 
+  group_by(fips,year,ssp) %>%
+  summarise(wpu = mean(wpu.dp*1000), pop = mean(pop*1000), domestic = mean(dp.t*1000000))
+
+dp.wpu2 <- dp.wpu %>% 
+  group_by(fips,year) %>%
+  summarise(wpu = mean(wpu.dp*1000), pop = mean(pop*1000), domestic = mean(dp.t*1000000))
+
+
+
+# testing consistency with Brenna Kent
+df <- subset(demand, fips == 51107)
+df <- df %>% 
+  group_by(fips,year,ssp) %>%
+  summarise(wpu = mean(wpu.dp*1000), pop = mean(pop*1000))
+
+
+
 
 
 
