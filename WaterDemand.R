@@ -9,10 +9,9 @@ rm(list = ls())  # clears memory
 # for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 # for Travis desktop:
-setwd("D:/Demand model/WEAP Input Creation")
+# setwd("D:/Demand model/WEAP Input Creation")
 # for Travis laptop
-setwd("C:/Users/twwarziniack/OneDrive - USDA/RPA water assessment - 2020/Demand Model")
-# setwd("D:/WEAP Input Creation")
+setwd("D:/WEAP Input Creation")
 
 library(tidyr)
 library(ggplot2)
@@ -38,7 +37,7 @@ wd.2015 <- read.csv("wd2015.csv")
 
 # Define models manually. -----------------------------------------------------------------------
 # carbon=45 or carbon=85 depending on which carbon climate model
-carbon <- 85  
+carbon <- 45  
 #    Set the global climate model (gcm).
 #    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
 gcm <- "noresm"  
@@ -78,12 +77,30 @@ if(carbon==85 & gcm=="mri_cgcm3"){
   new.precip <-read.csv("CountyPrecip/Monthly/pr_MRI_CGCM3rcp85_month.csv", check.names=F)
 }
 if(carbon==45 & gcm=="noresm"){
-  new.precip <-read.csv("CountyPrecip/Monthly/pr_NorESM1_Mrcp45_month.csv", check.names=F)
-}
+  new.precip <-read.csv("ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp45_month.csv", check.names=F)
+  pet <-read.csv("ClimateData/PET_NorESM_45_Monthly.csv", check.names=F)
+    }
 if(carbon==85 & gcm=="noresm"){
   new.precip <-read.csv("CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
   pet <-read.csv("ClimateData/pet_noresm_85.csv", check.names=F)
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Make a new table where columns = FIPS, rows = year -----------------------------------------------
 #    Same as the original new.precip, except the date column is gone (3,109 columns).
@@ -284,7 +301,8 @@ demand.init$wpu.ind <- demand.init$indust / demand.init$inc
 #takes output from WaterUsedatacleanup.R, population and income projections and creates input for WEAP
 #WaterUsedatacleanup.R takes USGS water data and converts it into a usable format. See that file for additional assumptions in our modeling.
 
-precip_orig <- precip
+precip <- new.precip
+precip_orig <- new.precip
 pet_orig <- pet
 
 # FIPs fixes should be done to the base data and not in this code

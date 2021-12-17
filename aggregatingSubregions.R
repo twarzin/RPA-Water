@@ -1,17 +1,15 @@
-#Noo!!!!
-jjkll
-ddd
-sss
 
-### conflicts
+# File for aggregating water demand results into subregions
+# Initial code was done by Shaunie Rasmussen, currently 
+# maintained by Travis Warziniack
 
-# this whole file is working with consumptive use
+# This whole file is working with consumptive use
 # You should download the ConsumptiveOnly folder to get the input files for this first section
 
 rm(list = ls())
 
-#setwd("C:/Users/twwarziniack/Documents/5_RPA/Subregions")
-setwd("D:/Demand model/Demand Results - Supplemental for Publication/ConsumptiveOnly")
+setwd("D:/Subregions")
+#setwd("D:/Demand model/Demand Results - Supplemental for Publication/ConsumptiveOnly")
 
 library(tidyr)
 library(ggplot2)
@@ -40,6 +38,8 @@ mri45ssp1 <- read.csv("./Projections_mri45/ssp1_all.csv")
 mri85ssp2 <- read.csv("./Projections_mri85/ssp2_all.csv")
 mri85ssp3 <- read.csv("./Projections_mri85/ssp3_all.csv")
 mri85ssp5 <- read.csv("./Projections_mri85/ssp5_all.csv")
+
+# Are noresm results missing?
 noresm45ssp1 <- read.csv("./Projections_noresm45/ssp1_all.csv")
 noresm85ssp2 <- read.csv("./Projections_noresm85/ssp2_all.csv")
 noresm85ssp3 <- read.csv("./Projections_noresm85/ssp3_all.csv")
@@ -90,11 +90,12 @@ df <- rbind(cnrm45ssp1,
             mri45ssp1,
             mri85ssp2,
             mri85ssp3,
-            mri85ssp5,
-            noresm45ssp1,
-            noresm85ssp2,
-            noresm85ssp3,
-            noresm85ssp5)
+            mri85ssp5
+#            noresm45ssp1,
+#            noresm85ssp2,
+#            noresm85ssp3,
+#            noresm85ssp5
+)
             
 
 df$change <- (df$Y2070 / df$Y2015) - 1
