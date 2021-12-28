@@ -8,8 +8,8 @@
 
 rm(list = ls())
 
-setwd("D:/Subregions")
-#setwd("D:/Demand model/Demand Results - Supplemental for Publication/ConsumptiveOnly")
+#setwd("D:/Subregions")
+setwd("D:/Demand model/Demand Results - Supplemental for Publication/ConsumptiveOnly")
 
 library(tidyr)
 library(ggplot2)
@@ -38,8 +38,6 @@ mri45ssp1 <- read.csv("./Projections_mri45/ssp1_all.csv")
 mri85ssp2 <- read.csv("./Projections_mri85/ssp2_all.csv")
 mri85ssp3 <- read.csv("./Projections_mri85/ssp3_all.csv")
 mri85ssp5 <- read.csv("./Projections_mri85/ssp5_all.csv")
-
-# Are noresm results missing?
 noresm45ssp1 <- read.csv("./Projections_noresm45/ssp1_all.csv")
 noresm85ssp2 <- read.csv("./Projections_noresm85/ssp2_all.csv")
 noresm85ssp3 <- read.csv("./Projections_noresm85/ssp3_all.csv")
@@ -103,6 +101,8 @@ df$change <- (df$Y2070 / df$Y2015) - 1
 dp <- subset(df, sector=='dp')
 dp2 <- select(dp, fips, model, change)
 dp2 <- dp2 %>% group_by(fips) %>% summarise_each(funs(mean, sd))
+dp.tot <- select(dp, model, Y2015, Y2070)
+dp.tot <- dp.tot %>% group_by(model) %>% summarise_each(funs(sum, sd))
 
 ic <- subset(df, sector=='ic')
 ic2 <- select(ic, fips, model, change)
@@ -373,7 +373,6 @@ county_choropleth(joined, num_colors = 0)
 joined$region <- as.double(joined$fips)
 joined$value <- joined$change_sd
 county_choropleth(joined, num_colors = 0)
-
 
 #--------------------------------
 
@@ -955,19 +954,6 @@ thermotot <- merge(thermossp1, thermossp2, by = "subregion")
 thermotot <- merge(thermotot, thermossp3, by = "subregion")
 thermotot <- merge(thermotot, thermossp5, by = "subregion")
 #write.csv(thermotot, file = "/Sector Totals/thermo_mri.csv")
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # -----------------------------------------------------------.

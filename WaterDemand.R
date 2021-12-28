@@ -9,7 +9,7 @@ rm(list = ls())  # clears memory
 # for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 # for Travis desktop:
-# setwd("D:/Demand model/WEAP Input Creation")
+setwd("D:/Demand model/WEAP Input Creation")
 # for Travis laptop
 setwd("D:/WEAP Input Creation")
 
@@ -40,7 +40,7 @@ wd.2015 <- read.csv("wd2015.csv")
 carbon <- 45  
 #    Set the global climate model (gcm).
 #    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
-gcm <- "noresm"  
+gcm <- "cnrm_c5"  
 
 # Choose variables that will be common throughout all years. ---------------------------------------
 ew <- wd.2015 %>%
@@ -84,23 +84,6 @@ if(carbon==85 & gcm=="noresm"){
   new.precip <-read.csv("CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
   pet <-read.csv("ClimateData/pet_noresm_85.csv", check.names=F)
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # Make a new table where columns = FIPS, rows = year -----------------------------------------------
 #    Same as the original new.precip, except the date column is gone (3,109 columns).
@@ -232,10 +215,8 @@ attach(demand)
 demand <- demand[order(fips,ssp,year),]
 detach(demand)
 
-# I don't think I need to subset for ssp1 if loop has all data
-# dem1 <- subset(demand, ssp == "ssp1")
-
-# should probably sort first
+# be sure to sort first!!
+# this loop takes a VERY long time to run
 nobs <- dim(demand)[1]
 for(i in 1:nobs) {
   if (demand$year[i] != 2015) {
@@ -243,24 +224,24 @@ for(i in 1:nobs) {
   }
   }
 
+demand$dp.t <- demand$pop * demand$wpu.dp
+
+# some quick calculations to get total US domestic withdrawals
+
+dp <- subset(demand, year==2070)
+dp2 <- select(dp, fips, ssp, dp.t)
+dp2 <- dp2 %>% group_by(ssp) %>% summarise_each(funs(sum, sd))
+
+# dp demand with climate
 
 demand$precip <- NA
 demand$temp <- NA
 demand$ET <- NA
 
-# demand$wpu.dp0 <- demand$wpu.dp.y
-# need to fix wpu to use lag
-# demand$wpu.dp <- demand$wpu.dp0 * (1+demand$DP.growth*(1+demand$DP.decay))^(demand$year-2015)
-
-demand$dp.t <- demand$pop * demand$wpu.dp
-# At this point first year dp is slight off for some SSPs. I think the 
-# baseline wpu.dp might be off for some SSPs. You can see this by comparing dp
-# and dp.t for year=2015
-
-# dp demand with climate
 cc.dp1 <- -1.415    # coefficient on change in summertime precip
 cc.dp2 <- 0.778     # coefficient on change in pet
 
+# Need to add real climate data here:
 demand$delta.sprecip <- rnorm(1, mean=1, sd=1)
 demand$delta.spet <- rnorm(1, mean=1, sd=1)
 demand$wpu.dp.cc <- (cc.dp1*demand$delta.sprecip + cc.dp2*demand$delta.spet) / 1000
@@ -280,18 +261,11 @@ dp.wpu2 <- dp.wpu %>%
   group_by(fips,year) %>%
   summarise(wpu = mean(wpu.dp*1000), pop = mean(pop*1000), domestic = mean(dp.t*1000000))
 
-
-
 # testing consistency with Brenna Kent
 df <- subset(demand, fips == 51107)
 df <- df %>% 
   group_by(fips,year,ssp) %>%
   summarise(wpu = mean(wpu.dp*1000), pop = mean(pop*1000))
-
-
-
-
-
 
 # This is needed later for industrial water use
 demand.init$wpu.ind <- demand.init$indust / demand.init$inc
@@ -1322,10 +1296,10 @@ water5 <- merge(water, pop5, by="fips")
 #IMPORTANT: need to set the carbon assumption and global climate model
 #-----------------------------------------------------------------------------------.
 #carbon=45 or carbon=85 depending on which carbon climate model
-carbon <- 45
+carbon <- 85
 
 #set the global climate model. options: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", "base"
-gcm <- "hadgem"
+gcm <- "ipsl_cm5a"
 
 #this is messy, but brings in the corresponding climate data based on setting the model above
 if(carbon==45 & gcm=="cnrm_c5"){
@@ -2054,18 +2028,11 @@ precip.percent[,c(1)] <- ifelse(precip.percent[,c(1)] == 04012, 04027, precip.pe
 precip.percent[,c(1)] <- ifelse(precip.percent[,c(1)] == 35006, 35061, precip.percent[,c(1)])
 precip.percent <- precip.percent %>% group_by(fips) %>% summarise_all(funs(sum))
 
-
-
 precip <- converteffective(precip, converthuc)
 colnames(precip) <- c("fips","precip15","precip16","precip17","precip18","precip19","precip20","precip21","precip22","precip23","precip24","precip25","precip26","precip27","precip28","precip29","precip30","precip31","precip32","precip33","precip34","precip35","precip36","precip37","precip38","precip39","precip40","precip41","precip42","precip43","precip44","precip45","precip46","precip47","precip48","precip49","precip50","precip51","precip52","precip53","precip54","precip55","precip56","precip57","precip58","precip59","precip60","precip61","precip62","precip63","precip64","precip65","precip66","precip67","precip68","precip69","precip70")
 
-
 pet <- convertpet(pet,converthuc)
 colnames(pet) <- c("fips","et15","et16","et17","et18","et19","et20","et21","et22","et23","et24","et25","et26","et27","et28","et29","et30","et31","et32","et33","et34","et35","et36","et37","et38","et39","et40","et41","et42","et43","et44","et45","et46","et47","et48","et49","et50","et51","et52","et53","et54","et55","et56","et57","et58","et59","et60","et61","et62","et63","et64","et65","et66","et67","et68","et69","et70")
-
-
-
-
 
 #----------------------------------------------------------------------------------------------------.
 ####### MERGE CLIMATE EFFECTS AND CARBON DATA #######
@@ -2082,7 +2049,6 @@ if (carbon==85) {
 if (gcm=="base"){
   climate[,c(114:169)] <- 0
 }
-
 
 #----------------------------------------------------------------------------------------------------.
 ##### CLIMATE DP FUNCTION #####
@@ -2342,6 +2308,13 @@ dp.ssp2.county <- dp.ssp2
 dp.ssp3.county <- dp.ssp3
 dp.ssp4.county <- dp.ssp4
 dp.ssp5.county <- dp.ssp5
+
+#calculate national totals
+dp.tot1 <- dp.ssp1 %>% group_by(sector) %>% summarise_each(funs(sum, sd))
+dp.tot2 <- dp.ssp2 %>% group_by(sector) %>% summarise_each(funs(sum, sd))
+dp.tot3 <- dp.ssp3 %>% group_by(sector) %>% summarise_each(funs(sum, sd))
+dp.tot4 <- dp.ssp4 %>% group_by(sector) %>% summarise_each(funs(sum, sd))
+dp.tot5 <- dp.ssp5 %>% group_by(sector) %>% summarise_each(funs(sum, sd))
 
 
 # # per unit calc
