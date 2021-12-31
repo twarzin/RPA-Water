@@ -8,7 +8,7 @@
 
 rm(list = ls())
 
-#setwd("D:/Subregions")
+setwd("D:/Subregions")
 setwd("D:/Demand model/Demand Results - Supplemental for Publication/ConsumptiveOnly")
 
 library(tidyr)
@@ -1000,6 +1000,7 @@ domestic5h <- read.csv("./Projections_hadgem85/dp_ssp5.csv")
 domestic1h$model <- 'hadgem45-1'
 domestic2h$model <- "hadgem85-2"
 domestic3h$model <- "hadgem85-3"
+
 domestic5h$model <- "hadgem85-5"
 
 # ipsl
@@ -1012,6 +1013,7 @@ domestic1i$model <- 'ipsl45-1'
 domestic2i$model <- "ipsl85-2"
 domestic3i$model <- "ipsl85-3"
 domestic5i$model <- "ipsl85-5"
+
 
 # mri
 domestic1m <- read.csv("./Projections_mri45/dp_ssp1.csv")
@@ -1109,39 +1111,126 @@ industrial2m$model <- "mri85-2"
 industrial3m$model <- "mri85-3"
 industrial5m$model <- "mri85-5"
 
-#### LEFT OFF HERE #####
-#######################
-#########################
-########################
-##########################
-
+ind.wd <- rbind(
+  industrial1n,
+  industrial2n,
+  industrial3n,
+  industrial5n,
+  industrial1c,
+  industrial2c,
+  industrial3c,
+  industrial5c,
+  industrial1h,
+  industrial2h,
+  industrial3h,
+  industrial5h,
+  industrial1i,
+  industrial2i,
+  industrial3i,
+  industrial5i,
+  industrial1m,
+  industrial2m,
+  industrial3m,
+  industrial5m
+)
 
 ##### irrigation ##### 
 
 # irrigation does not change based on SSP scenario, only climate & RCP
 
 # noresm
-irrigation45<- read.csv("./Projections_noresm45/ir.csv")
-irrigation85 <- read.csv("./Projections_noresm85/ir.csv")
+irrigation45n<- read.csv("./Projections_noresm45/ir.csv")
+irrigation85n <- read.csv("./Projections_noresm85/ir.csv")
 
 # cnrm
-irrigation45<- read.csv("./Projections_cnrm45/ir.csv")
-irrigation85 <- read.csv("./Projections_cnrm85/ir.csv")
+irrigation45c<- read.csv("./Projections_cnrm45/ir.csv")
+irrigation85c <- read.csv("./Projections_cnrm85/ir.csv")
 
 # hadgem 
-irrigation45<- read.csv("./Projections_hadgem45/ir.csv")
-irrigation85 <- read.csv("./Projections_hadgem85/ir.csv")
+irrigation45h<- read.csv("./Projections_hadgem45/ir.csv")
+irrigation85h <- read.csv("./Projections_hadgem85/ir.csv")
 
 # ipsl 
-irrigation45<- read.csv("./Projections_ipsl45/ir.csv")
-irrigation85 <- read.csv("./Projections_ipsl85/ir.csv")
+irrigation45i<- read.csv("./Projections_ipsl45/ir.csv")
+irrigation85i <- read.csv("./Projections_ipsl85/ir.csv")
 
 # mri 
-irrigation45<- read.csv("./Projections_mri45/ir.csv")
-irrigation85 <- read.csv("./Projections_mri85/ir.csv")
+irrigation45m<- read.csv("./Projections_mri45/ir.csv")
+irrigation85m <- read.csv("./Projections_mri85/ir.csv")
+
+irrigation1n <- irrigation45n
+irrigation1c <- irrigation45c
+irrigation1h <- irrigation45h
+irrigation1i <- irrigation45i
+irrigation1m <- irrigation45m
+
+irrigation2n <- irrigation85n
+irrigation2c <- irrigation85c
+irrigation2h <- irrigation85h
+irrigation2i <- irrigation85i
+irrigation2m <- irrigation85m
+
+irrigation3n <- irrigation85n
+irrigation3c <- irrigation85c
+irrigation3h <- irrigation85h
+irrigation3i <- irrigation85i
+irrigation3m <- irrigation85m
+
+irrigation5n <- irrigation85n
+irrigation5c <- irrigation85c
+irrigation5h <- irrigation85h
+irrigation5i <- irrigation85i
+irrigation5m <- irrigation85m
+
+irrigation1n$model <- 'noresm45-1'
+irrigation2n$model <- "noresm85-2"
+irrigation3n$model <- "noresm85-3"
+irrigation5n$model <- "noresm85-5"
+
+irrigation1c$model <- 'cnrm45-1'
+irrigation2c$model <- "cnrm85-2"
+irrigation3c$model <- "cnrm85-3"
+irrigation5c$model <- "cnrm85-5"
+
+irrigation1h$model <- 'hadgem45-1'
+irrigation2h$model <- "hadgem85-2"
+irrigation3h$model <- "hadgem85-3"
+irrigation5h$model <- "hadgem85-5"
+
+irrigation1i$model <- 'ipsl45-1'
+irrigation2i$model <- "ipsl85-2"
+irrigation3i$model <- "ipsl85-3"
+irrigation5i$model <- "ipsl85-5"
+
+irrigation1m$model <- 'mri45-1'
+irrigation2m$model <- "mri85-2"
+irrigation3m$model <- "mri85-3"
+irrigation5m$model <- "mri85-5"
+
+irr.wd <- rbind(
+  irrigation1n,
+  irrigation2n,
+  irrigation3n,
+  irrigation5n,
+  irrigation1c,
+  irrigation2c,
+  irrigation3c,
+  irrigation5c,
+  irrigation1h,
+  irrigation2h,
+  irrigation3h,
+  irrigation5h,
+  irrigation1i,
+  irrigation2i,
+  irrigation3i,
+  irrigation5i,
+  irrigation1m,
+  irrigation2m,
+  irrigation3m,
+  irrigation5m
+)
 
 ##### livestock and aquaculture #####
-
 
 # livestock and aquaculture are being combined into one sector
 # these two sectors do not change based on climate - only SSP
@@ -1156,123 +1245,240 @@ aqua2 <- read.csv("./Projections_noresm85/aq_ssp2.csv")
 aqua3 <- read.csv("./Projections_noresm85/aq_ssp3.csv")
 aqua5 <- read.csv("./Projections_noresm85/aq_ssp5.csv")
 
+ls1 <- rbind(livestock1, aqua1)
+ls1 <- subset(ls1, select = -c(sector))
+ls1 <- ls1 %>% group_by(fips) %>% summarise_each(funs(sum))
+ls1$sector <- 'ls'
+
+ls2 <- rbind(livestock2, aqua2)
+ls2 <- subset(ls2, select = -c(sector))
+ls2 <- ls2 %>% group_by(fips) %>% summarise_each(funs(sum))
+ls2$sector <- 'ls'
+
+ls3 <- rbind(livestock3, aqua3)
+ls3 <- subset(ls3, select = -c(sector))
+ls3 <- ls3 %>% group_by(fips) %>% summarise_each(funs(sum))
+ls3$sector <- 'ls'
+
+ls5 <- rbind(livestock5, aqua5)
+ls5 <- subset(ls5, select = -c(sector))
+ls5 <- ls5 %>% group_by(fips) %>% summarise_each(funs(sum))
+ls5$sector <- 'ls'
+
+ls1n <- ls1
+ls1c <- ls1
+ls1h <- ls1
+ls1i <- ls1
+ls1m <- ls1
+
+ls2n <- ls2
+ls2c <- ls2
+ls2h <- ls2
+ls2i <- ls2
+ls2m <- ls2
+
+ls3n <- ls3
+ls3c <- ls3
+ls3h <- ls3
+ls3i <- ls3
+ls3m <- ls3
+
+ls5n <- ls5
+ls5c <- ls5
+ls5h <- ls5
+ls5i <- ls5
+ls5m <- ls5
+
+ls1n$model <- 'noresm45-1'
+ls2n$model <- "noresm85-2"
+ls3n$model <- "noresm85-3"
+ls5n$model <- "noresm85-5"
+
+ls1c$model <- 'cnrm45-1'
+ls2c$model <- "cnrm85-2"
+ls3c$model <- "cnrm85-3"
+ls5c$model <- "cnrm85-5"
+
+ls1h$model <- 'hadgem45-1'
+ls2h$model <- "hadgem85-2"
+ls3h$model <- "hadgem85-3"
+ls5h$model <- "hadgem85-5"
+
+ls1i$model <- 'ipsl45-1'
+ls2i$model <- "ipsl85-2"
+ls3i$model <- "ipsl85-3"
+ls5i$model <- "ipsl85-5"
+
+ls1m$model <- 'mri45-1'
+ls2m$model <- "mri85-2"
+ls3m$model <- "mri85-3"
+ls5m$model <- "mri85-5"
+
+ls.wd <- rbind(
+  ls1n,
+  ls2n,
+  ls3n,
+  ls5n,
+  ls1c,
+  ls2c,
+  ls3c,
+  ls5c,
+  ls1h,
+  ls2h,
+  ls3h,
+  ls5h,
+  ls1i,
+  ls2i,
+  ls3i,
+  ls5i,
+  ls1m,
+  ls2m,
+  ls3m,
+  ls5m
+)
 
 ##### thermo #####
 
 # noresm
-thermo1 <- read.csv("./Projections_Noresm45/th_ssp1.csv")
-thermo1[, 4:59][is.na(thermo1[, 4:59])] <- 0
-thermo2 <- read.csv("./Projections_Noresm85/th_ssp2.csv")
-thermo2[, 4:59][is.na(thermo2[, 4:59])] <- 0
-thermo3 <- read.csv("./Projections_Noresm85/th_ssp3.csv")
-thermo3[, 4:59][is.na(thermo3[, 4:59])] <- 0
-thermo5 <- read.csv("./Projections_Noresm85/th_ssp5.csv")
-thermo5[, 4:59][is.na(thermo5[, 4:59])] <- 0
+thermo1n <- read.csv("./Projections_Noresm45/th_ssp1.csv")
+thermo1n[, 4:59][is.na(thermo1n[, 4:59])] <- 0
+thermo2n <- read.csv("./Projections_Noresm85/th_ssp2.csv")
+thermo2n[, 4:59][is.na(thermo2n[, 4:59])] <- 0
+thermo3n <- read.csv("./Projections_Noresm85/th_ssp3.csv")
+thermo3n[, 4:59][is.na(thermo3n[, 4:59])] <- 0
+thermo5n <- read.csv("./Projections_Noresm85/th_ssp5.csv")
+thermo5n[, 4:59][is.na(thermo5n[, 4:59])] <- 0
 
 # cnrm
-thermo1 <- read.csv("./Projections_cnrm45/th_ssp1.csv")
-thermo1[, 4:59][is.na(thermo1[, 4:59])] <- 0
-thermo2 <- read.csv("./Projections_cnrm85/th_ssp2.csv")
-thermo2[, 4:59][is.na(thermo2[, 4:59])] <- 0
-thermo3 <- read.csv("./Projections_cnrm85/th_ssp3.csv")
-thermo3[, 4:59][is.na(thermo3[, 4:59])] <- 0
-thermo5 <- read.csv("./Projections_cnrm85/th_ssp5.csv")
-thermo5[, 4:59][is.na(thermo5[, 4:59])] <- 0
+thermo1c <- read.csv("./Projections_cnrm45/th_ssp1.csv")
+thermo1c[, 4:59][is.na(thermo1c[, 4:59])] <- 0
+thermo2c <- read.csv("./Projections_cnrm85/th_ssp2.csv")
+thermo2c[, 4:59][is.na(thermo2c[, 4:59])] <- 0
+thermo3c <- read.csv("./Projections_cnrm85/th_ssp3.csv")
+thermo3c[, 4:59][is.na(thermo3c[, 4:59])] <- 0
+thermo5c <- read.csv("./Projections_cnrm85/th_ssp5.csv")
+thermo5c[, 4:59][is.na(thermo5c[, 4:59])] <- 0
 
 # hadgem
-thermo1 <- read.csv("./Projections_hadgem45/th_ssp1.csv")
-thermo1[, 4:59][is.na(thermo1[, 4:59])] <- 0
-thermo2 <- read.csv("./Projections_hadgem85/th_ssp2.csv")
-thermo2[, 4:59][is.na(thermo2[, 4:59])] <- 0
-thermo3 <- read.csv("./Projections_hadgem85/th_ssp3.csv")
-thermo3[, 4:59][is.na(thermo3[, 4:59])] <- 0
-thermo5 <- read.csv("./Projections_hadgem85/th_ssp5.csv")
-thermo5[, 4:59][is.na(thermo5[, 4:59])] <- 0
+thermo1h <- read.csv("./Projections_hadgem45/th_ssp1.csv")
+thermo1h[, 4:59][is.na(thermo1h[, 4:59])] <- 0
+thermo2h <- read.csv("./Projections_hadgem85/th_ssp2.csv")
+thermo2h[, 4:59][is.na(thermo2h[, 4:59])] <- 0
+thermo3h <- read.csv("./Projections_hadgem85/th_ssp3.csv")
+thermo3h[, 4:59][is.na(thermo3h[, 4:59])] <- 0
+thermo5h <- read.csv("./Projections_hadgem85/th_ssp5.csv")
+thermo5h[, 4:59][is.na(thermo5h[, 4:59])] <- 0
 
 # ipsl
-thermo1 <- read.csv("./Projections_ipsl45/th_ssp1.csv")
-thermo1[, 4:59][is.na(thermo1[, 4:59])] <- 0
-thermo2 <- read.csv("./Projections_ipsl85/th_ssp2.csv")
-thermo2[, 4:59][is.na(thermo2[, 4:59])] <- 0
-thermo3 <- read.csv("./Projections_ipsl85/th_ssp3.csv")
-thermo3[, 4:59][is.na(thermo3[, 4:59])] <- 0
-thermo5 <- read.csv("./Projections_ipsl85/th_ssp5.csv")
-thermo5[, 4:59][is.na(thermo5[, 4:59])] <- 0
-
+thermo1i <- read.csv("./Projections_ipsl45/th_ssp1.csv")
+thermo1i[, 4:59][is.na(thermo1i[, 4:59])] <- 0
+thermo2i <- read.csv("./Projections_ipsl85/th_ssp2.csv")
+thermo2i[, 4:59][is.na(thermo2i[, 4:59])] <- 0
+thermo3i <- read.csv("./Projections_ipsl85/th_ssp3.csv")
+thermo3i[, 4:59][is.na(thermo3i[, 4:59])] <- 0
+thermo5i <- read.csv("./Projections_ipsl85/th_ssp5.csv")
+thermo5i[, 4:59][is.na(thermo5i[, 4:59])] <- 0
 
 # mri
-thermo1 <- read.csv("./Projections_mri45/th_ssp1.csv")
-thermo1[, 4:59][is.na(thermo1[, 4:59])] <- 0
-thermo2 <- read.csv("./Projections_mri85/th_ssp2.csv")
-thermo2[, 4:59][is.na(thermo2[, 4:59])] <- 0
-thermo3 <- read.csv("./Projections_mri85/th_ssp3.csv")
-thermo3[, 4:59][is.na(thermo3[, 4:59])] <- 0
-thermo5 <- read.csv("./Projections_mri85/th_ssp5.csv")
-thermo5[, 4:59][is.na(thermo5[, 4:59])] <- 0
+thermo1m <- read.csv("./Projections_mri45/th_ssp1.csv")
+thermo1m[, 4:59][is.na(thermo1m[, 4:59])] <- 0
+thermo2m <- read.csv("./Projections_mri85/th_ssp2.csv")
+thermo2m[, 4:59][is.na(thermo2m[, 4:59])] <- 0
+thermo3m <- read.csv("./Projections_mri85/th_ssp3.csv")
+thermo3m[, 4:59][is.na(thermo3m[, 4:59])] <- 0
+thermo5m <- read.csv("./Projections_mri85/th_ssp5.csv")
+thermo5m[, 4:59][is.na(thermo5m[, 4:59])] <- 0
 
+thermo1n$model <- 'noresm45-1'
+thermo2n$model <- "noresm85-2"
+thermo3n$model <- "noresm85-3"
+thermo5n$model <- "noresm85-5"
 
+thermo1c$model <- 'cnrm45-1'
+thermo2c$model <- "cnrm85-2"
+thermo3c$model <- "cnrm85-3"
+thermo5c$model <- "cnrm85-5"
 
+thermo1h$model <- 'hadgem45-1'
+thermo2h$model <- "hadgem85-2"
+thermo3h$model <- "hadgem85-3"
+thermo5h$model <- "hadgem85-5"
 
+thermo1i$model <- 'ipsl45-1'
+thermo2i$model <- "ipsl85-2"
+thermo3i$model <- "ipsl85-3"
+thermo5i$model <- "ipsl85-5"
 
+thermo1m$model <- 'mri45-1'
+thermo2m$model <- "mri85-2"
+thermo3m$model <- "mri85-3"
+thermo5m$model <- "mri85-5"
 
-#### paste
+# get consistent column names
 
+names(thermo1c) <- names(thermo2h)
+names(thermo1h) <- names(thermo2h)
+names(thermo1i) <- names(thermo2h)
+names(thermo1m) <- names(thermo2h)
+names(thermo1n) <- names(thermo2h)
 
-# 2015 data is same for all scenarios, so choose one to use as current
-current <- cnrm45ssp1
+names(thermo2c) <- names(thermo2h)
+#names(thermo2h) <- names(thermo2h)
+names(thermo2i) <- names(thermo2h)
+names(thermo2m) <- names(thermo2h)
+names(thermo2n) <- names(thermo2h)
 
-current <- select(current, fips, sector, Y2015)
-current[,3][is.na(current[,3])] <- 0
+names(thermo3c) <- names(thermo2h)
+names(thermo3h) <- names(thermo2h)
+names(thermo3i) <- names(thermo2h)
+names(thermo3m) <- names(thermo2h)
+names(thermo3n) <- names(thermo2h)
 
-# Make one large data file?
+names(thermo5c) <- names(thermo2h)
+names(thermo5h) <- names(thermo2h)
+names(thermo5i) <- names(thermo2h)
+names(thermo5m) <- names(thermo2h)
+names(thermo5n) <- names(thermo2h)
 
-cnrm45ssp1$model <- "cnrm45-1"
-cnrm85ssp2$model <- "cnrm85-2"
-cnrm85ssp3$model <- "cnrm85-3"
-cnrm85ssp5$model <- "cnrm85-5"
-hadgem45ssp1$model <- "hadgem45-1"
-hadgem85ssp2$model <- "hadgem85-2"
-hadgem85ssp3$model <- "hadgem85-3"
-hadgem85ssp5$model <- "hadgem85-5"
-ipsl45ssp1$model <- "ipsl45-1"
-ipsl85ssp2$model <- "ipsl85-2"
-ipsl85ssp3$model <- "ipsl85-3"
-ipsl85ssp5$model <- "ipsl85-5"
-mri45ssp1$model <- "mri45-1"
-mri85ssp2$model <- "mri85-2"
-mri85ssp3$model <- "mri85-3"
-mri85ssp5$model <- "mri85-5"
-noresm45ssp1$model <- "noresm45-1"
-noresm85ssp2$model <- "noresm85-2"
-noresm85ssp3$model <- "noresm85-3"
-noresm85ssp5$model <- "noresm85-5"
-
-df <- rbind(cnrm45ssp1,
-            cnrm85ssp2,
-            cnrm85ssp3,
-            cnrm85ssp5,
-            hadgem45ssp1,
-            hadgem85ssp2,
-            hadgem85ssp3,
-            hadgem85ssp5,
-            ipsl45ssp1,
-            ipsl85ssp2,
-            ipsl85ssp3,
-            ipsl85ssp5,
-            mri45ssp1,
-            mri85ssp2,
-            mri85ssp3,
-            mri85ssp5,
-            noresm45ssp1,
-            noresm85ssp2,
-            noresm85ssp3,
-            noresm85ssp5
+thermo.wd <- rbind(
+  thermo1n,
+  thermo2n,
+  thermo3n,
+  thermo5n,
+  thermo1c,
+  thermo2c,
+  thermo3c,
+  thermo5c,
+  thermo1h,
+  thermo2h,
+  thermo3h,
+  thermo5h,
+  thermo1i,
+  thermo2i,
+  thermo3i,
+  thermo5i,
+  thermo1m,
+  thermo2m,
+  thermo3m,
+  thermo5m
 )
 
+thermo.wd$sector <- 'th'
+
+withdrawals <- rbind(dp.wd, ind.wd, irr.wd, ls.wd, thermo.wd)
+
+# national total withdrawals
+
+wd.tot <- subset(withdrawals, select = c(fips, sector, model, Y2015, Y2070))
+wd.tot.scenario <- subset(wd.tot, select=c(model,Y2015,Y2070))
+wd.tot.scenario <- wd.tot.scenario %>% group_by(model) %>% summarise_each(funs(sum))
+wd.tot.scenario$change <- (wd.tot.scenario$Y2070 / wd.tot.scenario$Y2015)-1
+ls5$sector <- 'ls'
 
 
-
-##### end paste
+#############################################
+# Group withdrawals by RPA subregion 
+#############################################
 
 
 ##### domestic #####
