@@ -317,6 +317,11 @@ th <- select(th, fips, th15, th70, model)
 la <- select(all.la, fips, la15, la70, model)
 la$fips <-as.character(la$fips)
 
+
+# mean change by model
+sector.mean <- df %>% group_by(sector,fips) %>% summarise_each(funs(mean, sd))
+sector.mean <- select(sector.mean, sector, fips, change_mean)
+
 joined <- left_join(dp, ir, by = c('fips','model'))
 joined <- left_join(joined, ic, by = c('fips','model'))
 joined <- left_join(joined, th, by = c('fips','model'))
@@ -402,6 +407,32 @@ setwd("D:/Demand model/Demand Results - Supplemental for Publication/Subregions"
 subregions <- read.csv("Counties_Subregions.csv")%>%
   select(GEOID, RPA_SubReg)
 names(subregions) <- c("fips","subregion")
+
+# sub-regional mean changes by sector
+
+df.tot <- select(df, fips, sector, model, Y2015, Y2070)
+sector.region <- merge(df.tot, subregions, by="fips")
+sector.region <- select(sector.region, subregion, sector, model, Y2015, Y2070)
+sector.nation <- sector.region
+
+sector.region <- sector.region %>%
+  group_by(subregion, sector, model) %>%
+  summarise_each(funs(sum))
+
+sector.region$change <- (sector.region$Y2070 / sector.region$Y2015) - 1
+
+sector.region <- sector.region %>%
+  group_by(subregion, sector) %>%
+  summarise_each(funs(mean))
+
+sector.nation <- select(sector.nation, sector, model, Y2015, Y2070)
+sector.nation <- sector.nation %>%
+  group_by(model, sector) %>%
+  summarise_each(funs(sum))
+sector.nation$change <- (sector.nation$Y2070 / sector.nation$Y2015) - 1
+sector.nation <- sector.nation %>%
+  group_by(sector) %>%
+  summarise_each(funs(mean))
 
 # -----------------------------------------------------------.
 ##### Current use #####
@@ -1000,7 +1031,6 @@ domestic5h <- read.csv("./Projections_hadgem85/dp_ssp5.csv")
 domestic1h$model <- 'hadgem45-1'
 domestic2h$model <- "hadgem85-2"
 domestic3h$model <- "hadgem85-3"
-
 domestic5h$model <- "hadgem85-5"
 
 # ipsl
@@ -1013,7 +1043,6 @@ domestic1i$model <- 'ipsl45-1'
 domestic2i$model <- "ipsl85-2"
 domestic3i$model <- "ipsl85-3"
 domestic5i$model <- "ipsl85-5"
-
 
 # mri
 domestic1m <- read.csv("./Projections_mri45/dp_ssp1.csv")
@@ -1475,6 +1504,114 @@ wd.tot.scenario <- wd.tot.scenario %>% group_by(model) %>% summarise_each(funs(s
 wd.tot.scenario$change <- (wd.tot.scenario$Y2070 / wd.tot.scenario$Y2015)-1
 ls5$sector <- 'ls'
 
+# need to fix FIPS codes
+
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51003, 51901, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51540, 51901, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51015, 51907, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51790, 51907, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51820, 51907, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51031, 51911, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51680, 51911, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51035, 51913, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51640, 51913, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51053, 51918, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51570, 51918, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51730, 51918, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51059, 51919, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51600, 51919, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51610, 51919, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51069, 51921, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51840, 51921, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51081, 51923, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51595, 51923, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51089, 51929, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51690, 51929, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51095, 51931, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51830, 51931, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51121, 51933, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51750, 51933, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51143, 51939, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51590, 51939, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51149, 51941, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51670, 51941, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51153, 51942, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51683, 51942, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51685, 51942, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51161, 51944, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51775, 51944, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51163, 51945, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51530, 51945, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51678, 51945, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51165, 51947, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51660, 51947, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51175, 51949, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51620, 51949, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51177, 51951, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51630, 51951, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51191, 51953, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51520, 51953, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51195, 51955, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51720, 51955, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51199, 51958, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51735, 51958, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51560, 51903, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51005, 51903, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51580, 51903, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51780, 51083, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51515, 51909, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51019, 51909, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 51149, 51941, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 12025, 12086, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 46102, 46113, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 55078, 55901, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 55115, 55901, dp.wd[,2])
+#dp.wd[,2] <- ifelse(dp.wd[,2] == 08014, 08013, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 04012, 04027, dp.wd[,2])
+dp.wd[,2] <- ifelse(dp.wd[,2] == 35006, 35061, dp.wd[,2])
+
+
+# maps of mean change and standard deviation (note, percent change
+# is same for withdrawals and consumptive use)
+
+dp.wd$change <- (dp.wd$Y2070/dp.wd$Y2015) - 1
+dp2 <- select(dp.wd, fips, model, change)
+dp2 <- dp2 %>% group_by(fips) %>% summarise_each(funs(mean, sd))
+
+dp2$region <- as.double(dp2$fips)
+dp2$value <- dp2$change_mean
+county_choropleth(dp2, num_colors = 0)
+
+dp2$value <- dp2$change_sd
+county_choropleth(dp2, num_colors = 0)
+
+ind.wd$change <- (ind.wd$Y2070/ind.wd$Y2015) - 1
+ind2 <- select(ind.wd, fips, model, change)
+ind2 <- ind2 %>% group_by(fips) %>% summarise_each(funs(mean, sd))
+ind2$region <- as.double(ind2$fips)
+ind2$value <- ind2$change_mean
+county_choropleth(ind2, num_colors = 0)
+ind2$value <- ind2$change_sd
+county_choropleth(ind2, num_colors = 0)
+
+
+irr.wd$change <- (irr.wd$Y2070/irr.wd$Y2015) - 1
+irr2 <- select(irr.wd, fips, model, change)
+irr2 <- irr2 %>% group_by(fips) %>% summarise_each(funs(mean, sd))
+irr2$region <- as.double(irr2$fips)
+irr2$value <- irr2$change_mean
+county_choropleth(irr2, num_colors = 0)
+irr2$value <- irr2$change_sd
+county_choropleth(irr2, num_colors = 0)
+
+thermo.wd$change <- (thermo.wd$Y2070/thermo.wd$Y2015) - 1
+thermo2 <- select(thermo.wd, fips, model, change)
+thermo2 <- thermo2 %>% group_by(fips) %>% summarise_each(funs(mean, sd))
+thermo2$region <- as.double(thermo2$fips)
+thermo2$value <- thermo2$change_mean
+county_choropleth(thermo2, num_colors = 0)
+thermo2$value <- thermo2$change_sd
+county_choropleth(thermo2, num_colors = 0)
 
 #############################################
 # Group withdrawals by RPA subregion 
