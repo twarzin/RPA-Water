@@ -3,6 +3,11 @@
 # US Forest Service
 # travis.w.warziniack@usda.gov
 
+# To do:
+# - format climate variable as needed for each sector (summer precip etc)
+# - decide what time scale to do the analysis (monthly, yearly, seasonal)
+# - do we want a separate script for each sector?
+
 rm(list = ls())  # clears memory
 
 # Set working directory to file location
@@ -176,17 +181,15 @@ cat("\014")  # Same as Ctrl-L
 # Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
 
 demand.init <- subset(pop.inc, year == 2015)
-demand.init <- merge(demand.init, wd.2015, by = "fips")
-demand.init$dp <- demand.init$dp
+demand.init <- merge(demand.init, wd.2015, by = c("fips","year"))
+#demand.init$dp <- demand.init$dp
+
+keeps <- c("fips","year","ssp","pop","inc","state","indust","dp","thermo", "thermo.gWh","mining","livestock",
+           "irrigation","IR.acres")
+demand.init <- demand.init[,names(demand.init) %in% keeps]
 
 demand.init$wpu.dp <- (demand.init$dp) / (demand.init$pop)
 
-keeps <- c("fips","year","pop","ssp","inc","wpu.dp","state","indust","dp","thermo", "thermo.gWh","mining","livestock",
-           "irrigation","IR.acres")
-
-demand.init <- demand.init[,names(demand.init) %in% keeps]
-#why did year fall off?
-demand.init$year <- 2015
 
 demand.proj <- subset(pop.inc, year != 2015)
 
@@ -205,18 +208,31 @@ drops <- c("X")
 demand.proj <- demand.proj[,!names(demand.proj) %in% drops]
 
 #select all base year values
-base <- demand.init %>% select(fips, wpu.dp, ssp) 
+#base <- demand.init %>% select(fips, wpu.dp, ssp) 
 demand <- rbind(demand.init, demand.proj)
 
 demand <- merge(demand, ew, by="fips")
 # demand <- merge(demand, base, by="fips")
+
+# climate impacts to demand (fake climate impacts)
+demand$precip <- NA
+demand$temp <- NA
+demand$ET <- NA
+
+# Need to add real climate data here:
+demand$delta.sprecip <- rnorm(1, mean=1, sd=1)
+demand$delta.spet <- rnorm(1, mean=1, sd=1)
+
+
+cc.dp1 <- -1.415    # coefficient on change in summertime precip
+cc.dp2 <- 0.778     # coefficient on change in pet
 
 attach(demand)
 demand <- demand[order(fips,ssp,year),]
 detach(demand)
 
 # be sure to sort first!!
-# this loop takes a VERY long time to run
+# this loop takes a VERY long time to run, about 30 minutes on Travis' desktop
 nobs <- dim(demand)[1]
 for(i in 1:nobs) {
   if (demand$year[i] != 2015) {
@@ -224,7 +240,12 @@ for(i in 1:nobs) {
   }
   }
 
+# need to move this into loop to get values each year
+demand$wpu.dp.cc <- (cc.dp1*demand$delta.sprecip + cc.dp2*demand$delta.spet) / 1000
+# the original code did not have the last term and divided by 1000
+
 demand$dp.t <- demand$pop * demand$wpu.dp
+demand$dp.cc <- demand$pop * demand$wpu.dp.cc
 
 # some quick calculations to get total US domestic withdrawals
 
@@ -233,21 +254,6 @@ dp2 <- select(dp, fips, ssp, dp.t)
 dp2 <- dp2 %>% group_by(ssp) %>% summarise_each(funs(sum, sd))
 
 # dp demand with climate
-
-demand$precip <- NA
-demand$temp <- NA
-demand$ET <- NA
-
-cc.dp1 <- -1.415    # coefficient on change in summertime precip
-cc.dp2 <- 0.778     # coefficient on change in pet
-
-# Need to add real climate data here:
-demand$delta.sprecip <- rnorm(1, mean=1, sd=1)
-demand$delta.spet <- rnorm(1, mean=1, sd=1)
-demand$wpu.dp.cc <- (cc.dp1*demand$delta.sprecip + cc.dp2*demand$delta.spet) / 1000
-# the original code did not have the last term and divided by 1000
-
-demand$dp.cc <- demand$pop * demand$wpu.dp.cc
 
 # extracting wpu estimates
 dp.wpu <- demand
@@ -504,6 +510,8 @@ test.pct <- cntypercent %>% group_by(FIPS) %>% summarise(Shape_Area=sum(Shape_Ar
 # cntypercent$CountyAreaPct <- cntypercent$Shape_Area/cntypercent$CountyArea 
 #----------------------------------------------------------------------------------------------------.
 
+
+# still needed if done in loop?
 ######################## FUNCTION FOR LINEAR APPROXIMATIONS #######################
 #This function is used to create the linear approximations for years in between the 5 year intervals.
 linapprox <- function (DF)
