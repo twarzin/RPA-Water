@@ -1,10 +1,11 @@
 """
-Script Name:    _______.py
+Script Name:    popincSandbox.py
 Authors:        Pam Froemke (Rocky Mountain Research Station)
                 Travis Warziniack (Rocky Mountain Research Station)
 
 Description:    Projections of water use:
                 Calculates projected domestic water use from the 2015 base data.
+                Sandbox for playing with equations, pandas, and numpy.
                 
 Required:       1. population projection csv data
                 2. domestic water withdrawal csv data for 2015
