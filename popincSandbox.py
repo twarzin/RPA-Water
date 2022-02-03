@@ -92,11 +92,15 @@ wpu_0.to_csv(wpu_0_CSV)  # This is just so I can view the data in Excel.
 
 # --------------------------------------------------------------------------------
 
-wpuDP = pd.DataFrame()
-for count in range(1,10):
-    wpuDP[0] = wpu_0[0]
-    wpuDP[count] = wpu_0[count-1]
-    
+dfWd = dfJoinPopWd.copy()
+
+dfWd["wpuDP0"] = dfWd["domestic"] / dfPop2015["pop"]
+
+# The below is not quite right. It needs to be lagged for the year prior.
+# Maybe make this a log function
+dfWd["wpuDPt"] = dfWd["wpuDP0"] * (1 + dfWd["DP.growth"])**(dfWd["year_x"]-2015)
+
+
     
 # Python3 program to find compound interest for given values (geeksforgeeks.org).
 
