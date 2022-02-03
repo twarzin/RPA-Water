@@ -26,7 +26,8 @@ import os
 # Locations
 # Can be re-written for user input, then the resto of the script would not need modifications for different computers.
 # on Pam's computer
-dataDir = r'E:\_Projects\WaterDemand\ScriptsWaterDemand\RPA Water Scripts to Python\DataWaterDemandCSV'
+#dataDir = r'E:\_Projects\WaterDemand\ScriptsWaterDemand\RPA Water Scripts to Python\DataWaterDemandCSV'
+dataDir = r'D:\WaterDemand'
 # Data
 # Can be re-written for user input, then the resto of the script would not need modifications for different data files.
 popnCSV = 'popinc_proj.csv'  # input - Population and Income projections from Wear & Prestemon
@@ -90,8 +91,14 @@ wpu_0.to_csv(wpu_0_CSV)  # This is just so I can view the data in Excel.
 #   will use the same amount of water each year through 2070. ?
 
 # --------------------------------------------------------------------------------
-# Python3 program to find compound interest for given values (geeksforgeeks.org).
 
+wpuDP = pd.DataFrame()
+for count in range(1,10):
+    wpuDP[0] = wpu_0[0]
+    wpuDP[count] = wpu_0[count-1]
+    
+    
+# Python3 program to find compound interest for given values (geeksforgeeks.org).
 
 def compound_interest(principle, rate, time):
     # Calculates compound interest for the specified number of years
