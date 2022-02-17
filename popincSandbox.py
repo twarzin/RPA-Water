@@ -19,9 +19,10 @@ Notes:
 print('Loading modules and defining variables...')
 print()
 import pandas as pd
-import numpy  # May not need this.
+import numpy as np  # May not need this.
 import os
 
+#%%
 # ______________________________________________________________________________________________________________________
 # Locations
 # Can be re-written for user input, then the resto of the script would not need modifications for different computers.
@@ -37,6 +38,7 @@ wpu_0_CSV = "wpu_0.csv"  # output - calculated 2015 domestic water withdrawals
 joinPopWd = "PopWD2015.csv"  # output - 2015 water withdrawal data joined to 2015 population projection data
 # ______________________________________________________________________________________________________________________
 
+
 print('Starting analysis for per-capita withdrawal projections...')
 # Change to the data directory.
 os.chdir(dataDir)
@@ -46,6 +48,7 @@ print('    Loading the data...')
 dfPopn = pd.read_csv(popnCSV)
 dfWd = pd.read_csv(wdCSV)
 
+#%%
 ############ For the following code, we need a consistent ID. Every file's ID is different. ############################
 # Select a subset of the population and income data for 2015.
 # Check to see if this is correct--the popinc_proj data has 5 values for each year in each county (one for each of the 5 ssp's).
@@ -64,6 +67,7 @@ dfJoinPopWd = pd.merge(dfPop2015, dfWd, on='fips', how='left').sort_values(by=['
 print('    Saving the joined data to a csv file...')
 dfJoinPopWd.sort_values(by=['fips', 'year_x'], ascending=True)
 
+#%%
 # Calculate per-capita domestic water withdrawals for 2015.
 # The wpu_0 output has ID numbers that don't maatch with the county IDs. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 print('    Calculating per-capita domestic water withdrawals for 2015...')
@@ -94,11 +98,23 @@ wpu_0.to_csv(wpu_0_CSV)  # This is just so I can view the data in Excel.
 
 dfWd = dfJoinPopWd.copy()
 
+# calculate withdrawals without climate impacts:
+    
+# -- domestic water consumption -- 
 dfWd["wpuDP0"] = dfWd["domestic"] / dfPop2015["pop"]
+# To do: Estimate the growth function based on historic data
+dfWd["wpuDPt"] = dfWd["wpuDP0"] * np.exp(dfWd["DP.growth"]*(2015-dfWd["year_x"]))
+dfWd["DPt"] = dfWd["wpuDPt"] * dfWd["pop"]
 
-# The below is not quite right. It needs to be lagged for the year prior.
-# Maybe make this a log function
-dfWd["wpuDPt"] = dfWd["wpuDP0"] * (1 + dfWd["DP.growth"])**(dfWd["year_x"]-2015)
+# -- agricultural water consumption -- 
+# Agriculture needs to first either project acres or input the results from the last use chapters
+# Then estimate the irrigation depth. Ag withddrawals are then acres x wpu
+dfWd["wpuAG0"] = dfWd["irrigation"] / dfWd["IR.acres"]
+# To do: Estimate the growth function based on historic data
+dfWd["wpuAGt"] = dfWd["wpuAG0"] * np.exp(dfWd["IR.growth"]*(2015-dfWd["year_x"]))
+dfWd["DPt"] = dfWd["wpuDPt"] * dfWd["pop"]
+
+
 
 
     
@@ -126,9 +142,6 @@ def compound_interest(principle, rate, time):
 compound_interest(10000, 10.25, 5)
 # --------------------------------------------------------------------------------
 
-# Formula from Travis:
-# wpuFuture(t) = (1 + wpu(t - 1)) ^ 2
-# or wpuFuture(t) = (1 + [wpu of previous year]) ^ [number of years past 2015?]
 
 # Define or find a lag or compound interest function.
 # Try function 'shift' in pandas.
