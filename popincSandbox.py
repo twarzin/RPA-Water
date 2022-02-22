@@ -22,12 +22,11 @@ import pandas as pd
 import numpy as np  # May not need this.
 import os
 
-#%%
 # ______________________________________________________________________________________________________________________
 # Locations
 # Can be re-written for user input, then the resto of the script would not need modifications for different computers.
 # on Pam's computer
-#dataDir = r'E:\_Projects\WaterDemand\ScriptsWaterDemand\RPA Water Scripts to Python\DataWaterDemandCSV'
+# dataDir = r'E:\_Projects\WaterDemand\ScriptsWaterDemand\RPA Water Scripts to Python\DataWaterDemandCSV'
 dataDir = r'D:\WaterDemand'
 # Data
 # Can be re-written for user input, then the resto of the script would not need modifications for different data files.
@@ -67,7 +66,7 @@ dfJoinPopWd = pd.merge(dfPop2015, dfWd, on='fips', how='left').sort_values(by=['
 print('    Saving the joined data to a csv file...')
 dfJoinPopWd.sort_values(by=['fips', 'year_x'], ascending=True)
 
-#%%
+# %%
 # Calculate per-capita domestic water withdrawals for 2015.
 # The wpu_0 output has ID numbers that don't maatch with the county IDs. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 print('    Calculating per-capita domestic water withdrawals for 2015...')
@@ -98,7 +97,7 @@ wpu_0.to_csv(wpu_0_CSV)  # This is just so I can view the data in Excel.
 
 dfWd = dfJoinPopWd.copy()
 
-# calculate withdrawals without climate impacts:
+# calculate withdrawals without climate impacts (Travis update):
     
 # -- domestic water consumption -- 
 dfWd["wpuDP0"] = dfWd["domestic"] / dfPop2015["pop"]
@@ -115,11 +114,7 @@ dfWd["wpuAGt"] = dfWd["wpuAG0"] * np.exp(dfWd["IR.growth"]*(2015-dfWd["year_x"])
 dfWd["DPt"] = dfWd["wpuDPt"] * dfWd["pop"]
 
 
-
-
-    
 # Python3 program to find compound interest for given values (geeksforgeeks.org).
-
 def compound_interest(principle, rate, time):
     # Calculates compound interest for the specified number of years
     
@@ -137,11 +132,9 @@ def compound_interest(principle, rate, time):
     print("Amount is", Amount)
     print("Compound interest is", CI)
 
-
 # Driver Code - principle = $10,000, rate = 10.25%, time = 5 years
 compound_interest(10000, 10.25, 5)
 # --------------------------------------------------------------------------------
-
 
 # Define or find a lag or compound interest function.
 # Try function 'shift' in pandas.
