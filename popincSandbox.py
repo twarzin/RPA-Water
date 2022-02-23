@@ -19,7 +19,7 @@ Notes:
 print('Loading modules and defining variables...')
 print()
 import pandas as pd
-import numpy as np  # May not need this.
+import numpy as np
 import os
 
 # ______________________________________________________________________________________________________________________
@@ -29,7 +29,7 @@ import os
 # dataDir = r'E:\_Projects\WaterDemand\ScriptsWaterDemand\RPA Water Scripts to Python\DataWaterDemandCSV'
 dataDir = r'D:\WaterDemand'
 # Data
-# Can be re-written for user input, then the resto of the script would not need modifications for different data files.
+# Can be re-written to accept user input, then the rest of the script would not need modifications for different data files.
 popnCSV = 'popinc_proj.csv'  # input - Population and Income projections from Wear & Prestemon
 wdCSV = 'wd2015.csv'  # input - water withdrawal data for 2015
 pop2015_CSV = "pop2015.csv"  # output - 2015 population projection data
@@ -37,8 +37,7 @@ wpu_0_CSV = "wpu_0.csv"  # output - calculated 2015 domestic water withdrawals
 joinPopWd = "PopWD2015.csv"  # output - 2015 water withdrawal data joined to 2015 population projection data
 # ______________________________________________________________________________________________________________________
 
-
-print('Starting analysis for per-capita withdrawal projections...')
+print('Starting analysis for water withdrawal projections...')
 # Change to the data directory.
 os.chdir(dataDir)
 
@@ -47,18 +46,18 @@ print('    Loading the data...')
 dfPopn = pd.read_csv(popnCSV)
 dfWd = pd.read_csv(wdCSV)
 
-#%%
-############ For the following code, we need a consistent ID. Every file's ID is different. ############################
+############ For this section of code, we need a consistent ID. Every file's ID is different. ##########################
 # Select a subset of the population and income data for 2015.
-# Check to see if this is correct--the popinc_proj data has 5 values for each year in each county (one for each of the 5 ssp's).
+# Check to see if this is correct--the popinc_proj data has 5 values for each year in each county
+#   (one for each of the 5 ssp's).
 print('    Creating a subset of the population data for 2015...')
 # Make a copy of the data frame to work with.
 dfPop2015 = dfPopn.copy()
 # Select only the records for 2015 and sort them by year. There are 5 records per county.
 print('    Saving the 2015 population data frame to a csv file...')
 dfPop2015 = dfPop2015[dfPop2015.year == 2015].sort_values(by=['fips', 'ssp'], ascending=True).to_csv(pop2015_CSV)
-# Write 2015 population data frame to a CSV file.
-# dfPop2015.to_csv(pop2015_CSV)  # This is just so I can view the data in Excel.
+# Write 2015 population data frame to a CSV file. This is just so I can view the data in Excel.
+# dfPop2015.to_csv(pop2015_CSV)
 
 # Join the 2015 withdrawal data to the 2015 popinc data.
 print('    Join the water withdrawal data to the population data...')
@@ -66,32 +65,24 @@ dfJoinPopWd = pd.merge(dfPop2015, dfWd, on='fips', how='left').sort_values(by=['
 print('    Saving the joined data to a csv file...')
 dfJoinPopWd.sort_values(by=['fips', 'year_x'], ascending=True)
 
-# %%
 # Calculate per-capita domestic water withdrawals for 2015.
 # The wpu_0 output has ID numbers that don't maatch with the county IDs. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 print('    Calculating per-capita domestic water withdrawals for 2015...')
 # Need to add fips ID to this output.
 wpu_0 = dfWd["domestic"] / dfPop2015["pop"]  # Domestic withdrawals in ______; population in ________.
-# Write the data frame to a CSV file.
-wpu_0.to_csv(wpu_0_CSV)  # This is just so I can view the data in Excel.
+# Write the data frame to a CSV file. This is just so I can view the data in Excel.
+wpu_0.to_csv(wpu_0_CSV)
 ########################################################################################################################
 
-# Select
-# Pseudo code:
+# Project water withdrawals - pseudo code:
 #   1. Sort by fips and year
 #   2. Filter by ssp:
 #       1001  2015  57.25  ssp1
 #       1001  2016  54.54  ssp1
-#       1001  2017  59.25  ssp1
 #       ....
 #       1001  2070  95.25  ssp1
 #   3. Calculate per-capita withdrawals for each fips and ssp
 #
-
-# Calculate future per-capita withdrawals.
-#   ...or should this just be 'Calculate future withdrawals'?
-#   Are we using the 2015 per-capita withdrawal value in all iterations of the equation? This assumes each person
-#   will use the same amount of water each year through 2070. ?
 
 # --------------------------------------------------------------------------------
 
