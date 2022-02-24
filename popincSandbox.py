@@ -3,17 +3,19 @@ Script Name:    popincSandbox.py
 Authors:        Pam Froemke (Rocky Mountain Research Station)
                 Travis Warziniack (Rocky Mountain Research Station)
 
-Description:    Projections of water use:
-                Calculates projected domestic water use from the 2015 base data.
-                Sandbox for playing with equations, pandas, and numpy.
+Description:    Projections of water use for the RPA 2020 update:
+                    Calculates projected domestic water use from the 2015 base data.
+                    This is a sandbox file for playing with equations, pandas, and numpy.
                 
-Required:       1. population projection csv data
-                2. domestic water withdrawal csv data for 2015
+Inputs:         1. "popinc_proj.csv"      Population projection data
+                2. "wd2015.csv"           Domestic water withdrawal data for 2015
                 
-Outputs:        1. Per-capita domestic water withdrawals for 2015
-                2. Projections for per-capita domestic water withdrawals from 2016 to 2070
-                
-Notes:
+Outputs:        1. "wpu_0.csv"            Per-capita domestic water withdrawals for 2015
+                2. "pop2015.csv"          Projections for per-capita domestic water withdrawals from 2016 to 2070
+                3. "PopWD2015.csv"        Joined data - 2015 water withdrawals and 2015 population projections
+              
+Notes:          Wear & Prestemon data has issues with county FIPS codes. If you use the current counties feature class,
+                some counties in Virginia and South Dakota come up missing after data joins.
 """
 # Import modules
 print('Loading modules and defining variables...')
@@ -23,14 +25,17 @@ import numpy as np
 import os
 
 # ______________________________________________________________________________________________________________________
+# Locations and Data can be re-written to accept user input, then the resto of the script would not need
+#   modifications for different computers.
+
 # Locations
-# Can be re-written for user input, then the resto of the script would not need modifications for different computers.
-# on Pam's computer
+# Pam's computer
 # dataDir = r'E:\_Projects\WaterDemand\ScriptsWaterDemand\RPA Water Scripts to Python\DataWaterDemandCSV'
+# Travis
 dataDir = r'D:\WaterDemand'
+
 # Data
-# Can be re-written to accept user input, then the rest of the script would not need modifications for different data files.
-popnCSV = 'popinc_proj.csv'  # input - Population and Income projections from Wear & Prestemon
+popnCSV = 'popinc_proj.csv'  # input - Population and Income projections (Wear & Prestemon)
 wdCSV = 'wd2015.csv'  # input - water withdrawal data for 2015
 pop2015_CSV = "pop2015.csv"  # output - 2015 population projection data
 wpu_0_CSV = "wpu_0.csv"  # output - calculated 2015 domestic water withdrawals
@@ -66,7 +71,7 @@ print('    Saving the joined data to a csv file...')
 dfJoinPopWd.sort_values(by=['fips', 'year_x'], ascending=True)
 
 # Calculate per-capita domestic water withdrawals for 2015.
-# The wpu_0 output has ID numbers that don't maatch with the county IDs. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!!!!!!!!!!!!!!  The wpu_0 output has ID numbers that don't maatch with the county IDs.  !!!!!!!!!!!!!!!
 print('    Calculating per-capita domestic water withdrawals for 2015...')
 # Need to add fips ID to this output.
 wpu_0 = dfWd["domestic"] / dfPop2015["pop"]  # Domestic withdrawals in ______; population in ________.
@@ -84,8 +89,7 @@ wpu_0.to_csv(wpu_0_CSV)
 #   3. Calculate per-capita withdrawals for each fips and ssp
 #
 
-# --------------------------------------------------------------------------------
-
+# ----------------------------------------------------------------------------------------------------------------------
 dfWd = dfJoinPopWd.copy()
 
 # calculate withdrawals without climate impacts (Travis update):
@@ -103,29 +107,7 @@ dfWd["wpuAG0"] = dfWd["irrigation"] / dfWd["IR.acres"]
 # To do: Estimate the growth function based on historic data
 dfWd["wpuAGt"] = dfWd["wpuAG0"] * np.exp(dfWd["IR.growth"]*(2015-dfWd["year_x"]))
 dfWd["DPt"] = dfWd["wpuDPt"] * dfWd["pop"]
-
-
-# Python3 program to find compound interest for given values (geeksforgeeks.org).
-def compound_interest(principle, rate, time):
-    # Calculates compound interest for the specified number of years
-    
-    # For wpu, where
-    #      principle = the 2015 baseline wpu_0 value,      or 'wpu2015'
-    #      rate = current year's wpu_0 value + 1,          or 'wpu2015+1'
-    #      time = number of years past 2015,               or 't':
-    # So for the year 2020,
-    #  compound_interest(2015, 2015 wpu_0 + 1,
-
-    #  compound_interest(pow([add 1 to previous year's wpu_0 value]) [number of years past 2015])
-
-    Amount = principle * (pow((1 + rate / 100), time))
-    CI = Amount - principle
-    print("Amount is", Amount)
-    print("Compound interest is", CI)
-
-# Driver Code - principle = $10,000, rate = 10.25%, time = 5 years
-compound_interest(10000, 10.25, 5)
-# --------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
 # Define or find a lag or compound interest function.
 # Try function 'shift' in pandas.
