@@ -71,14 +71,6 @@ print('    Join the water withdrawal data to the population data...')
 dfJoinPopWd = pd.merge(dfPop2015, dfWd, on='fips', how='left').sort_values(by=['fips', 'year_x'], ascending=True)
 print('    Saving the joined data to a csv file...')
 dfJoinPopWd.sort_values(by=['fips', 'year_x'], ascending=True)
-
-# Calculate per-capita domestic water withdrawals for 2015.
-# !!!!!!!!!!!!!!!  The wpu_0 output has ID numbers that don't match with the county IDs.  !!!!!!!!!!!!!!!
-print('    Calculating per-capita domestic water withdrawals for 2015...')
-# Need to add fips ID to this output.
-wpu_0 = dfWd["domestic"] / dfPop2015["pop"]  # Domestic withdrawals in [units?]; population in [units?].
-# Write the data frame to a CSV file. This is just so I can view the data in Excel.
-wpu_0.to_csv(wpu_0_CSV)
 ########################################################################################################################
 
 # **** Pseudo code for withdrawal projections **************************************************************************
@@ -97,9 +89,14 @@ dfWd = dfJoinPopWd.copy()
 
 # calculate withdrawals without climate impacts (Travis update):
     
-# -- domestic water consumption -- 
-dfWd["wpuDP0"] = dfWd["domestic"] / dfPop2015["pop"]
-# To do: Estimate the growth function based on historic data
+# -- domestic water consumption --
+# Calculate per-capita domestic water withdrawals for 2015.
+# !!!!!!!!!!!!!!!  The wpu_0 output has ID numbers that don't match with the county IDs.  !!!!!!!!!!!!!!!
+print('    Calculating per-capita domestic water withdrawals for 2015...')
+# Need to add fips ID to this output.
+dfWd["wpuDP0"] = dfWd["domestic"] / dfPop2015["pop"] # Domestic withdrawals in [units?]; population in [units?].
+
+# Estimate the growth function based on historic data
 dfWd["wpuDPt"] = dfWd["wpuDP0"] * np.exp(dfWd["DP.growth"]*(2015-dfWd["year_x"]))
 dfWd["DPt"] = dfWd["wpuDPt"] * dfWd["pop"]
 
