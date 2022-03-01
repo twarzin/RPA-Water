@@ -26,25 +26,23 @@ import pandas as pd
 import numpy as np
 import os
 
-# ______________________________________________________________________________________________________________________
-# Locations and Data can be re-written to accept user input, then the rest of the script would not need
+# ____ Locations and Data ______________________________________________________________________________________________
+# Locations and Data variables can be re-written to accept user input, then the rest of the script would not need
 #   modifications for different computers.
 
 # Locations
-# Pam's computer
-# dataDir = r'E:\_Projects\WaterDemand\ScriptsWaterDemand\RPA Water Scripts to Python\DataWaterDemandCSV'
+# Pam
+dataDir = r'E:\_Projects\WaterDemand\ScriptsWaterDemand\RPA-WaterScriptsToPython\DataWaterDemandCSV'
 # Travis
-dataDir = r'D:\WaterDemand'
+# dataDir = r'D:\WaterDemand'
 
 # Data
-popnCSV = 'popinc_proj.csv'     # input -  Population and Income projections (Wear & Prestemon)
-wdCSV = 'wd2015.csv'            # input -  water withdrawal data for 2015
-pop2015_CSV = "pop2015.csv"     # output - 2015 population projection data
-joinPopWd = "PopWD2015.csv"     # output - 2015 water withdrawal data joined to 2015 population projection data
-wpu_0_CSV = "wpu_0.csv"         # output - calculated 2015 domestic water withdrawals, does not currently have IDs that
-#                                          match any of the other data (2022 Feb), so cannot perform joins
+popnCSV = 'popinc_proj.csv'             # input  - Population and Income projections (Wear & Prestemon)
+wdCSV = 'wd2015.csv'                    # input  - water withdrawal data for 2015
+pop2015_CSV = "pop2015.csv"             # output - 2015 population baseline projection data
+joinPopWd = "PopWD2015.csv"             # output - 2015 water withdrawal data joined to 2015-2070 population data
+WdFinal = "WithdrawalProjections.csv"   # output - per-capita withdrawal projections 2015 to 2070
 # ______________________________________________________________________________________________________________________
-
 print('Starting analysis for water withdrawal projections...')
 # Change to the data directory.
 os.chdir(dataDir)
@@ -61,19 +59,19 @@ print('    Creating a subset of the population data for 2015...')
 # Make a copy of the data frame to work with.
 dfPop2015 = dfPopn.copy()
 # Select only the records for 2015 and sort them by year. There are 5 records per county.
-print('    Saving the 2015 population data frame to a csv file...')
-dfPop2015 = dfPop2015[dfPop2015.year == 2015].sort_values(by=['fips', 'ssp'], ascending=True).to_csv(pop2015_CSV)
-# Write 2015 population data frame to a CSV file. This is just so I can view the data in Excel.
-# dfPop2015.to_csv(pop2015_CSV)
+print('    Selecting the 2015 population records and saving to a csv file...')
+dfPop2015 = dfPop2015[dfPop2015.year == 2015].sort_values(by=['fips', 'ssp'], ascending=True)
+# The 'to_csv' command in the following line was causing dfPop2015 to not be a data frame and generated error with joining.
+# dfPop2015 = dfPop2015[dfPop2015.year == 2015].sort_values(by=['fips', 'ssp'], ascending=True).to_csv(pop2015_CSV)
 
 # Join the 2015 withdrawal data to the 2015 popinc data.
 print('    Join the water withdrawal data to the population data...')
 dfJoinPopWd = pd.merge(dfPop2015, dfWd, on='fips', how='left').sort_values(by=['fips', 'year_x'], ascending=True)
-print('    Saving the joined data to a csv file...')
-dfJoinPopWd.sort_values(by=['fips', 'year_x'], ascending=True)
+# print('    Saving the joined data to a csv file...')
+# dfJoinPopWd.sort_values(by=['fips', 'year_x'], ascending=True)
 ########################################################################################################################
 
-# **** Pseudo code for withdrawal projections **************************************************************************
+# **** Pseudo code for domestic and ag withdrawal projections **********************************************************
 # Project water withdrawals - pseudo code:
 #   1. Sort by fips and year
 #   2. Filter by ssp:
@@ -84,51 +82,57 @@ dfJoinPopWd.sort_values(by=['fips', 'year_x'], ascending=True)
 #   3. Calculate per-capita withdrawals for each fips and ssp
 # **********************************************************************************************************************
 
-# ---- Withdrawals calculation without climate impacts -----------------------------------------------------------------
+# ---- Calculate withdrawals without climate impacts -------------------------------------------------------------------
+# Make a copy of the joined data. (may not need this step?)
 dfWd = dfJoinPopWd.copy()
 
-# calculate withdrawals without climate impacts (Travis update):
-    
-# -- domestic water consumption --
+# Domestic water consumption
+print('Domestic water consumption projections:')
 # Calculate per-capita domestic water withdrawals for 2015.
-# !!!!!!!!!!!!!!!  The wpu_0 output has ID numbers that don't match with the county IDs.  !!!!!!!!!!!!!!!
-print('    Calculating per-capita domestic water withdrawals for 2015...')
-# Need to add fips ID to this output.
-dfWd["wpuDP0"] = dfWd["domestic"] / dfPop2015["pop"] # Domestic withdrawals in [units?]; population in [units?].
+print('    Calculating per-capita withdrawals for 2015 (base data)...')
+# Add and calculate a 'wpuDP0' field for per-capita domestic withdrawals.
+# Need to add fips ID to this output? It has ID numbers that don't match with the county IDs.
+dfWd["wpuDP0"] = dfWd["domestic"] / dfWd["pop"]  # Domestic withdrawals in [units?]; population in [units?].
 
+# This section not working yet? The wpuDP0 and wpuDPt values are equal for all records.
 # Estimate the growth function based on historic data
+print('    Calculating growth function...')
 dfWd["wpuDPt"] = dfWd["wpuDP0"] * np.exp(dfWd["DP.growth"]*(2015-dfWd["year_x"]))
 dfWd["DPt"] = dfWd["wpuDPt"] * dfWd["pop"]
 
-# -- agricultural water consumption -- 
-# Agriculture needs to first either project acres or input the results from the last use chapters
-# Then estimate the irrigation depth. Ag withdrawals are then acres x wpu
-dfWd["wpuAG0"] = dfWd["irrigation"] / dfWd["IR.acres"]
-# To do: Estimate the growth function based on historic data
-dfWd["wpuAGt"] = dfWd["wpuAG0"] * np.exp(dfWd["IR.growth"]*(2015-dfWd["year_x"]))
-dfWd["DPt"] = dfWd["wpuDPt"] * dfWd["pop"]
+# to be completed.........
+# # Agricultural water consumption
+# # Agriculture needs to first either project acres or input the results from the last use chapters
+# # Then estimate the irrigation depth. Ag withdrawals are then acres x wpu
+# dfWd["wpuAG0"] = dfWd["irrigation"] / dfWd["IR.acres"]
+# # To do: Estimate the growth function based on historic data
+# dfWd["wpuAGt"] = dfWd["wpuAG0"] * np.exp(dfWd["IR.growth"]*(2015-dfWd["year_x"]))
+# dfWd["DPt"] = dfWd["wpuDPt"] * dfWd["pop"]
+
+# Save all results to a new csv file.
+dfWd.to_csv(WdFinal)
 # ----------------------------------------------------------------------------------------------------------------------
 
 # ^^^^ pandas shift function and other notes ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-# Define or find a lag or compound interest function.
-# Try function 'shift' in pandas.
-# For df.shift(), sort the popn data frame first, then shift all data down one row and fill the blanks with '0'
-#   instead of 'NaN'.
-dfPopnSort = dfPopn.sort_values(
-    by=['fips', 'year'],
-    ascending=True)
-
-# Example of sorting the data frame before using shift function in pandas:
-#   df['Data_lagged'] = (df.sort_values(by=['Date'], ascending=True).groupby(['Group'])['Data'].shift(1))
-
-# Calculate difference in values from one row to the next.
-# df['diff'] = df['sales'] - df.shift(1)['sales']
-# Creates a sorted data frame of the population data and adds a column called 'diff', which is the
-#   current row's pop value minus the previous row's pop value.
-dfPopnSort['diff'] = dfPopnSort['pop'] - dfPopnSort.shift(1)['pop']
-
-# Compares current day with 7 days prior.
-# value_n = Day_N - Day_N-7
+# # Define or find a lag or compound interest function.
+# # Try function 'shift' in pandas.
+# # For df.shift(), sort the popn data frame first, then shift all data down one row and fill the blanks with '0'
+# #   instead of 'NaN'.
+# dfPopnSort = dfPopn.sort_values(
+#     by=['fips', 'year'],
+#     ascending=True)
+#
+# # Example of sorting the data frame before using shift function in pandas:
+# #   df['Data_lagged'] = (df.sort_values(by=['Date'], ascending=True).groupby(['Group'])['Data'].shift(1))
+#
+# # Calculate difference in values from one row to the next.
+# # df['diff'] = df['sales'] - df.shift(1)['sales']
+# # Creates a sorted data frame of the population data and adds a column called 'diff', which is the
+# #   current row's pop value minus the previous row's pop value.
+# dfPopnSort['diff'] = dfPopnSort['pop'] - dfPopnSort.shift(1)['pop']
+#
+# # Compares current day with 7 days prior.
+# # value_n = Day_N - Day_N-7
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
