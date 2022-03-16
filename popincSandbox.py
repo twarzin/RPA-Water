@@ -11,7 +11,7 @@ Description:    This is a sandbox file for playing with equations, pandas, and n
 Inputs:         "popinc_proj.csv"            Population projection data (Wear & Prestemon 2019)
                 "wd2015.csv"                 Domestic water withdrawal data for 2015
                 
-Outputs:        "WithdrawalProjections.csv"  Domestic and ag withdrawal projections
+Output:        "WithdrawalProjections.csv"  Domestic and ag withdrawal projections
               
 Notes:          Wear & Prestemon data has issues with county FIPS codes. If you use the current counties feature class,
                 some counties in Virginia and South Dakota come up missing after data joins.
