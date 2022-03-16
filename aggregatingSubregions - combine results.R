@@ -9,7 +9,10 @@
 rm(list = ls())
 
 setwd("D:/Subregions")
-setwd("D:/Demand model/Demand Results - Supplemental for Publication/ConsumptiveOnly")
+# Travis desktop:
+setwd("D:/5_RPA/Demand model/Demand Results - Supplemental for Publication/ConsumptiveOnly")
+
+
 
 library(tidyr)
 library(ggplot2)
@@ -130,7 +133,7 @@ th2 <- th2 %>% group_by(fips) %>% summarise_each(funs(mean, sd))
 
 ## -- missing ls and aq
 
-setwd("D:/Demand model/Demand Results - Supplemental for Publication/Core Scenarios")
+setwd("D:/5_RPA/Demand model/Demand Results - Supplemental for Publication/Core Scenarios")
 
 cnrm45.1.ls <- read.csv("./RCP 4.5 SSP 1/CNRM-CM5/ls_ssp1.csv")
 cnrm45.1.aq <- read.csv("./RCP 4.5 SSP 1/CNRM-CM5/aq_ssp1.csv")
@@ -316,7 +319,6 @@ ir <- select(ir, fips, ir15, ir70, model)
 th <- select(th, fips, th15, th70, model)
 la <- select(all.la, fips, la15, la70, model)
 la$fips <-as.character(la$fips)
-
 
 # mean change by model
 sector.mean <- df %>% group_by(sector,fips) %>% summarise_each(funs(mean, sd))
