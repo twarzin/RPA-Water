@@ -8,8 +8,8 @@ Description:    This is a sandbox file for playing with equations, pandas, and n
                     Calculates projected domestic and ag irrigation water use from the 2015 base data.
                     Saves output to a csv file.
                 
-Inputs:         "popinc_proj.csv"            Population projection data (Wear & Prestemon 2019)
-                "wd2015.csv"                 Domestic water withdrawal data for 2015
+Inputs:         "popinc_proj.csv"           Population projection data (Wear & Prestemon 2019)
+                "wd2015.csv"                Domestic water withdrawal data for 2015
                 
 Output:        "WithdrawalProjections.csv"  Domestic and ag withdrawal projections
               
@@ -24,8 +24,7 @@ import pandas as pd
 import numpy as np
 import os
 
-#%%   This creates new cells in Jupiter notebooks
-
+# %%   This creates new cells in Jupiter notebooks
 # ____ Locations and Data ______________________________________________________________________________________________
 # Locations and Data variables can be re-written to accept user input, then the rest of the script would not need
 #   modifications for different computers.
@@ -42,10 +41,10 @@ wdCSV = 'wd2015.csv'                    # Water withdrawal data for 2015
 
 # Data Outputs
 WdFinal = "WithdrawalProjections.csv"   # Per-capita domestic and ag withdrawal projections 2015 to 2070
-
-#%%
 # ______________________________________________________________________________________________________________________
+# %%
 
+# run without try/except block...?
 print('Starting analysis for water withdrawal projections...')
 # Change to the data directory and load the data.
 os.chdir(dataDir)
@@ -53,7 +52,7 @@ print('    Loading the data...')
 dfPopn = pd.read_csv(popnCSV)
 dfWd = pd.read_csv(wdCSV)
 
-#%% ### Join the population and withdrawal data. ####################################################################
+# %% ### Join the population and withdrawal data. ######################################################################
 # Select a subset of the population and income data for 2015.
 # The popinc_proj data has 5 values for each year in each county (one for each of the 5 ssp's).
 print('    Creating a subset of the population data for 2015...')
@@ -72,7 +71,7 @@ dfJoinPopWd = pd.merge(dfPopn, dfWd, on='fips', how='left').sort_values(by=['fip
 # Save to csv for viewing, debug, etc.
 # dfJoinPopWd.to_csv('dfJoinPopWd.csv')
 
-#%% #### Calculate withdrawals without climate impacts ###############################################################
+# %% #### Calculate withdrawals without climate impacts ################################################################
 # Make a copy of the joined data. Once the code is finalized we can simply work with dfJoinPopWd, then save to a csv
 #   after calculation of withdrawal data.
 dfWd = dfJoinPopWd.copy()
@@ -90,7 +89,7 @@ dfWd["wpuDPt"] = dfWd["wpuDP0"] * np.exp(dfWd["DP.growth"]*(2015-dfWd["year_x"])
 # calculating future withdrawals
 dfWd["DPt"] = dfWd["wpuDPt"] * dfWd["pop"]
 
-#%% Agricultural water consumption
+# %% Agricultural water consumption
 print('    Agricultural irrigation water consumption projections:')
 # Agriculture needs to first either project acres or input the results from the land use chapters
 # Then estimate the irrigation depth. Ag withdrawals are then acres x wpu
@@ -102,15 +101,10 @@ dfWd["wpuAGt"] = dfWd["wpuAG0"] * np.exp(dfWd["IR.growth"]*(2015-dfWd["year_x"])
 # calculating future ag withdrawals
 dfWd["AGt"] = dfWd["wpuAGt"] * dfWd["IR.acres"]
 
-#%% #### Save the domestic and ag projections to a new csv file. #####################################################
+# %% #### Save the domestic and ag projections to a new csv file. ######################################################
 print('    Saving the final output to a csv file...')
 dfWd.to_csv(WdFinal, index=False, columns=['fips', 'state', 'county', 'year_x', 'ssp', 'wpuDP0', 'wpuDPt', 'DPt',
                                            'wpuAG0', 'wpuAGt', 'AGt'])
 
 print('Done!')
-    
-#%%
-
-except arcpy.ExecuteError as e:
-    print(e)
-    print('Drat! Curses!!')
+# %%
