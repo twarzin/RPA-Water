@@ -6,7 +6,7 @@ rm(list=ls())
 library(readxl)
 library(dplyr)
 
-setwd("D:/")
+setwd("H:/")
 
 us1985 <- read_excel("USGS raw water use/us85co.xls")
 us1990 <- read_excel("USGS raw water use/us90co.xls")
@@ -34,41 +34,52 @@ us2015$YEAR = 2015
 # need to keep relevant fields, subtract differences between years, then calculate 
 # growth rates
 
-water1 <- merge(us2010, us2015, by="FIPS")
-
-# domestic deliveries from public supply
+# ---- domestic deliveries from public supply --- 
 
 # checking which years of domestic deliveries from public supply:
 # yes: 2015, 2010, 1995, 1990
 # no: 2000
 
 domestic1 <- merge(us2010, us2015, by='FIPS') 
-domestic1 <- select(domestic1, "FIPS", "DO-PSDel.x", "DO-PSDel.y")
+domestic1 <- select(domestic1, "FIPS", "DO-PSPCp.x", "DO-PSPCp.y")
 # select only counties with positive public deliveries
-domestic1 <- subset(domestic1, domestic1$`DO-PSDel.x` > 0)
-domestic1$diff <- (domestic1$`DO-PSDel.y`- domestic1$`DO-PSDel.x`)/domestic1$`DO-PSDel.x`
+domestic1 <- subset(domestic1, domestic1$`DO-PSPCp.x` > 0)
+domestic1$diff <- (domestic1$`DO-PSPCp.y`/ domestic1$`DO-PSPCp.x`)
 domestic1$time <- 5
+mean(domestic1$diff)
 
 domestic2 <- merge(us2005, us2010, by='FIPS') 
-domestic2 <- select(domestic2, "FIPS", "DO-PSDel.x", "DO-PSDel.y")
+domestic2$'DO-PSPCp.x' <- domestic2$`DO-PSDel.x` / domestic2$`PS-TOPop.x`
+domestic2$'DO-PSPCp.y' <- domestic2$`DO-PSDel.y` / domestic2$`PS-TOPop.y`
+domestic2 <- select(domestic2, "FIPS", "DO-PSPCp.x", "DO-PSPCp.y")
 # select only counties with positive public deliveries
-domestic2 <- subset(domestic2, domestic2$`DO-PSDel.x` > 0)
-domestic2$diff <- (domestic2$`DO-PSDel.y`- domestic2$`DO-PSDel.x`)/domestic2$`DO-PSDel.x`
+domestic2 <- subset(domestic2, domestic2$`DO-PSPCp.x` > 0)
+domestic2 <- subset(domestic2, domestic2$`DO-PSPCp.y` > 0)
+domestic2$diff <- (domestic2$`DO-PSPCp.y`/ domestic2$`DO-PSPCp.x`)
 domestic2$time <- 10
+mean(domestic2$diff)
 
-rename(us1990, "DO-PSDel" = "do-psdel")
+rename(us1990, "DO-PSDel.x" = "do-psdel")
+rename(us1995, "DO-PSDel.y" = "PS-DelDO")
 domestic3 <- merge(us1990, us1995, by='FIPS') 
-domestic3 <- select(domestic3, "FIPS", "DO-PSDel.x", "DO-PSDel.y")
+domestic3$'DO-PSPCp.x' <- domestic3$`do-psdel` / domestic3$`ps-popto`
+domestic3$'DO-PSPCp.y' <- domestic3$`DO-PSDel` / domestic3$`DO-PSPop`
+domestic3 <- select(domestic3, "FIPS", "DO-PSPCp.x", "DO-PSPCp.y")
 # select only counties with positive public deliveries
-domestic3 <- subset(domestic3, domestic3$`DO-PSDel.x` > 0)
-domestic3$diff <- (domestic3$`DO-PSDel.y`- domestic3$`DO-PSDel.x`)/domestic3$`DO-PSDel.x`
+domestic3 <- subset(domestic3, domestic3$`DO-PSPCp.x` > 0)
+domestic3 <- subset(domestic3, domestic3$`DO-PSPCp.y` > 0)
+domestic3$diff <- (domestic3$`DO-PSPCp.y`/domestic3$`DO-PSPCp.x`)
 domestic3$time <- 15
-
-
+domestic3<-subset(domestic3, (!is.na(domestic3[,4])))
 
 mean(domestic1$diff)
 mean(domestic2$diff)
+mean(domestic3$diff)
 
-domestic <- rbind(domestic1, domestic2)
-d.rate <- lm(diff ~ time, data=domestic)
+annualr.1 <- mean(domestic1$diff)**(1/5) - 1
+annualr.2 <- mean(domestic2$diff)**(1/5) - 1
+annualr.3 <- mean(domestic3$diff)**(1/5) - 1
+
+domestic <- rbind(domestic1, domestic2, domestic3)
+d.rate <- lm(diff ~ log(time), data=domestic)
 summary(d.rate)
