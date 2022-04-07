@@ -14,9 +14,9 @@ rm(list = ls())  # clears memory
 # for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 # for Travis desktop:
-setwd("D:/Demand model/WEAP Input Creation")
+setwd("D:/5_RPA/Demand model")
 # for Travis laptop
-setwd("D:/WEAP Input Creation")
+# setwd("D:/WEAP Input Creation")
 
 library(tidyr)
 library(ggplot2)
