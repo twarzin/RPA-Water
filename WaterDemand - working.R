@@ -28,21 +28,39 @@ library(data.table)
 # Income is in __________
 pop.inc <- read.csv("1_BaseData/popinc_proj.csv")
 
-# Water withdrawals in 2015 from USGS (3,108 records):
-# fields are x, fips, state, county, year, and 22 data fields
-# Withdrawals are in MGD
-wd.2015 <- read.csv("1_BaseData/usgswithdrawals.csv")
-wd.2015 <- subset(wd.2015, year == 2015)
+# Water withdrawals in 2015 from USGS (3,223 records):
+# Data fields:
+# DO.WDelv  Domestic, total use (withdrawals + deliveries), in Mgal/d
+# IN.WFrTo  Industrial, self-supplied total withdrawals, fresh, in Mgal/d
+# IR.WFrTo  Irrigation, total withdrawals, fresh, in Mgal/d
+# IR.CUsFr  Irrigation, total consumptive use, fresh, in Mgal/d
+# IR.IrTot  Irrigation, acres irrigated, total, in thousand acres
+# LI.WFrTo  Livestock, total withdrawals, fresh, in Mgal/d
+# AQ.WFrTo  Aquaculture, total withdrawals, fresh, in Mgal/d
+# MI.WFrTo  Mining, total withdrawals, fresh, in Mgal/d
+# PT.WFrTo  Thermoelectric, total withdrawals, fresh, in Mgal/d
+# PT.PSDel  Thermoelectric, deliveries from Public Supply, in Mgal/d
+# PT.CUsFr  Thermoelectric, total consumptive use, fresh, in Mgal/d
+# PT.Power  Thermoelectric, power generated, in gigawatt-hours
+
+wd.2015 <- read.csv("1_BaseData/USGS2015.csv")
 wd.2015 <- wd.2015 %>%
-  select(FIPSRecoded, Pop, PSgw, PSsw, PSdom, PScom, PSind, PStherm, 
-         DomSelfSW, ComSelfSW, IndSelfSW, ThermSelfSW, MinSelfSW, StockSelfSW, 
-         AquaSelfSW, IrrigSelfSW, IrrigAcres, IrrigCU)
+  select(FIPS, 
+         'DO.WDelv',
+         'IN.WFrTo',
+         'IR.WFrTo',
+         'IR.CUsFr',
+         'IR.IrTot',
+         'LI.WFrTo',
+         'AQ.WFrTo',
+         'MI.WFrTo',
+         'PT.WFrTo',
+         'PT.PSDel',
+         'PT.CUsFr',
+         'PT.Power')
 
-# FIPS codes are off between USGS data and population projections, hence the 
-# FIPSRecoded field that has the updated FIPS codes. Rename variable to match 
-# other data:
-
-wd.2015 <- rename(wd.2015, fips = FIPSRecoded)
+# FIPS codes are off between USGS data and population projections. Will need to adjust 
+# population data later (outside of R)
 
 # Create baseline withdrawals for surface water fresh for each sector
 # - first calculate total withdrawals for public supply, then calculate percent
@@ -52,49 +70,49 @@ wd.2015[] <- lapply(wd.2015, as.numeric)
 #   convert NAs to zeros
 wd.2015[is.na(wd.2015)] <- 0
 
-wd.2015$PStot <- wd.2015$PSgw + wd.2015$PSsw
-wd.2015$swShare <- PSsw / PStot
-# Sector formauls is (domestic for exmaple):
-# domestic = public deliveries * (percent from surface) + self-supplied surface withdrawals
-wd.2015$dom <- wd.2015$PSdom*wd.2015$swShare + wd.2015$DomSelfSW
-wd.2015$com <- wd.2015$PScom*wd.2015$swShare + wd.2015$ComSelfSW
-wd.2015$ind <- wd.2015$PSind*wd.2015$swShare + wd.2015$IndSelfSW + wd.2015$MinSelfSW
-wd.2015$therm <- wd.2015$PStherm*wd.2015$swShare + wd.2015$ThermSelfSW
-# no public supply deliveries to ag
-wd.2015$ag <- wd.2015$IrrigSelfSW
+# Creating variables for total industry withdrawals + deliveries
+wd.2015$dom <- wd.2015$DO.WDelv
+wd.2015$ind <- wd.2015$IN.WFrTo + wd.2015$MI.WFrTo 
+wd.2015$therm <- wd.2015$PT.WFrTo + wd.2015$PT.PSDel
+wd.2015$ag <- wd.2015$IR.WFrTo
+wd.2015$la <- wd.2015$LI.WFrTo + wd.2015$AQ.WFrTo
 
-# RPA combines commercial and industrial
-wd.2015$ind <- wd.2015$ind + wd.2015$com
+# baseline demand driver data from USGS 
+wd.2015$acres <- wd.2015$IR.IrTot
+wd.2015$power <- wd.2015$PT.Power
+
+# rename fips to lowercase to match other data files
+wd.2015 <- rename(wd.2015, fips = FIPS)
 
 # Growth and decay rates:
 # Growth and decay rates for withdrawals per unit are taken from Tom Brown's work.
 # This file also has a variable denoting whether the county in in the eastern or 
 # western United States
-ew <- read.csv("1_BaseData/WDGrowthCU.csv")
+growth <- read.csv("1_BaseData/WDGrowthCU.csv")
 
 # First calculate withdrawals for each sector without climate impacts. Climate 
 # impacts are added in a separate section at the bottom of this code
 
 #---------------------------------------------------------------------------------.
 ################# SECTOR PROJECTIONS TO 2070 - no climate #########################
-# This calculates dp projections out to 2070 using function from 
+# This calculates projections out to 2070 using function from 
 # Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
 
-demand.init <- subset(pop.inc, year == 2015)
+pop.inc.2015 <- subset(pop.inc, year == 2015)
 # join population projections with base year withdrawals data
-demand.init <- merge(demand.init, wd.2015, by = "fips")
+demand.init1 <- merge(pop.inc.2015, wd.2015, by = "fips")
 
 # select variables needed for calcuations:
 # Note, Pop is from withdrawal data. pop used here is from population projections
-keeps <- c("fips","year","ssp","inc","pop","dom","ag","ind","therm",
-           "IrrigAcres")
-demand.init <- demand.init[,names(demand.init) %in% keeps]
+keeps <- c("fips","year","ssp","inc","pop","dom","ag","ind","therm","la",
+           "acres", "power")
+demand.init <- demand.init1[,names(demand.init1) %in% keeps]
 
 # calculate initial withdrawals per unit
 demand.init$wpu.dom <- demand.init$dom / demand.init$pop
 demand.init$wpu.ind <- demand.init$ind / demand.init$inc
-demand.init$wpu.ag <- demand.init$ag / demand.init$IrrigAcres
-
+demand.init$wpu.ag <- demand.init$ag / demand.init$acres
+demand.init$wpu.therm <- demand.init$therm / demand.init$power
 # need to add thermo-electric, and aquaculture
 
 # create dataframe for projections
@@ -102,18 +120,21 @@ demand.proj <- subset(pop.inc, year != 2015)
 keeps <- c("fips","year","pop","ssp","inc")
 demand.proj <- demand.proj[,names(demand.proj) %in% keeps]
 
-demand.proj$IrrigAcres <- NA
 demand.proj$dom <- NA
 demand.proj$ind <- NA
 demand.proj$therm <- NA
 demand.proj$ag <- NA
+demand.proj$la <- NA
+demand.proj$acres <- NA
+demand.proj$power <- NA
 demand.proj$wpu.dom <- NA
 demand.proj$wpu.ind <- NA
 demand.proj$wpu.ag <- NA
+demand.proj$wpu.therm <- NA
 
 demand <- rbind(demand.init, demand.proj)
 
-demand <- merge(demand, ew, by="fips")
+demand <- merge(demand, growth, by="fips")
 
 # order data so I can run a loop on lagged values
 attach(demand)
@@ -121,7 +142,7 @@ demand <- demand[order(fips,ssp,year),]
 detach(demand)
 
 # be sure to sort first!!
-# this loop takes a VERY long time to run, about 30 minutes on Travis' desktop
+# this loop takes about 15 minutes on Travis' desktop
 nobs <- dim(demand)[1]
 for(i in 1:nobs) {
   if (demand$year[i] != 2015) {
@@ -130,6 +151,9 @@ for(i in 1:nobs) {
     demand$wpu.ag[i]  <- demand$wpu.ag[(i-1)]  * (1+demand$IR.growth[i]*(1+demand$IR.decay[i])^(demand$year[i]-2015))
           }
 }
+
+# projections of irrigated acreage for ag
+acre.data <- read.csv('1_BaseData/acredata-updated.csv', header=TRUE)
 
 # NEED TO READ IN Ag acres projections
 demand$dom.t <- demand$pop * demand$wpu.dom
