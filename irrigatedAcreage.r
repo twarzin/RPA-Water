@@ -105,60 +105,60 @@ df2060$acres <- df2060$ac2060
 df2065$acres <- df2065$ac2065
 df2070$acres <- df2070$ac2070
 
-df2016$acres <- df$pr_acre_2015+1*(df$pr_acre_2020-df$pr_acre_2015)/5
-df2017$acres <- df$pr_acre_2015+2*(df$pr_acre_2020-df$pr_acre_2015)/5
-df2018$acres <- df$pr_acre_2015+3*(df$pr_acre_2020-df$pr_acre_2015)/5
-df2019$acres <- df$pr_acre_2015+4*(df$pr_acre_2020-df$pr_acre_2015)/5
+df2016$acres <- df2016$ac2015+1*(df2016$ac2020-df2016$ac2015)/5
+df2017$acres <- df2017$ac2015+2*(df2017$ac2020-df2017$ac2015)/5
+df2018$acres <- df2018$ac2015+3*(df2018$ac2020-df2018$ac2015)/5
+df2019$acres <- df2019$ac2015+4*(df2019$ac2020-df2019$ac2015)/5
 
-df2021$acres <- df$pr_acre_2020+1*(df$pr_acre_2025-df$pr_acre_2020)/5
-df2022$acres <- df$pr_acre_2020+2*(df$pr_acre_2025-df$pr_acre_2020)/5
-df2023$acres <- df$pr_acre_2020+3*(df$pr_acre_2025-df$pr_acre_2020)/5
-df2024$acres <- df$pr_acre_2020+4*(df$pr_acre_2025-df$pr_acre_2020)/5
+df2021$acres <- df2021$ac2020+1*(df2021$ac2025-df2021$ac2020)/5
+df2022$acres <- df2022$ac2020+2*(df2022$ac2025-df2022$ac2020)/5
+df2023$acres <- df2023$ac2020+3*(df2023$ac2025-df2023$ac2020)/5
+df2024$acres <- df2024$ac2020+4*(df2024$ac2025-df2024$ac2020)/5
 
-df2026$acres <- df$pr_acre_2025+1*(df$pr_acre_2030-df$pr_acre_2025)/5
-df2027$acres <- df$pr_acre_2025+2*(df$pr_acre_2030-df$pr_acre_2025)/5
-df2028$acres <- df$pr_acre_2025+3*(df$pr_acre_2030-df$pr_acre_2025)/5
-df2029$acres <- df$pr_acre_2025+4*(df$pr_acre_2030-df$pr_acre_2025)/5
+df2026$acres <- df2026$ac2025+1*(df2026$ac2030-df2026$ac2025)/5
+df2027$acres <- df2027$ac2025+2*(df2027$ac2030-df2027$ac2025)/5
+df2028$acres <- df2028$ac2025+3*(df2028$ac2030-df2028$ac2025)/5
+df2029$acres <- df2029$ac2025+4*(df2029$ac2030-df2029$ac2025)/5
 
-df2031$acres <- df$pr_acre_2030+1*(df$pr_acre_2035-df$pr_acre_2030)/5
-df2032$acres <- df$pr_acre_2030+2*(df$pr_acre_2035-df$pr_acre_2030)/5
-df2033$acres <- df$pr_acre_2030+3*(df$pr_acre_2035-df$pr_acre_2030)/5
-df2034$acres <- df$pr_acre_2030+4*(df$pr_acre_2035-df$pr_acre_2030)/5
+df2031$acres <- df2031$ac2030+1*(df2031$ac2035-df2031$ac2030)/5
+df2032$acres <- df2032$ac2030+2*(df2032$ac2035-df2032$ac2030)/5
+df2033$acres <- df2033$ac2030+3*(df2033$ac2035-df2033$ac2030)/5
+df2034$acres <- df2034$ac2030+4*(df2034$ac2035-df2034$ac2030)/5
 
-df2036$acres <- df$pr_acre_2035+1*(df$pr_acre_2040-df$pr_acre_2035)/5
-df2037$acres <- df$pr_acre_2035+2*(df$pr_acre_2040-df$pr_acre_2035)/5
-df2038$acres <- df$pr_acre_2035+3*(df$pr_acre_2040-df$pr_acre_2035)/5
-df2039$acres <- df$pr_acre_2035+4*(df$pr_acre_2040-df$pr_acre_2035)/5
+df2036$acres <- df2036$ac2035+1*(df2036$ac2040-df2036$ac2035)/5
+df2037$acres <- df2037$ac2035+2*(df2037$ac2040-df2037$ac2035)/5
+df2038$acres <- df2038$ac2035+3*(df2038$ac2040-df2038$ac2035)/5
+df2039$acres <- df2039$ac2035+4*(df2039$ac2040-df2039$ac2035)/5
 
-df2041$acres <- df$pr_acre_2040+1*(df$pr_acre_2045-df$pr_acre_2040)/5
-df2042$acres <- df$pr_acre_2040+2*(df$pr_acre_2045-df$pr_acre_2040)/5
-df2043$acres <- df$pr_acre_2040+3*(df$pr_acre_2045-df$pr_acre_2040)/5
-df2044$acres <- df$pr_acre_2040+4*(df$pr_acre_2045-df$pr_acre_2040)/5
+df2041$acres <- df2041$ac2040+1*(df2041$ac2045-df2041$ac2040)/5
+df2042$acres <- df2042$ac2040+2*(df2042$ac2045-df2042$ac2040)/5
+df2043$acres <- df2043$ac2040+3*(df2043$ac2045-df2043$ac2040)/5
+df2044$acres <- df2044$ac2040+4*(df2044$ac2045-df2044$ac2040)/5
 
-df2046$acres <- df$pr_acre_2045+1*(df$pr_acre_2050-df$pr_acre_2045)/5
-df2047$acres <- df$pr_acre_2045+2*(df$pr_acre_2050-df$pr_acre_2045)/5
-df2048$acres <- df$pr_acre_2045+3*(df$pr_acre_2050-df$pr_acre_2045)/5
-df2049$acres <- df$pr_acre_2045+4*(df$pr_acre_2050-df$pr_acre_2045)/5
+df2046$acres <- df2046$ac2045+1*(df2046$ac2050-df2046$ac2045)/5
+df2047$acres <- df2047$ac2045+2*(df2047$ac2050-df2047$ac2045)/5
+df2048$acres <- df2048$ac2045+3*(df2048$ac2050-df2048$ac2045)/5
+df2049$acres <- df2049$ac2045+4*(df2049$ac2050-df2049$ac2045)/5
 
-df2051$acres <- df$pr_acre_2050+1*(df$pr_acre_2055-df$pr_acre_2050)/5
-df2052$acres <- df$pr_acre_2050+2*(df$pr_acre_2055-df$pr_acre_2050)/5
-df2053$acres <- df$pr_acre_2050+3*(df$pr_acre_2055-df$pr_acre_2050)/5
-df2054$acres <- df$pr_acre_2050+4*(df$pr_acre_2055-df$pr_acre_2050)/5
+df2051$acres <- df2051$ac2050+1*(df2051$ac2055-df2051$ac2050)/5
+df2052$acres <- df2052$ac2050+2*(df2052$ac2055-df2052$ac2050)/5
+df2053$acres <- df2053$ac2050+3*(df2053$ac2055-df2053$ac2050)/5
+df2054$acres <- df2054$ac2050+4*(df2054$ac2055-df2054$ac2050)/5
 
-df2056$acres <- df$pr_acre_2055+1*(df$pr_acre_2060-df$pr_acre_2055)/5
-df2057$acres <- df$pr_acre_2055+2*(df$pr_acre_2060-df$pr_acre_2055)/5
-df2058$acres <- df$pr_acre_2055+3*(df$pr_acre_2060-df$pr_acre_2055)/5
-df2059$acres <- df$pr_acre_2055+4*(df$pr_acre_2060-df$pr_acre_2055)/5
+df2056$acres <- df2056$ac2055+1*(df2056$ac2060-df2056$ac2055)/5
+df2057$acres <- df2057$ac2055+2*(df2057$ac2060-df2057$ac2055)/5
+df2058$acres <- df2058$ac2055+3*(df2058$ac2060-df2058$ac2055)/5
+df2059$acres <- df2059$ac2055+4*(df2059$ac2060-df2059$ac2055)/5
 
-df2061$acres <- df$pr_acre_2060+1*(df$pr_acre_2065-df$pr_acre_2060)/5
-df2062$acres <- df$pr_acre_2060+2*(df$pr_acre_2065-df$pr_acre_2060)/5
-df2063$acres <- df$pr_acre_2060+3*(df$pr_acre_2065-df$pr_acre_2060)/5
-df2064$acres <- df$pr_acre_2060+4*(df$pr_acre_2065-df$pr_acre_2060)/5
+df2061$acres <- df2061$ac2060+1*(df2061$ac2065-df2061$ac2060)/5
+df2062$acres <- df2062$ac2060+2*(df2062$ac2065-df2062$ac2060)/5
+df2063$acres <- df2063$ac2060+3*(df2063$ac2065-df2063$ac2060)/5
+df2064$acres <- df2064$ac2060+4*(df2064$ac2065-df2064$ac2060)/5
 
-df2066$acres <- df$pr_acre_2065+1*(df$pr_acre_2070-df$pr_acre_2065)/5
-df2067$acres <- df$pr_acre_2065+2*(df$pr_acre_2070-df$pr_acre_2065)/5
-df2068$acres <- df$pr_acre_2065+3*(df$pr_acre_2070-df$pr_acre_2065)/5
-df2069$acres <- df$pr_acre_2065+4*(df$pr_acre_2070-df$pr_acre_2065)/5
+df2066$acres <- df2066$ac2065+1*(df2066$ac2070-df2066$ac2065)/5
+df2067$acres <- df2067$ac2065+2*(df2067$ac2070-df2067$ac2065)/5
+df2068$acres <- df2068$ac2065+3*(df2068$ac2070-df2068$ac2065)/5
+df2069$acres <- df2069$ac2065+4*(df2069$ac2070-df2069$ac2065)/5
 
 dfall <- rbind(df2015, 
       df2016,
@@ -222,5 +222,8 @@ dfall <- rbind(df2015,
       df2069,
       
       df2070)
- 
 
+keeps <- c("fips","year","ssp","acres") 
+
+acre.data <- dfall[,names(dfall) %in% keeps]
+write.csv(acre.data, file="1_BaseData/acredata-use.csv", row.names = FALSE)
