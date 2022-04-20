@@ -27,6 +27,8 @@ library(data.table)
 # Population is in thousands
 # Income is in __________
 pop.inc <- read.csv("1_BaseData/popinc_proj.csv")
+# projections of irrigated acreage for ag
+acre.data <- read.csv('1_BaseData/acredata-use.csv', header=TRUE)
 
 # Water withdrawals in 2015 from USGS (3,223 records):
 # Data fields:
@@ -142,7 +144,7 @@ demand <- demand[order(fips,ssp,year),]
 detach(demand)
 
 # be sure to sort first!!
-# this loop takes about 15 minutes on Travis' desktop
+# this loop takes about 30+ minutes on Travis' desktop
 nobs <- dim(demand)[1]
 for(i in 1:nobs) {
   if (demand$year[i] != 2015) {
@@ -152,10 +154,7 @@ for(i in 1:nobs) {
           }
 }
 
-# projections of irrigated acreage for ag
-acre.data <- read.csv('1_BaseData/acredata-updated.csv', header=TRUE)
-
-# NEED TO READ IN Ag acres projections
+# calculate annual withdrawals for each sector
 demand$dom.t <- demand$pop * demand$wpu.dom
 demand$ind.t <- demand$inc * demand$wpu.ind
 demand$ag.t  <- demand$IrrigAcres * demand$wpu.ag
