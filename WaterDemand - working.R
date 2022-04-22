@@ -101,8 +101,11 @@ growth <- read.csv("1_BaseData/WDGrowthCU.csv")
 # Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
 
 pop.inc.2015 <- subset(pop.inc, year == 2015)
+
 # join population projections with base year withdrawals data
 demand.init1 <- merge(pop.inc.2015, wd.2015, by = "fips")
+
+
 
 # select variables needed for calcuations:
 # Note, Pop is from withdrawal data. pop used here is from population projections
@@ -134,7 +137,18 @@ demand.proj$wpu.ind <- NA
 demand.proj$wpu.ag <- NA
 demand.proj$wpu.therm <- NA
 
-demand <- rbind(demand.init, demand.proj)
+# commented out to save processing time -- read data in below section
+# ----------------------------------------------------
+# combine projection data
+# proj.data <- merge(demand.proj, acre.data, by=c("fips", "ssp"))
+# write.csv(proj.data, file="1_BaseData/projectData.csv")
+# -----------------------------------------------------
+
+# assuming the above has been done, simpler to read in projection
+# combinations of income, population, and acres irrigated
+proj.data <- read.csv('1_BaseData/projectData.csv')
+
+demand <- rbind(demand.init, proj.data)
 
 demand <- merge(demand, growth, by="fips")
 
@@ -144,15 +158,27 @@ demand <- demand[order(fips,ssp,year),]
 detach(demand)
 
 # be sure to sort first!!
-# this loop takes about 30+ minutes on Travis' desktop
-nobs <- dim(demand)[1]
-for(i in 1:nobs) {
-  if (demand$year[i] != 2015) {
-    demand$wpu.dom[i] <- demand$wpu.dom[(i-1)] * (1+demand$DP.growth[i]*(1+demand$DP.decay[i])^(demand$year[i]-2015))
-    demand$wpu.ind[i] <- demand$wpu.ind[(i-1)] * (1+demand$IC.growth[i]*(1+demand$IC.decay[i])^(demand$year[i]-2015))
-    demand$wpu.ag[i]  <- demand$wpu.ag[(i-1)]  * (1+demand$IR.growth[i]*(1+demand$IR.decay[i])^(demand$year[i]-2015))
-          }
-}
+# this loop takes hours on Travis' desktop
+
+# after it is run once, save results then read in data from code below loop
+
+# to run new data, un-comment the following
+# ----------------------------------------
+# nobs <- dim(demand)[1]
+# for(i in 1:nobs) {
+#   if (demand$year[i] != 2015) {
+#     demand$wpu.dom[i] <- demand$wpu.dom[(i-1)] * (1+demand$DP.growth[i]*(1+demand$DP.decay[i])^(demand$year[i]-2015))
+#     demand$wpu.ind[i] <- demand$wpu.ind[(i-1)] * (1+demand$IC.growth[i]*(1+demand$IC.decay[i])^(demand$year[i]-2015))
+#     demand$wpu.ag[i]  <- demand$wpu.ag[(i-1)]  * (1+demand$IR.growth[i]*(1+demand$IR.decay[i])^(demand$year[i]-2015))
+#           }
+# }
+
+# export the above results so we don't have to run them every time
+# write.csv(demand, file="demand-temp.csv")
+#---------------------------------------
+
+# assuming the above loop has run, read in demand-temp
+read.csv(file="demand-temp.csv")
 
 # calculate annual withdrawals for each sector
 demand$dom.t <- demand$pop * demand$wpu.dom
