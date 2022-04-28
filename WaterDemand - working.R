@@ -158,18 +158,18 @@ detach(demand)
 # after it is run once, save results then read in data from code below loop
 
 # to run new data, un-comment the following
-# ----------------------------------------
-nobs <- dim(demand)[1]
-for(i in 1:nobs) {
-  if (demand$year[i] != 2015) {
-    demand$wpu.dom[i] <- demand$wpu.dom[(i-1)] * (1+demand$DP.growth[i]*(1+demand$DP.decay[i])^(demand$year[i]-2015))
-    demand$wpu.ind[i] <- demand$wpu.ind[(i-1)] * (1+demand$IC.growth[i]*(1+demand$IC.decay[i])^(demand$year[i]-2015))
-    demand$wpu.ag[i]  <- demand$wpu.ag[(i-1)]  * (1+demand$IR.growth[i]*(1+demand$IR.decay[i])^(demand$year[i]-2015))
-          }
-}
-
-# export the above results so we don't have to run them every time
-write.csv(demand, file="demand-temp.csv")
+# # ----------------------------------------
+# nobs <- dim(demand)[1]
+# for(i in 1:nobs) {
+#   if (demand$year[i] != 2015) {
+#     demand$wpu.dom[i] <- demand$wpu.dom[(i-1)] * (1+demand$DP.growth[i]*(1+demand$DP.decay[i])^(demand$year[i]-2015))
+#     demand$wpu.ind[i] <- demand$wpu.ind[(i-1)] * (1+demand$IC.growth[i]*(1+demand$IC.decay[i])^(demand$year[i]-2015))
+#     demand$wpu.ag[i]  <- demand$wpu.ag[(i-1)]  * (1+demand$IR.growth[i]*(1+demand$IR.decay[i])^(demand$year[i]-2015))
+#           }
+# }
+# 
+# # export the above results so we don't have to run them every time
+# write.csv(demand, file="demand-temp.csv")
 #---------------------------------------
 
 # assuming the above loop has run, read in demand-temp
@@ -178,7 +178,7 @@ demand <- read.csv(file="demand-temp.csv")
 # calculate annual withdrawals for each sector
 demand$dom.t <- demand$pop * demand$wpu.dom
 demand$ind.t <- demand$inc * demand$wpu.ind
-demand$ag.t  <- demand$IrrigAcres * demand$wpu.ag
+demand$ag.t  <- demand$acres * demand$wpu.ag
 
 
 
