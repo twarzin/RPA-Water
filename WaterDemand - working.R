@@ -187,6 +187,13 @@ demand$ag.t  <- demand$acres * demand$wpu.ag
 # can be found in:
 # Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
 
+carbon <- 45
+gcm <- "cnrm_c5"
+
+# to keep things moving, let's multiply wpu by percentage change in water yield to get 
+# demands with climate impacts
+
+
 # Domestic water use: Climate change only affects outdoor water use for domestic uses
 # during the growing season (April - September). The first step is to divide  
 # water use between outdoor and indoor use base on XXXXX.
