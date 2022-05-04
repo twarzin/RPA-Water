@@ -86,3 +86,51 @@ summary(d.rate)
 # Python code:
 # wpuDPt = [baseline 2015 per-cap wd]*[exp[domestic wd growth]*[# of years past 2015]]
 # dfWd["wpuDPt"] = dfWd["wpuDP0"] * np.exp(dfWd["DP.growth"]*(2015-dfWd["year_x"]))
+=======
+# rename fields needed for public deliveries
+rename(us1990, "DO-PSDel.x" = "do-psdel")
+rename(us1995, "DO-PSDel.y" = "PS-DelDO")
+
+rename(us1990, "STATEFIPS" = "scode")
+rename(us1995, "STATEFIPS" = "StateCode")
+
+domestic1 <- merge(us2010, us2015, by='FIPS') 
+domestic2 <- merge(us2005, us2010, by='FIPS') 
+domestic3 <- merge(us1990, us1995, by='FIPS') 
+
+domestic1 <- select(domestic1, "FIPS", "DO-PSPCp.x", "DO-PSPCp.y", STATEFIPS.x, STATEFIPS.y)
+# select only counties with positive public deliveries
+domestic1 <- subset(domestic1, domestic1$`DO-PSPCp.x` > 0)
+domestic1$diff <- (domestic1$`DO-PSPCp.y`/ domestic1$`DO-PSPCp.x`)
+domestic1$time <- 5
+mean(domestic1$diff)
+
+domestic2$'DO-PSPCp.x' <- domestic2$`DO-PSDel.x` / domestic2$`PS-TOPop.x`
+domestic2$'DO-PSPCp.y' <- domestic2$`DO-PSDel.y` / domestic2$`PS-TOPop.y`
+domestic2 <- select(domestic2, "FIPS", "DO-PSPCp.x", "DO-PSPCp.y", STATEFIPS.x, STATEFIPS.y)
+# select only counties with positive public deliveries
+domestic2 <- subset(domestic2, domestic2$`DO-PSPCp.x` > 0)
+domestic2 <- subset(domestic2, domestic2$`DO-PSPCp.y` > 0)
+domestic2$diff <- (domestic2$`DO-PSPCp.y`/ domestic2$`DO-PSPCp.x`)
+domestic2$time <- 10
+mean(domestic2$diff)
+
+domestic3$'DO-PSPCp.x' <- domestic3$`do-psdel` / domestic3$`ps-popto`
+domestic3$'DO-PSPCp.y' <- domestic3$`DO-PSDel` / domestic3$`DO-PSPop`
+domestic3 <- select(domestic3, "FIPS", "DO-PSPCp.x", "DO-PSPCp.y", STATEFIPS.x, STATEFIPS.y)
+# select only counties with positive public deliveries
+domestic3 <- subset(domestic3, domestic3$`DO-PSPCp.x` > 0)
+domestic3 <- subset(domestic3, domestic3$`DO-PSPCp.y` > 0)
+domestic3$diff <- (domestic3$`DO-PSPCp.y`/domestic3$`DO-PSPCp.x`)
+domestic3$time <- 15
+domestic3<-subset(domestic3, (!is.na(domestic3[,4])))
+
+mean(domestic1$diff)
+mean(domestic2$diff)
+mean(domestic3$diff)
+
+annualr.1 <- mean(domestic1$diff)**(1/5) - 1
+annualr.2 <- mean(domestic2$diff)**(1/5) - 1
+annualr.3 <- mean(domestic3$diff)**(1/5) - 1
+
+>>>>>>> f3dbc67ce2ff91c3ee6fef805639bf1e351a1ec8
