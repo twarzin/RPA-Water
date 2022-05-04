@@ -1,6 +1,9 @@
 # File to transform climate data into format usable by demand model
 # Travis Warziniack
 
+# testing GitHub sync
+
+
 rm(list = ls())  # clears memory
 
 # Set working directory to file location
