@@ -36,9 +36,7 @@ us2015$YEAR = 2015
 # need to keep relevant fields, subtract differences between years, then calculate 
 # growth rates
 
-water1 <- merge(us2010, us2015, by="FIPS")
-
-# domestic deliveries from public supply
+# ---- domestic deliveries from public supply --- 
 
 # checking which years of domestic deliveries from public supply:
 # yes: 2015, 2010, 1995, 1990
