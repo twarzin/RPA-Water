@@ -64,14 +64,13 @@ try:
         nameExcelFile = os.path.splitext(xlsx)[0]
         # Define the name of the current sheet
         #   (they are all the same as the root of the file name).
-        # Excel sheet names all have a '$' at the
-        #   end when views in ArcGIS apps.
+        # Excel sheet names have a '$' at the end when viewed in ArcGIS apps.
         sheetName = nameExcelFile + '$'
-        # Full path of the worksheet, the Excel file is the
-        #   directory or workspace
+        # Full path of the worksheet, the Excel file is the directory
+        #   or workspace
         sheetPath = os.path.join(xlsx, sheetName)
         print('    The Excel sheet is {0}'.format(sheetPath))
-        # Make a table view without the NULL records.
+        # Make a temporary table view without the NULL records.
         print('    Making a table view without NULL records...')
         tblViewNoNulls = arcpy.management.MakeTableView(
             sheetPath,
