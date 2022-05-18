@@ -3,13 +3,17 @@
 # US Forest Service
 # travis.w.warziniack@usda.gov
 
+# to do:
+# - no acreage data in the stored data demand-temp
+# - write a loop that cycles through GCM and RCP scenarios
+
 rm(list = ls())  # clears memory
 
 # Set working directory to file location
 # for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 # for Travis desktop:
-setwd("D:/5_RPA/Demand model")
+setwd("D:/Demand model")
 # for Travis laptop
 # setwd("D:/WEAP Input Creation")
 
@@ -190,15 +194,9 @@ demand$ag.t  <- demand$acres * demand$wpu.ag
 carbon <- 45
 gcm <- "cnrm_c5"
 
-# to keep things moving, let's multiply wpu by percentage change in water yield to get 
-# demands with climate impacts
-
-
 # Domestic water use: Climate change only affects outdoor water use for domestic uses
 # during the growing season (April - September). The first step is to divide  
 # water use between outdoor and indoor use base on XXXXX.
-
-
 
 # for testing, we'll create fake changes in growing season precipitation:
 demand$delta.sprecip <- rnorm(1, mean=1, sd=1)
@@ -209,21 +207,18 @@ demand$delta.spet <- rnorm(1, mean=1, sd=1)
 cc.dp1 <- -1.415    # coefficient on change in summertime precip
 cc.dp2 <- 0.778     # coefficient on change in pet
 
-demand$wpu.dp.cc <- (cc.dp1*demand$delta.sprecip + cc.dp2*demand$delta.spet) / 1000
+### verify that the following is additive
+demand$wpu.dp.cc <- demand$wpu.dom + (cc.dp1*demand$delta.sprecip + cc.dp2*demand$delta.spet) / 1000
 # the original code did not have the last term and divided by 1000
 # domestic demand with climate change:
 demand$dom.cc <- demand$wpu.dp.cc * demand$pop
 
 # agricultural water use with climate change:
+# Multiply wpu by percentage change in water yield to get 
+# demands with climate impacts
 
-# from old code:
-# 
-# ir.test$wpuc.2015 <- ir.test$ir.wpu.2015 / ir.test$precip15
-# ir.test$wpuc.2016 <- ir.test$ir.wpu.2016 / ir.test$precip16
-# ir.test$wpuc.2017 <- ir.test$ir.wpu.2017 / ir.test$precip17
-# ir.test$wpuc.2018 <- ir.test$ir.wpu.2018 / ir.test$precip18
-# ir.test$wpuc.2019 <- ir.test$ir.wpu.2019 / ir.test$precip19
-
+demand$wpu.ag.cc <- demand$wpu.ag * demand$delta.sprecip
+demand$ag.cc <- demand$wpu.ag.cc * demand$acres
 
 
 # --- OUTPUT FORMAT ----
@@ -231,7 +226,6 @@ demand$dom.cc <- demand$wpu.dp.cc * demand$pop
 # Output for reports, etc. 
 # extracting domestic estimates
 dom.wpu <- demand
-#subset(demand, ssp=="ssp1")
 
 dom.wpu1 <- dom.wpu %>% 
   group_by(fips,year,ssp) %>%
