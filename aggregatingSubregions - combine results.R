@@ -1,5 +1,6 @@
-
 # File for aggregating water demand results into subregions
+# It reads in a csv file that maps counties to regions so the 
+# user can alter the regions to match their project needs
 # Initial code was done by Shaunie Rasmussen, currently 
 # maintained by Travis Warziniack
 
@@ -8,11 +9,9 @@
 
 rm(list = ls())
 
-setwd("D:/Subregions")
-# Travis desktop:
-setwd("D:/5_RPA/Demand model/Demand Results - Supplemental for Publication/ConsumptiveOnly")
-
-
+# set working directory to wherever you are storing your data:
+# setwd("XXXX/ConsumptiveOnly")
+# browse on your computer to find projection data
 
 library(tidyr)
 library(ggplot2)
@@ -97,8 +96,6 @@ df <- rbind(cnrm45ssp1,
             noresm85ssp5
 )
             
-
-
 df$Y2015[is.na(df$Y2015)] <- 0
 df$Y2070[is.na(df$Y2070)] <- 0
 
@@ -406,8 +403,13 @@ county_choropleth(joined, num_colors = 0)
 ##### Read in subregion data #####
 
 setwd("D:/Demand model/Demand Results - Supplemental for Publication/Subregions")
-subregions <- read.csv("Counties_Subregions.csv")%>%
-  select(GEOID, RPA_SubReg)
+# select the appropriate subregion file:
+# for RPA regions:
+#subregions <- read.csv("Counties_Subregions.csv")%>%
+#  select(GEOID, RPA_SubReg)
+# for national forests and grasslands:
+subregions <- read.csv("Counties_NFS.csv")%>%
+  select(GEOID, NationalForest)
 names(subregions) <- c("fips","subregion")
 
 # sub-regional mean changes by sector
@@ -1647,7 +1649,6 @@ domestictot <- merge(domesticssp1, domesticssp2, by = "subregion")
 domestictot <- merge(domestictot, domesticssp3, by = "subregion")
 domestictot <- merge(domestictot, domesticssp5, by = "subregion")
 #write.csv(domestictot, file = "/Sector Totals/domestic_noresm.csv")
-
 
 domesticssp1 <- merge(domestic1, subregions, by = "fips")%>%
   select(fips,Y2015,Y2070,subregion)%>%
