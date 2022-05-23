@@ -8,11 +8,29 @@ Date:           2021 May 13
 Updates:
 Description:    This script replaces sections of the R script that transposes
                 data for sy15, sy16 etc., then calculates and saves change in
-                precip data to sp.all in 'WaterDemand_2021_03_08.R'.
+                precip data to _______________.
                 Flow for this script is found in "Water Demand Summer Precip
                 Script Design.drawio"
 
-Required Args:  Input -
+Required Args:  Inputs - pr_[climate model][rcp]_month.xlsx files
+                    In ...\CountyPrecip\Monthly\doneMonthlyCountyPrecip on
+                    Pam's computer.
+                    The CountyPrecipMonthlyCSV folder had the original CSV
+                    data files. I manually converted these to Excel format.
+                    5 climate models
+                        CNRM_CM5
+                        HadGEM2_ES365
+                        IPSL_CM5A_MR
+                        MRI_CGCM3
+                        NorESM1_M
+                    2 RCPs
+                        rcp45
+                        rcp85
+                Outputs - pr_[climate model][rcp]_month_spFinal.xlsx files
+                    In ...\CountyPrecip\Monthly on Pam's computer. Originally
+                    the inputs were here as well but I moved them to the 'done'
+                    folder when the script was finished.
+
 Optional Args:
 Notes:         'Ctrl-p' shows parameter info.
                 Need to figure out the use of the Field Mappings object instead
@@ -44,6 +62,16 @@ GDB_PPT = os.path.join(
     MAINFOLDER,
     'Precip.gdb')
 # Excel input tables, converted by hand from R script CSV outputs
+#   This needs to be revised as follows if you run this script again.
+#   Uncomment the next few lines and modify the body of the script accordingly:
+# New variable for input files.
+# folderInputExcelFiles = os.path.join(
+#     MAINFOLDER,
+#     'DataWaterDemand\\CountyPrecip\\Monthly\\doneMonthlyCountyPrecip')
+# Revised variable for final output data files.
+# folderOutputExcelFiles = os.path.join(
+#     MAINFOLDER,
+#     'DataWaterDemand\\CountyPrecip\\Monthly')
 folderExcelFiles = os.path.join(
     MAINFOLDER,
     'DataWaterDemand\\CountyPrecip\\Monthly')
