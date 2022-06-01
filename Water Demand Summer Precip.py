@@ -13,7 +13,7 @@ Description:    This script replaces sections of the R script that transposes
                 Script Design.drawio"
 
 Required Args:  Inputs - pr_[climate model][rcp]_month.xlsx files
-                    In ...\CountyPrecip\Monthly\doneMonthlyCountyPrecip on
+                    In ...\CountyPrecip\SummerPrecip\doneMonthlyCountyPrecip on
                     Pam's computer.
                     The CountyPrecipMonthlyCSV folder had the original CSV
                     data files. I manually converted these to Excel format.
@@ -27,7 +27,7 @@ Required Args:  Inputs - pr_[climate model][rcp]_month.xlsx files
                         rcp45
                         rcp85
                 Outputs - pr_[climate model][rcp]_month_spFinal.xlsx files
-                    In ...\CountyPrecip\Monthly on Pam's computer. Originally
+                    In ...\CountyPrecip\SummerPrecip on Pam's computer. Originally
                     the inputs were here as well but I moved them to the 'done'
                     folder when the script was finished.
 
@@ -67,14 +67,14 @@ GDB_PPT = os.path.join(
 # New variable for input files.
 # folderInputExcelFiles = os.path.join(
 #     MAINFOLDER,
-#     'DataWaterDemand\\CountyPrecip\\Monthly\\doneMonthlyCountyPrecip')
+#     'DataWaterDemand\\CountyPrecip\\SummerPrecip\\doneMonthlyCountyPrecip')
 # Revised variable for final output data files.
 # folderOutputExcelFiles = os.path.join(
 #     MAINFOLDER,
-#     'DataWaterDemand\\CountyPrecip\\Monthly')
+#     'DataWaterDemand\\CountyPrecip\\SummerPrecip')
 folderExcelFiles = os.path.join(
     MAINFOLDER,
-    'DataWaterDemand\\CountyPrecip\\Monthly')
+    'DataWaterDemand\\CountyPrecip\\SummerPrecip')
 
 try:
     print(
@@ -403,7 +403,7 @@ try:
         # Excel file name - strip off the '_Summer' suffix
         outFileNameFinalExcel = nameExcelFile + '_spFinal.xlsx'
         # Excel file full path
-        xlsPath = 'DataWaterDemand\\CountyPrecip\\Monthly'
+        xlsPath = 'DataWaterDemand\\CountyPrecip\\SummerPrecip'
         outFinalExcel = os.path.join(
             MAINFOLDER,
             xlsPath,
