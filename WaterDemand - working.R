@@ -141,7 +141,6 @@ demand.proj$ind <- NA
 demand.proj$therm <- NA
 demand.proj$ag <- NA
 demand.proj$la <- NA
-#demand.proj$acres <- NA
 demand.proj$power <- NA
 demand.proj$wpu.dom <- NA
 demand.proj$wpu.ind <- NA
@@ -157,6 +156,9 @@ attach(demand)
 demand <- demand[order(fips,ssp,year),]
 detach(demand)
 
+# subset demand to test code
+demand <- subset(demand, fips < 1005)
+
 # be sure to sort first!!
 # this loop takes hours on Travis' desktop
 
@@ -164,15 +166,15 @@ detach(demand)
 
 # to run new data, un-comment the following
 # # ----------------------------------------
-# nobs <- dim(demand)[1]
-# for(i in 1:nobs) {
-#   if (demand$year[i] != 2015) {
-#     demand$wpu.dom[i] <- demand$wpu.dom[(i-1)] * (1+demand$DP.growth[i]*(1+demand$DP.decay[i])^(demand$year[i]-2015))
-#     demand$wpu.ind[i] <- demand$wpu.ind[(i-1)] * (1+demand$IC.growth[i]*(1+demand$IC.decay[i])^(demand$year[i]-2015))
-#     demand$wpu.ag[i]  <- demand$wpu.ag[(i-1)]  * (1+demand$IR.growth[i]*(1+demand$IR.decay[i])^(demand$year[i]-2015))
-#           }
-# }
-#
+nobs <- dim(demand)[1]
+for(i in 1:nobs) {
+  if (demand$year[i] != 2015) {
+    demand$wpu.dom[i] <- demand$wpu.dom[(i-1)] * (1+demand$DP.growth[i]*(1+demand$DP.decay[i])^(demand$year[i]-2015))
+    demand$wpu.ind[i] <- demand$wpu.ind[(i-1)] * (1+demand$IC.growth[i]*(1+demand$IC.decay[i])^(demand$year[i]-2015))
+    demand$wpu.ag[i]  <- demand$wpu.ag[(i-1)]  * (1+demand$IR.growth[i]*(1+demand$IR.decay[i])^(demand$year[i]-2015))
+          }
+}
+
 # # export the above results so we don't have to run them every time
 # write.csv(demand, file="demand-temp.csv")
 #---------------------------------------
@@ -191,16 +193,9 @@ demand$ag.t  <- demand$acres * demand$wpu.ag
 # can be found in:
 # Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
 
-carbon <- 45
-gcm <- "cnrm_c5"
-
 # Domestic water use: Climate change only affects outdoor water use for domestic uses
 # during the growing season (April - September). The first step is to divide  
 # water use between outdoor and indoor use base on XXXXX.
-
-# for testing, we'll create fake changes in growing season precipitation:
-# demand$delta.sprecip <- rnorm(1, mean=1, sd=1)
-demand$delta.spet <- rnorm(1, mean=1, sd=1)
 
 # read in summer precip data
 precip.data <- read.xlsx(
@@ -221,15 +216,18 @@ precip.data <- read.xlsx(
   fillMergedCells = FALSE
 )
 
-# choose subset of GCM for testing
-precip.data <- subset(precip.data, GCM=="NorESM1_M")
-precip.data <- subset(precip.data, RCP=="4.5")
+# subset demand to test code
+precip.data <- subset(precip.data, FIPS < 1005)
 
 colnames(precip.data)[colnames(precip.data) == "FIPS"] <- "fips"
 colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
 
 demand <- merge(demand, precip.data, by=c('fips','year'))
 demand$delta.sprecip <- (100 + demand$PctChangePrecip) / 100
+
+# # for testing, we'll create fake changes in growing season precipitation:
+# # demand$delta.sprecip <- rnorm(1, mean=1, sd=1)
+demand$delta.spet <- rnorm(1, mean=1, sd=1)
 
 # --- domestic water use with climate change: 
 
@@ -248,7 +246,6 @@ demand$dom.cc <- demand$wpu.dp.cc * demand$pop
 
 demand$wpu.ag.cc <- demand$wpu.ag * demand$delta.sprecip
 demand$ag.cc <- demand$wpu.ag.cc * demand$acres
-
 
 # --- OUTPUT FORMAT ----
 
