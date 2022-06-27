@@ -1,0 +1,54 @@
+ Volume in drive E is GIS
+ Volume Serial Number is 266D-0CF8
+
+ Directory of E:\_Projects\WaterDemand\ScriptsWaterDemand\RPA-Water
+
+05/23/2022  01:26 PM    <DIR>          .
+05/23/2022  01:26 PM    <DIR>          ..
+03/17/2022  10:11 AM                89 .gitignore
+03/17/2022  07:49 AM    <DIR>          .ipynb_checkpoints
+05/23/2022  12:30 PM             2,370 .Rhistory
+03/24/2022  01:56 PM    <DIR>          .spyproject
+03/16/2022  09:46 AM            68,899 aggregatingSubregions - combine results.R
+01/04/2022  03:09 PM            83,209 aggregatingSubregions.R
+05/04/2022  01:00 PM             2,068 ClimateData.R
+08/06/2021  12:52 PM            10,458 coverage calculations.R
+05/23/2022  01:19 PM    <DIR>          data
+05/23/2022  01:26 PM                 0 DirectoryListing.txt
+05/10/2022  09:22 AM             5,359 estimateGrowth.r
+12/15/2021  10:52 AM           141,177 HistoricalMonthlyTesting_Update12.16
+12/15/2021  10:52 AM           127,663 HistoricMonthlyTesting.R
+05/04/2022  01:00 PM             7,373 irrigatedAcreage.r
+12/15/2021  10:52 AM               833 popinc.py
+03/17/2022  08:05 AM             5,924 popincSandbox.py
+05/13/2022  09:28 AM               218 README.md
+12/15/2021  10:52 AM               218 RPA-Water.Rproj
+05/20/2022  03:50 PM    <DIR>          SummerPrecipR
+05/23/2022  12:23 PM            19,782 Water Demand Summer Precip.py
+05/10/2022  09:16 AM             4,539 Water Shortage.py
+05/19/2022  09:43 AM             9,195 WaterDemand - working.R
+05/04/2022  01:00 PM           345,975 WaterDemand.R
+12/15/2021  10:52 AM            58,300 WaterUsedatacleanup6-09-20.R
+12/15/2021  10:52 AM           231,950 WEAPinput.R
+              21 File(s)      1,125,599 bytes
+               6 Dir(s)  4,957,117,095,936 bytes free
+			   
+aggregatingSubregions - combine results.R
+aggregatingSubregions.R
+ClimateData.R
+coverage calculations.R
+estimateGrowth.r
+HistoricalMonthlyTesting_Update12.16
+HistoricMonthlyTesting.R
+irrigatedAcreage.r
+popinc.py
+popincSandbox.py
+README.md
+RPA-Water.Rproj
+SummerPrecipR
+Water Demand Summer Precip.py
+Water Shortage.py
+WaterDemand - working.R
+WaterDemand.R
+WaterUsedatacleanup6-09-20.R
+WEAPinput.R
