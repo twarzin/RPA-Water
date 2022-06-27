@@ -13,7 +13,7 @@ rm(list = ls())  # clears memory
 # for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 # for Travis desktop:
-setwd("E:/Demand model")
+setwd("G:/Demand model")
 # for Travis laptop
 # setwd("D:/WEAP Input Creation")
 
@@ -157,7 +157,7 @@ demand <- demand[order(fips,ssp,year),]
 detach(demand)
 
 # subset demand to test code
-demand <- subset(demand, fips < 1005)
+# demand <- subset(demand, fips < 1005)
 
 # be sure to sort first!!
 # this loop takes hours on Travis' desktop
@@ -176,7 +176,7 @@ for(i in 1:nobs) {
 }
 
 # # export the above results so we don't have to run them every time
-# write.csv(demand, file="demand-temp.csv")
+write.csv(demand, file="demand-temp.csv")
 #---------------------------------------
 
 # assuming the above loop has run, read in demand-temp
@@ -234,6 +234,9 @@ demand$delta.spet <- rnorm(1, mean=1, sd=1)
 cc.dp1 <- -1.415    # coefficient on change in summertime precip
 cc.dp2 <- 0.778     # coefficient on change in pet
 
+### verify that delta is not supposed to be 1/delta in these -- already made
+### change in ag
+
 ### verify that the following is additive
 demand$wpu.dp.cc <- demand$wpu.dom + (cc.dp1*demand$delta.sprecip + cc.dp2*demand$delta.spet) / 1000
 # the original code did not have the last term and divided by 1000
@@ -243,9 +246,10 @@ demand$dom.cc <- demand$wpu.dp.cc * demand$pop
 # agricultural water use with climate change:
 # Multiply wpu by percentage change in water yield to get 
 # demands with climate impacts
-
-demand$wpu.ag.cc <- demand$wpu.ag * demand$delta.sprecip
+demand$wpu.ag.cc <- demand$wpu.ag * (1/demand$delta.sprecip)
 demand$ag.cc <- demand$wpu.ag.cc * demand$acres
+
+write.csv(demand, file="demand-final.csv")
 
 # --- OUTPUT FORMAT ----
 
