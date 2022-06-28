@@ -4,8 +4,10 @@
 # travis.w.warziniack@usda.gov
 
 # to do:
-# - no acreage data in the stored data demand-temp
 # - write a loop that cycles through GCM and RCP scenarios
+# - Does industrial need to be total income or per capita income?
+# - Precip data from Mazdak is in mm but demand is is MGD
+# - should ag climate be based on pet instead of precip?
 
 rm(list = ls())  # clears memory
 
@@ -161,9 +163,7 @@ detach(demand)
 
 # be sure to sort first!!
 # this loop takes hours on Travis' desktop
-
 # after it is run once, save results then read in data from code below loop
-
 # to run new data, un-comment the following
 # # ----------------------------------------
 nobs <- dim(demand)[1]
@@ -187,6 +187,11 @@ demand$dom.t <- demand$pop * demand$wpu.dom
 demand$ind.t <- demand$inc * demand$wpu.ind
 demand$ag.t  <- demand$acres * demand$wpu.ag
 
+demand.noCC <- demand
+
+keeps <- c("fips","state","county","year","ssp","inc","pop","acres","wpu.dom","wpu.ind","wpu.ag","dom.t","ag.t","ind.t")
+demand.noCC <- demand.noCC[,names(demand.noCC) %in% keeps]
+
 # -- PROJECTIONS WITH CLIMATE -------------
 
 # Climate impacts the withdrawals needed per unit. Equations for climate effects
@@ -194,8 +199,9 @@ demand$ag.t  <- demand$acres * demand$wpu.ag
 # Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
 
 # Domestic water use: Climate change only affects outdoor water use for domestic uses
-# during the growing season (April - September). The first step is to divide  
-# water use between outdoor and indoor use base on XXXXX.
+# during the growing season (April - September). Pam Froemke has created 
+# files for summer precip and et used here. That code is in the same GitHub 
+# repository
 
 # read in summer precip data
 precip.data <- read.xlsx(
@@ -218,6 +224,8 @@ precip.data <- read.xlsx(
 
 # subset demand to test code
 precip.data <- subset(precip.data, FIPS < 1005)
+# if demand not already subsetted, 
+demand <- subset(demand, fips < 1005)
 
 colnames(precip.data)[colnames(precip.data) == "FIPS"] <- "fips"
 colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
@@ -225,29 +233,36 @@ colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
 demand <- merge(demand, precip.data, by=c('fips','year'))
 demand$delta.sprecip <- (100 + demand$PctChangePrecip) / 100
 
-# # for testing, we'll create fake changes in growing season precipitation:
-# # demand$delta.sprecip <- rnorm(1, mean=1, sd=1)
-demand$delta.spet <- rnorm(1, mean=1, sd=1)
+# # for testing, we'll create fake changes in growing season pet:
+# demand$delta.spet <- rnorm(1, mean=1, sd=1)
+demand$delta.spet <- 0
+demand$ChangeSummerET <- demand$delta.spet
 
 # --- domestic water use with climate change: 
 
 cc.dp1 <- -1.415    # coefficient on change in summertime precip
 cc.dp2 <- 0.778     # coefficient on change in pet
 
-### verify that delta is not supposed to be 1/delta in these -- already made
 ### change in ag
 
 ### verify that the following is additive
-demand$wpu.dp.cc <- demand$wpu.dom + (cc.dp1*demand$delta.sprecip + cc.dp2*demand$delta.spet) / 1000
+demand$wpu.dp.cc <- demand$wpu.dom + (cc.dp1*demand$ChangeSummerPrecip + cc.dp2*demand$ChangeSummerET) / 1000
 # the original code did not have the last term and divided by 1000
 # domestic demand with climate change:
 demand$dom.cc <- demand$wpu.dp.cc * demand$pop
 
 # agricultural water use with climate change:
-# Multiply wpu by percentage change in water yield to get 
+# Multiply wpu by percentage change in summer precip to get 
 # demands with climate impacts
 demand$wpu.ag.cc <- demand$wpu.ag * (1/demand$delta.sprecip)
 demand$ag.cc <- demand$wpu.ag.cc * demand$acres
+
+# comparing domestic demand with and without climate change
+keeps <- c("fips","year","ssp","GCM","RCP","dom.t","dom.cc","ag.t","ag.cc")
+dcheck <- demand
+dcheck <- dcheck[,names(dcheck) %in% keeps]
+dcheck$compare.dom <- dcheck$dom.cc / dcheck$dom.t
+dcheck$compare.ag <- dcheck$ag.cc / dcheck$ag.t
 
 write.csv(demand, file="demand-final.csv")
 
