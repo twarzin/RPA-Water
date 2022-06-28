@@ -1,22 +1,21 @@
 """
-Source Name:    Water Demand Summer Precip.py
+Source Name:    Water Demand Summer PET.py
 Tool Name:
-Version:        ArcGIS Pro 2.7
+Version:        ArcGIS Pro 3.0
                 Python 3.9
 Author:         Pam Froemke, Rocky Mountain Research Station
-Date:           2021 May 13
+Date:           2022 June 27
 Updates:
-Description:    This script replaces sections of the R script that transposes
-                data for sy15, sy16 etc., then calculates and saves change in
-                precip data to _______________.
-                Flow for this script is found in "Water Demand Summer Precip
+Description:    This script is mostly identical to "Water Demand Summer
+                Precip.py", except for minor revisions to accomodate
+                differences in the PET input data.
+                Flow for this script is found in "Water Demand Summer PET
                 Script Design.drawio"
 
-Required Args:  Inputs - pr_[climate model][rcp]_month.xlsx files
-                    In ...\CountyPrecip\SummerPrecip\doneMonthlyCountyPrecip on
-                    Pam's computer.
-                    The CountyPrecipMonthlyCSV folder had the original CSV
-                    data files. I manually converted these to Excel format.
+Required Args:  Inputs - PET_[climate model][rcp]_Monthly.csv files
+                    In "...\DataWaterDemand\CountyPET\CountyPET_inputFiles" on
+                    Pam's computer. These are monthly PET in mm for the years
+                    1950 to 2099.
                     5 climate models
                         CNRM_CM5
                         HadGEM2_ES365
@@ -26,15 +25,12 @@ Required Args:  Inputs - pr_[climate model][rcp]_month.xlsx files
                     2 RCPs
                         rcp45
                         rcp85
-                Outputs - pr_[climate model][rcp]_month_spFinal.xlsx files
-                    In ...\CountyPrecip\SummerPrecip on Pam's computer. Originally
-                    the inputs were here as well but I moved them to the 'done'
-                    folder when the script was finished.
+                Outputs - PET_[climate model][rcp]_AnnualSummer.xlsx files
+                    In ...\DataWaterDemand\CountyPET\CountyPET_outputFiles
+                    on Pam's computer.
 
 Optional Args:
-Notes:         'Ctrl-p' shows parameter info.
-                Need to figure out the use of the Field Mappings object instead
-                of having a long line of text for the fieldMap variable.
+Notes:         'Ctrl-p' in PyCharm shows parameter info.
 """
 
 # Import modules
@@ -42,10 +38,6 @@ print('Importing required modules...')
 import arcpy
 import os
 from arcpy import env
-
-# Check for licenses
-print('Checking for licenses...')
-arcpy.CheckOutExtension("Spatial")
 
 env.overwriteOutput = True
 COORDS = arcpy.SpatialReference("USA Contiguous Albers Equal Area Conic")
