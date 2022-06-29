@@ -49,65 +49,61 @@ MAINFOLDER = r'E:\WaterDemand\WaterDemandProject'
 GDB_WORKDIR = os.path.join(
     MAINFOLDER,
     'WaterDemandProject.gdb')
-# Geodatabase for the output tables - for uploading to AGOL
-GDB_PPT = os.path.join(
+# Location of input files.
+folderInputDataFiles = os.path.join(
     MAINFOLDER,
-    'Precip.gdb')
-# Excel input tables, converted by hand from R script CSV outputs
-#   This needs to be revised as follows if you run this script again.
-#   Uncomment the next few lines and modify the body of the script accordingly:
-# New variable for input files.
-# folderInputExcelFiles = os.path.join(
-#     MAINFOLDER,
-#     'DataWaterDemand\\CountyPrecip\\SummerPrecip\\doneMonthlyCountyPrecip')
-# Revised variable for final output data files.
-# folderOutputExcelFiles = os.path.join(
-#     MAINFOLDER,
-#     'DataWaterDemand\\CountyPrecip\\SummerPrecip')
-folderExcelFiles = os.path.join(
+    'DataWaterDemand\\CountyPET\\CountyPET_inputFiles')
+# Location of output files.
+folderOutputDataFiles = os.path.join(
     MAINFOLDER,
-    'DataWaterDemand\\CountyPrecip\\SummerPrecip')
+    'DataWaterDemand\\CountyPET\\CountyPET_outputFiles')
 
 try:
     print(
-        'Starting analysis for change in summer precipitation for the '
+        'Starting analysis for change in summer precipitation for the'
         'Water Demand project:')
 
-    # Import the Excel Spreadsheets to the GDB --------------------------------
-    env.workspace = folderExcelFiles
-    listExcelFiles = arcpy.ListFiles('*.xlsx')
-    # Use this to select the blank lines that carried over from the CSV files.
-    sqlNoNulls = 'Date IS NOT NULL'
-    for xlsx in listExcelFiles:
-        print('  The current Excel file is {0}'.format(xlsx))
-        # Get the Excel file name without the extension.
-        nameExcelFile = os.path.splitext(xlsx)[0]
-        # Define the name of the current sheet
-        #   (they are all the same as the root of the file name).
-        # Excel sheet names have a '$' at the end when viewed in ArcGIS apps.
-        sheetName = nameExcelFile + '$'
-        # Full path of the worksheet, the Excel file is the directory
-        #   or workspace
-        sheetPath = os.path.join(xlsx, sheetName)
-        print('    The Excel sheet is {0}'.format(sheetPath))
-        # Make a temporary table view without the NULL records.
-        print('    Making a table view without NULL records...')
-        tblViewNoNulls = arcpy.management.MakeTableView(
-            sheetPath,
-            'temp_NoNulls',
-            sqlNoNulls)
-        # Make the table view a permanent table in the WorkDir gdb
-        #   (precip data with blank rows removed).
-        print('    Saving {0} to the WorkDir GDB...'.format(nameExcelFile))
-        # Use the same name as the Excel file for the new gdb table
-        #   (example = 'pr_CNRM_CM5rcp45_month').
-        tblPrecip = os.path.join(
+    # Import the raw data to the GDB ------------------------------------------
+    env.workspace = folderInputDataFiles
+    # Make a list of the data files.
+    listDataFiles = arcpy.ListFiles('*.csv')
+    for file in listDataFiles:
+        print('  The current data file is {0}'.format(file))
+        # Get the file name without the extension.
+        nameDataFile = os.path.splitext(file)[0]
+        
+        # remove this section&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+        # # Define the name of the current sheet
+        # #   (they are all the same as the root of the file name).
+        # # Excel sheet names have a '$' at the end when viewed in ArcGIS apps.
+        # sheetName = nameDataFile + '$'
+        # # Full path of the worksheet, the Excel file is the directory
+        # #   or workspace
+        # sheetPath = os.path.join(file, sheetName)
+        # print('    The Excel sheet is {0}'.format(sheetPath))
+        # # Make a temporary table view without the NULL records.
+        # print('    Making a table view without NULL records...')
+        # tblViewNoNulls = arcpy.management.MakeTableView(
+        #     sheetPath,
+        #     'temp_NoNulls')
+        # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+        
+        # Make the table view a permanent table in the WorkDir gdb.
+        print('    Saving {0} to the WorkDir GDB...'.format(nameDataFile))
+        # Use the same name for the gdb table as the input data file.
+        #   (example = 'PET_CNRM_C5_45_Monthly')
+        tblPET = os.path.join(
             GDB_WORKDIR,
-            nameExcelFile)
-        # Import the Excel rows to the gdb.
+            nameDataFile)
+        # Select the years 2015 to 2070 to match the summer precip data.
+        tblViewYears = arcpy.management.MakeTableView(
+            file,
+            tblPET
+        )
+        # Import the input data rows to the gdb.
         arcpy.management.CopyRows(
             tblViewNoNulls,
-            tblPrecip)
+            tblPET)
 
         # Summarize the Annual Summer Precip ----------------------------------
         # Create a precip data subset of the summer months (April - September).
@@ -118,7 +114,7 @@ try:
         sqlSummerMonths = "Month >= 4 and Month <= 9"
         # Create a table view of the summer months' precip data.
         tblViewSummer = arcpy.management.MakeTableView(
-            tblPrecip,
+            tblPET,
             'temp_SummerPrecip',
             sqlSummerMonths)
         # Build the list of fields on which to summarize annual precip stats.
@@ -138,7 +134,7 @@ try:
             statsFields.append([field.name, "Sum"])
         # Name of the output summer precip table
         #   (example = 'pr_CNRM_CM5rcp45_month_S').
-        nameSummerPrecip1 = nameExcelFile + '_S'
+        nameSummerPrecip1 = nameDataFile + '_S'
         outTableSummer1 = os.path.join(
             GDB_WORKDIR,
             nameSummerPrecip1)
@@ -261,7 +257,7 @@ try:
         # Name of output feature class
         #   (example = 'pr_CNRM_CM5rcp45_month_Summer')
         #   This will be the name of the final data table for summer precip.
-        outTableFinal = nameExcelFile + '_Summer'
+        outTableFinal = nameDataFile + '_Summer'
         print('      Defining new data type and field names to change...')
         # # List of fields for which to change data type (FIPS and precip data)
         # #  Re-write code to use a list instead of 2 hard-coded field names.
@@ -393,7 +389,7 @@ try:
         #   list and export each table to an Excel file.
         env.workspace = GDB_WORKDIR
         # Excel file name - strip off the '_Summer' suffix
-        outFileNameFinalExcel = nameExcelFile + '_spFinal.xlsx'
+        outFileNameFinalExcel = nameDataFile + '_spFinal.xlsx'
         # Excel file full path
         xlsPath = 'DataWaterDemand\\CountyPrecip\\SummerPrecip'
         outFinalExcel = os.path.join(

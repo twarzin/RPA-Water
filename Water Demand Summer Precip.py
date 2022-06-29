@@ -65,11 +65,11 @@ GDB_PPT = os.path.join(
 #   This needs to be revised as follows if you run this script again.
 #   Uncomment the next few lines and modify the body of the script accordingly:
 # New variable for input files.
-# folderInputExcelFiles = os.path.join(
+# folderInputDataFiles = os.path.join(
 #     MAINFOLDER,
 #     'DataWaterDemand\\CountyPrecip\\SummerPrecip\\doneMonthlyCountyPrecip')
 # Revised variable for final output data files.
-# folderOutputExcelFiles = os.path.join(
+# folderOutputDataFiles = os.path.join(
 #     MAINFOLDER,
 #     'DataWaterDemand\\CountyPrecip\\SummerPrecip')
 folderExcelFiles = os.path.join(
