@@ -222,13 +222,22 @@ precip.data <- read.xlsx(
   fillMergedCells = FALSE
 )
 
+colnames(precip.data)[colnames(precip.data) == "FIPS"] <- "fips"
+colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
+
+# convert precip data in mm height to millions of gallons per day to match demand data
+# need to merge a file that has county area
+# convert precip into meters to match county area data
+# demand$changePrecipGal <- demand$ChangePrecip * [area of county]
+# Precip will now be in cubic meteres
+# convert cubic meters to gallons
+# divide by number of growing days to get gallons per day 
+
 # subset demand to test code
 precip.data <- subset(precip.data, FIPS < 1005)
 # if demand not already subsetted, 
 demand <- subset(demand, fips < 1005)
 
-colnames(precip.data)[colnames(precip.data) == "FIPS"] <- "fips"
-colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
 
 demand <- merge(demand, precip.data, by=c('fips','year'))
 demand$delta.sprecip <- (100 + demand$PctChangePrecip) / 100
