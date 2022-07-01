@@ -64,7 +64,7 @@ try:
         '(PET) for the Water Demand project:')
 
     # Make a list of the data files. ------------------------------------------
-    env.workspace = folderInputDataFiles
+    arcpy.env.workspace: str = folderInputDataFiles
     listDataFiles = arcpy.ListFiles("*.csv")
     for file in listDataFiles:
         # Print the current file name.
