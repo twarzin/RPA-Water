@@ -225,9 +225,13 @@ precip.data <- read.xlsx(
 colnames(precip.data)[colnames(precip.data) == "FIPS"] <- "fips"
 colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
 
-# convert precip data in mm height to millions of gallons per day to match demand data
+# convert precip data in mm height to millions of gallons per day to match demand data:
 # need to merge a file that has county area
-# convert precip into meters to match county area data
+precip.data$ChangeSummerPrecip.meters <- precip.data$ChangeSummerPrecip * 1000
+precip.data$ChangeSummerPrecip.volume <- precip.data$ChangeSummerPrecip.meters * precip.data$area 
+
+
+
 # demand$changePrecipGal <- demand$ChangePrecip * [area of county]
 # Precip will now be in cubic meteres
 # convert cubic meters to gallons
