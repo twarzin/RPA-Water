@@ -14,10 +14,7 @@ rm(list = ls())  # clears memory
 # Set working directory to file location
 # for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
-# for Travis desktop:
-setwd("G:/Demand model")
-# for Travis laptop
-# setwd("D:/WEAP Input Creation")
+setwd("E:/Demand model")
 
 library(tidyr)
 library(ggplot2)
@@ -225,23 +222,10 @@ precip.data <- read.xlsx(
 colnames(precip.data)[colnames(precip.data) == "FIPS"] <- "fips"
 colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
 
-# convert precip data in mm height to millions of gallons per day to match demand data:
-# need to merge a file that has county area
-precip.data$ChangeSummerPrecip.meters <- precip.data$ChangeSummerPrecip * 1000
-precip.data$ChangeSummerPrecip.volume <- precip.data$ChangeSummerPrecip.meters * precip.data$area 
-
-
-
-# demand$changePrecipGal <- demand$ChangePrecip * [area of county]
-# Precip will now be in cubic meteres
-# convert cubic meters to gallons
-# divide by number of growing days to get gallons per day 
-
 # subset demand to test code
 precip.data <- subset(precip.data, FIPS < 1005)
 # if demand not already subsetted, 
 demand <- subset(demand, fips < 1005)
-
 
 demand <- merge(demand, precip.data, by=c('fips','year'))
 demand$delta.sprecip <- (100 + demand$PctChangePrecip) / 100
@@ -253,13 +237,32 @@ demand$ChangeSummerET <- demand$delta.spet
 
 # --- domestic water use with climate change: 
 
+# the following coefficients are taken from Tom Brown's work for the 2010 RPA Assessment
+# the coefficients give the change in gallons per capita per day for a 1cm change in precip 
+# adn ET
 cc.dp1 <- -1.415    # coefficient on change in summertime precip
 cc.dp2 <- 0.778     # coefficient on change in pet
+
+# convert precip data in mm height to cm height 
+demand$ChangeSummerPrecip.cm <- demand$ChangeSummerPrecip * 0.1
+
+# precip.data$ChangeSummerPrecip.meters <- precip.data$ChangeSummerPrecip / 1000
+# # read in county area to turn height into volume
+# countyArea <- read.csv(file="1_BaseData/CountyAreas.csv")
+# colnames(countyArea)[colnames(countyArea) == "FIPS"] <- "fips"
+# precip.data <- merge(precip.data, countyArea, by="fips")
+# colnames(precip.data)[colnames(precip.data) == "Shape_Area..m2."] <- "area"
+# precip.data$ChangeSummerP.volume <- precip.data$ChangeSummerPrecip.meters * precip.data$area 
+# # divide by number of days in growing season April - Sept
+# precip.data$ChangeSummerPrecip <- precip.data$ChangeSummerP.volume / (6*30)
+# # convert m3/day to gallons / day
+# precip.data$ChangeSummerPrecipGD <- precip.data$ChangeSummerPrecip * 264
+# precip.data$ChangeSummerPrecipMGD <- precip.data$ChangeSummerPrecipGD / 1000000
 
 ### change in ag
 
 ### verify that the following is additive
-demand$wpu.dp.cc <- demand$wpu.dom + (cc.dp1*demand$ChangeSummerPrecip + cc.dp2*demand$ChangeSummerET) / 1000
+demand$wpu.dp.cc <- demand$wpu.dom + (cc.dp1*demand$ChangeSummerPrecip.cm + cc.dp2*demand$ChangeSummerET) / 1000
 # the original code did not have the last term and divided by 1000
 # domestic demand with climate change:
 demand$dom.cc <- demand$wpu.dp.cc * demand$pop
