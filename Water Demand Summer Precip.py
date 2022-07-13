@@ -52,7 +52,7 @@ COORDS = arcpy.SpatialReference("USA Contiguous Albers Equal Area Conic")
 
 # Locations on Pam's computer
 # Root folder
-MAINFOLDER = r'E:\WaterDemand\WaterDemandProject'
+MAINFOLDER = r'E:\\_Projects\\WaterDemand\\WaterDemandProject'
 # Geodatabase for all intermediate and final datasets
 GDB_WORKDIR = os.path.join(
     MAINFOLDER,
