@@ -152,8 +152,8 @@ try:
             nameSummerPrecip1)
         # Define the case field to include in the stats table.
         caseField = 'Year'
-        # Calculate the annual summer precip ("growing precip" in the R script)
-        #   for each FIPS.
+        # Calculate the annual summer precip data by year for each FIPS.
+        #   ("growing precip" in the R script)
         # Fields in the output are: Year, Frequency, Sum_F1001, Sum_F1003,
         #   Sum_F1005, etc.
         print(
