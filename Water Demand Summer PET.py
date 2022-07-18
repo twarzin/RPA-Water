@@ -359,6 +359,7 @@ try:
         fieldPETBaseName = fieldValue + '_1'
         # New field alias for 'PET' in the base data
         fieldPETBaseAlias = 'Summer PET Base'
+        print('      Input table is "{0}"'.format(outTableFinal))
         print('      Updating the base PET field alias to "{0}"...'.format(
             fieldPETBaseAlias))
         arcpy.management.AlterField(
