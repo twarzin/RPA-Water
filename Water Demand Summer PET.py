@@ -85,7 +85,7 @@ try:
     listDataFiles = arcpy.ListFiles("*.xlsx")
     for file in listDataFiles:
         # Print the current file name.
-        print('  The current data file is {0}'.format(file))
+        print('  The current input raw data file is {0}'.format(file))
         
         # Define the name of the Excel worksheet.
         #   Get the Excel file name without the extension.
@@ -101,7 +101,6 @@ try:
         print('    The Excel sheet is {0}'.format(sheetPath))
         
         # Import the raw data files to the GDB. -------------------------------
-        
         # Filter the raw data and import to the WorkDir gdb.
         print('    Filtering the data...')
         #   Define the data filters.
@@ -129,7 +128,7 @@ try:
         arcpy.CopyRows_management(
             tblviewFilteredData,
             tblPET)
-
+        
         # Summarize the HUC 8 Summer PET data by year -------------------------
         # Build the list of fields on which to summarize annual PET stats.
         print('    Getting ready to summarize the summer PET:')
@@ -246,6 +245,7 @@ try:
             sqlSelectBase)
 
         # Add the Base 2015 PET Field to the Summer PET Data. -----------------
+        
         # Format the 'PET' field for the JoinField process.
         fieldAddPETBase = [fieldValue]
         # Join by HUC to add the base PET to the transposed summer
@@ -260,6 +260,7 @@ try:
             fieldAddPETBase)
         
         # Correct the Field Types for the Final PET Data Fields. --------------
+        
         # At this point the two data fields, 'PET' and
         #   'Summer PET Base', are Text fields.
         #   They generate an error when you try to calculate the difference
@@ -268,8 +269,6 @@ try:
         print(
             '    Correcting the PET field data types for the final '
             'summer PET data table...')
-        # Output feature class location
-        outloc = GDB_WORKDIR
         # Name of output feature class
         #   (example = 'PET_CNRM_C5_45_AnnualSummer')
         #   This will be the name of the final data table for summer PET.
@@ -350,83 +349,117 @@ try:
                 outTableFinal))
         arcpy.conversion.TableToTable(
             outTableSummer1Txposed,
-            outloc,
+            GDB_WORKDIR,
             outTableFinal,
             field_mapping=fms)
 
-        # Change the field alias for 'PETSummer_1' to 'Summer PET Base' -------
-        # Base PET field name (the '_1' gets added by the JoinField process)
+        # Change the field name and alias for the summer and
+        #   summer base PET fields to avoid confusion later. ------------------
+
+        # Change the workspace to the location of the final output tables.
+        env.workspace = GDB_WORKDIR
+
+        # Change the summer PET alias.
+        # Define the new alias.
+        fieldPETNewAlias = 'Summer PET'
+        print('      Updating the Summer PET field alias '
+              'to "{0}".'.format(fieldPETNewAlias))
+        arcpy.management.AlterField(
+            outTableFinal,
+            fieldValue,
+            new_field_alias=fieldPETNewAlias)
+        
+        # Change the Summer PET Base field name and alias.
+        # Define the field name (the '_1' gets added by the
+        #   JoinField process earlier in this script).
         fieldPETBaseName = fieldValue + '_1'
-        # New field alias for 'PET' in the base data
+        # Define the new field name.
+        fieldPETBaseNewName = fieldValue + 'Base'
+        # Define the new field alias
         fieldPETBaseAlias = 'Summer PET Base'
         print('      Input table is "{0}"'.format(outTableFinal))
-        print('      Updating the base PET field alias to "{0}"...'.format(
-            fieldPETBaseAlias))
+        print('      Updating the base PET field name to {0} and the alias '
+              'to "{1}"...'.format(fieldPETBaseNewName, fieldPETBaseAlias))
         arcpy.management.AlterField(
             outTableFinal,
             fieldPETBaseName,
+            new_field_name=fieldPETBaseNewName,
             new_field_alias=fieldPETBaseAlias)
 
-        # # Add and calculate a field for change in PET -------------------------
-        # #   ('PETSummer' - 'PETBase')
-        # # Add field
-        # # Change in PET field
-        # fieldPETChange = 'ChangeSummerPET'
-        # # Field alias
-        # fieldPETChangeAlias = 'Change in Summer PET'
-        # print('    Adding a field for PETitation change...')
-        # arcpy.management.AddField(
-        #     outTableFinal,
-        #     fieldPETChange,
-        #     'DOUBLE',
-        #     field_alias=fieldPETChangeAlias)
-        # # Calculate field
-        # print('    Calculating the field for PETitation change...')
-        # # Change in Summer PET equation
-        # #   (the field with '_1' at the end is the base PET data)
-        # #   ChangeSummerPET = PETSummer - PETBase
-        # sqlPETChange = '!'+fieldValue+'!'+'-'+'!'+fieldValue+'_1!'
-        # arcpy.management.CalculateField(
-        #     outTableFinal,
-        #     fieldPETChange,
-        #     sqlPETChange,
-        #     'PYTHON')
-        #
-        # # Export the Final Data Tables. ---------------------------------------
-        # #   This section can be added to the above loop when the script
-        # #       is finished and running.
-        # #   The Excel files are for input to Water Demand R scripts,
-        # #       and the geodatabase tables are for AGOL.
-        # #   The Excel field aliases get removed when saving to a CSV file.
-        # #   Fields are converted to tblBasePET field names:
-        # #       HUC, Year, PETSummer, PETSummer_1, ChangeSummerPET.
-        # # List the gdb final summer PET tables, then loop through the
-        # #   list and export each table to an Excel file.
-        # env.workspace = GDB_WORKDIR
-        # # Excel file name - strip off the '_Summer' suffix
-        # outFileNameFinalExcel = nameDataFile + '_spFinal.xlsx'
-        # # Excel file full path
-        # xlsPath = 'DataWaterDemand\\CountyPET\\SummerPET'
-        # outFinalExcel = os.path.join(
-        #     MAINFOLDER,
-        #     xlsPath,
-        #     outFileNameFinalExcel)
-        # # Export gdb table to Excel.
-        # arcpy.conversion.TableToExcel(
-        #     outTableFinal,
-        #     outFinalExcel)
+        # Add and calculate a field for change in PET. ------------------------
+        #   Generally, the formula is: '[PETSummer]-[PETBase]'.
+        
+        # Add a field for the change in PET values.
+        # Define the new field name.
+        fieldPETChange = 'ChangeSummerPET'
+        # Define the new field alias.
+        fieldPETChangeAlias = 'Change in Summer PET'
+        print('    Adding a field for PET change...')
+        arcpy.management.AddField(
+            outTableFinal,
+            fieldPETChange,
+            'DOUBLE',
+            field_alias=fieldPETChangeAlias)
+        
+        # Calculate field
+        print('    Calculating the field for PET change...')
+        # Change in Summer PET equation
+        #   ChangeSummerPET = PETSummer - PETBase
+        sqlPETChange = '!'+fieldValue+'!'+'-'+'!'+fieldPETBaseNewName+'!'
+        arcpy.management.CalculateField(
+            outTableFinal,
+            fieldPETChange,
+            sqlPETChange,
+            'PYTHON')
+
+        # Export the Final Data Tables. ---------------------------------------
+        
+        #   This section can be added to the above loop when the script
+        #       is finished and running.
+        #   The Excel files are for input to Water Demand R scripts,
+        #       and the geodatabase tables are for AGOL.
+        #   If you save these Excel files as CSVs, the field aliases
+        #       are removed.
+        #   Fields are converted to tblBasePET field names:
+        #       HUC, Year, PETSummer, PETSummer_1, ChangeSummerPET.
+        
+        # List the gdb final summer PET tables, then loop through the
+        #   list and export each table to an Excel file.
+        
+        # Define the output Excel file name - strip off the '_Summer' suffix
+        outFileExcelFinal = outTableFinal[:-13] + '_petFinal.xlsx'
+        outFinalExcel = os.path.join(
+            folderOutputDataFiles,
+            outFileExcelFinal)
+        
+        # Export gdb table to Excel.
+        print('     Exporting the data to an Excel file...')
+        arcpy.conversion.TableToExcel(
+            outTableFinal,
+            outFinalExcel)
+        
         # # Add a section here that exports the table to a PET gdb for
-        # #   use in AGOL and ArcGIS Pro. #######################################
-        # env.workspace = GDB_PPT
+        # #   use in AGOL and ArcGIS Pro. #####################################
+        # env.workspace = GDB_PET
         # # Import the excel file to the PET gdb
         # arcpy.conversion.ExcelToTable()
 
-    # Cleanup, remove intermediate data ---------------------------------------
-    #   May not ever use this section.
-    #   I am keeping all the intermediate outputs for now.
-    # print('    Removing intermediate data...')
-    # deleteList = transposeSummerT +';'+ tblBasePET
-    # arcpy.management.Delete(deleteList)
+        # Cleanup, remove intermediate data -----------------------------------
+        #   May not ever use this section.
+        #   I am keeping all the intermediate outputs for now.
+        print('Removing intermediate data...')
+        # Define the items to delete.
+        deleteList = [
+            outTableSummer1,
+            tblBasePET,
+            outTableSummer1Txposed,
+            tblPET]
+        arcpy.management.Delete(deleteList)
+        
+        # Reset the workspace and go get the next file in the list.
+        arcpy.env.workspace = folderInputDataFiles
+        print('  Go get the next input file....')
+        print()
 
     print('Done!')
     print('You can remove any "temp_" layers from your map if they exist.')
