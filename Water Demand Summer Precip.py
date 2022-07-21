@@ -32,9 +32,9 @@ Required Args:  Inputs - pr_[climate model][rcp]_month.xlsx files
                     folder when the script was finished.
 
 Optional Args:
-Notes:         'Ctrl-p' shows parameter info.
-                Need to figure out the use of the Field Mappings object instead
-                of having a long line of text for the fieldMap variable.
+Notes:          See related metadata file:
+                    "0_Metadata for 1_Climate Folder.docx".
+                'Ctrl-p' shows parameter info.
 """
 
 # Import modules

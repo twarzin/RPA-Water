@@ -2,17 +2,10 @@
 Source Name:    Water Demand Summer PET.py
 Tool Name:
 Version:        ArcGIS Pro 3.0
-                Python 3.6
+                Python 3.9
 Author:         Pam Froemke, Rocky Mountain Research Station
-Date:           2022 June 27
-Updates:        NoneType error fix:
-                After updating to Pro 3.0, this script generated - "TypeError:
-                'NoneType' object is not iterable". The fix was removing the
-                "r" preceeding the MAINFOLDER path string. This was required
-                in previous Python versions to indicate a literal string
-                that ignores the backslashes as escape characters.
-                Also added double backslashes to eliminate the invalid escape
-                character notice in PyCharm.
+Date:           2022 July 21
+Updates:
 
 Description:    This script is mostly identical to "Water Demand Summer
                 PET.py", except for minor revisions to accomodate
@@ -33,12 +26,14 @@ Required Args:  Inputs - PET_[climate model][rcp]_Monthly.csv files
                     2 RCPs
                         rcp45
                         rcp85
-                Outputs - PET_[climate model][rcp]_AnnualSummer.xlsx files
+                Outputs - PET_[climate model][rcp]_petFinal.xlsx files
                     In ...\DataWaterDemand\CountyPET\CountyPET_outputFiles
                     on Pam's computer.
 
 Optional Args:
-Notes:         'Ctrl-p' in PyCharm shows parameter info.
+Notes:          See related metadata file:
+                    "0_Metadata for 1_Climate Folder.docx".
+                'Ctrl-p' in PyCharm shows parameter info.
 """
 
 # Import modules
@@ -53,10 +48,17 @@ env.overwriteOutput = True
 # Locations on Pam's computer
 # Root folder
 MAINFOLDER = 'E:\\_Projects\\WaterDemand\\WaterDemandProject'
+
 # Geodatabase for all intermediate and final datasets
 GDB_WORKDIR = os.path.join(
     MAINFOLDER,
     'WaterDemandProject.gdb')
+
+# # Geodatabase for PET outputs, use for uploading to AGOL
+# GDB_PET = os.path.join(
+#     MAINFOLDER,
+#     'PET.gdb')
+
 # Location of input files.
 folderInputDataFiles = os.path.join(
     MAINFOLDER,
@@ -65,6 +67,7 @@ folderInputDataFiles = os.path.join(
 folderOutputDataFiles = os.path.join(
     MAINFOLDER,
     'DataWaterDemand\\CountyPET\\CountyPET_outputFiles')
+
 # Other global variables
 #   Define the index of the first FIPS data field.
 #   In the 2022 PET raw data files, it was column 5, so the index is 4.
@@ -74,6 +77,7 @@ firstColumnFIPS = 4
 #   See the 'arcpy.analysis.Statistics' bookmark.
 caseField = 'year'
 
+# Start the analysis.
 try:
     print(
         'Starting analysis for change in summer potential evapotranspiration '
@@ -414,8 +418,6 @@ try:
 
         # Export the Final Data Tables. ---------------------------------------
         
-        #   This section can be added to the above loop when the script
-        #       is finished and running.
         #   The Excel files are for input to Water Demand R scripts,
         #       and the geodatabase tables are for AGOL.
         #   If you save these Excel files as CSVs, the field aliases
@@ -439,10 +441,9 @@ try:
             outFinalExcel)
         
         # # Add a section here that exports the table to a PET gdb for
-        # #   use in AGOL and ArcGIS Pro. #####################################
+        # #   uploading to AGOL. ##############################################
         # env.workspace = GDB_PET
-        # # Import the excel file to the PET gdb
-        # arcpy.conversion.ExcelToTable()
+        # # Copy the table to the PET gdb.
 
         # Cleanup, remove intermediate data -----------------------------------
         #   May not ever use this section.
