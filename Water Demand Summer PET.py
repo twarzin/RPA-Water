@@ -72,7 +72,7 @@ folderOutputDataFiles = os.path.join(
 #   Define the index of the first FIPS data field.
 #   In the 2022 PET raw data files, it was column 5, so the index is 4.
 #   See the 'fieldList = arcpy.ListFields' bookmark.
-firstColumnFIPS = 4
+firstColumnHUC = 4
 #   Define the case field by which the PET data are summarized.
 #   See the 'arcpy.analysis.Statistics' bookmark.
 caseField = 'year'
@@ -104,7 +104,7 @@ try:
         sheetPath = os.path.join(file, sheetName)
         print('    The Excel sheet is {0}'.format(sheetPath))
         
-        # Import the raw data files to the GDB. -------------------------------
+        # Import the 2015-2070 summer PET data tables to the GDB. -------------
         # Filter the raw data and import to the WorkDir gdb.
         print('    Filtering the data...')
         #   Define the data filters.
@@ -137,17 +137,17 @@ try:
         # Build the list of fields on which to summarize annual PET stats.
         print('    Getting ready to summarize the summer PET:')
         print('      Generating a list of fields...')
-        #   Fields in this output are: year, Frequency, Sum_F10010001,
-        #   Sum_F10010002, Sum_F10020001, etc.
-        #   We want to summarize the PET data in the FIPS fields, so generate
-        #   a list of them. The FIPS columns start at index 4 (the 5th field)
-        #   and go to the end. The index variable is defined with the
-        #   global variables.
-        fieldList = arcpy.ListFields(tblPET)[firstColumnFIPS:]
+        #   We want to summarize the PET data in the HUC fields, so generate
+        #   a list of them. The HUC columns start at index 4 (the 5th field)
+        #   and go to the end. The index variable is defined above in the
+        #   global variables section. See the link for firstColumnHUC in the
+        #   Structure pane in PyCharm.
+        fieldList = arcpy.ListFields(tblPET)[firstColumnHUC:]
         # Create an empty list that will store the formatted list of
         #   fields for statistics calculation.
         statsFields = []
-        # Do the following loop for each HUC field to build the stats list.
+        # Do the following loop for each HUC field to build the input stats
+        #   list for the Statistics process.
         for field in fieldList:
             print('      Adding {0} to the fields list...'.format(field.name))
             # Add the current field name and "Sum" to the stats fields list.
@@ -155,7 +155,8 @@ try:
             
         # Calculate the annual summer PET for each HUC.
         #   Define the name of the output annual summer PET table, eliminating
-        #   the 'Monthly' from the file name and adding 'AnnualSummerRaw'.
+        #   the 'Monthly' from the file name and adding 'AnnualSummerRaw' to
+        #   indicate the HUC fields have not been transposed yet.
         #   (example = 'PET_CNRM_C5_45_AnnualSummerRaw').
         nameSummerPET1 = nameExcelFile[:-8] + '_AnnualSummerRaw'
         outTableSummer1 = os.path.join(
@@ -165,6 +166,8 @@ try:
         #   of this script.
         print('      Summarizing the data for annual summer PET.')
         print('      The output file is {0}.'.format(nameSummerPET1))
+        #   Fields in this output are: year, Frequency, Sum_F10010001,
+        #   Sum_F10010002, Sum_F10020001, etc.
         arcpy.analysis.Statistics(
             tblPET,
             outTableSummer1,
@@ -224,7 +227,7 @@ try:
             fieldValue,
             fieldAttribute)
 
-        # Create the 'Base' data table from the 2015 PET data -----------------
+        # Add a 2015 base data field to the summer PET table. -----------------
         print(
             '    Creating a data table of the 2015 PET '
             'data as a base dataset...')
@@ -248,8 +251,6 @@ try:
             tblBasePET,
             sqlSelectBase)
 
-        # Add the Base 2015 PET Field to the Summer PET Data. -----------------
-        
         # Format the 'PET' field for the JoinField process.
         fieldAddPETBase = [fieldValue]
         # Join by HUC to add the base PET to the transposed summer
@@ -263,13 +264,13 @@ try:
             fieldTranspose,
             fieldAddPETBase)
         
-        # Correct the Field Types for the Final PET Data Fields. --------------
+        # Correct the field types in the final PET data table. ----------------
         
         # At this point the two data fields, 'PET' and
-        #   'Summer PET Base', are Text fields.
+        #   'Summer PET Base', are TEXT fields.
         #   They generate an error when you try to calculate the difference
         #       between them (change in PET), so they need to be changed
-        #       to Double.
+        #       to DOUBLE.
         print(
             '    Correcting the PET field data types for the final '
             'summer PET data table...')
@@ -357,8 +358,8 @@ try:
             outTableFinal,
             field_mapping=fms)
 
-        # Change the field name and alias for the summer and
-        #   summer base PET fields to avoid confusion later. ------------------
+        # Change the field name and alias for the summer and summer base
+        #   PET fields to avoid confusion later.
 
         # Change the workspace to the location of the final output tables.
         env.workspace = GDB_WORKDIR
@@ -416,7 +417,7 @@ try:
             sqlPETChange,
             'PYTHON')
 
-        # Export the Final Data Tables. ---------------------------------------
+        # Export the final data tables and clean up. --------------------------
         
         #   The Excel files are for input to Water Demand R scripts,
         #       and the geodatabase tables are for AGOL.
@@ -445,7 +446,7 @@ try:
         # env.workspace = GDB_PET
         # # Copy the table to the PET gdb.
 
-        # Cleanup, remove intermediate data -----------------------------------
+        # Cleanup, remove intermediate data.
         #   May not ever use this section.
         #   I am keeping all the intermediate outputs for now.
         print('Removing intermediate data...')
