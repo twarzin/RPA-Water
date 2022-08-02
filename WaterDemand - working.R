@@ -4,9 +4,7 @@
 # travis.w.warziniack@usda.gov
 
 # to do:
-# - write a loop that cycles through GCM and RCP scenarios
 # - Does industrial need to be total income or per capita income?
-# - Precip data from Mazdak is in mm but demand is is MGD
 # - should ag climate be based on pet instead of precip?
 
 rm(list = ls())  # clears memory
@@ -14,7 +12,7 @@ rm(list = ls())  # clears memory
 # Set working directory to file location
 # for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
-setwd("E:/Demand model")
+setwd("D:/5_RPA/Demand model")
 
 library(tidyr)
 library(ggplot2)
@@ -86,7 +84,7 @@ wd.2015[] <- lapply(wd.2015, as.numeric)
 #   convert NAs to zeros
 wd.2015[is.na(wd.2015)] <- 0
 
-# Creating variables for total industry withdrawals + deliveries
+# Creating variables for total sector withdrawals + deliveries
 wd.2015$dom <- wd.2015$DO.WDelv
 wd.2015$ind <- wd.2015$IN.WFrTo + wd.2015$MI.WFrTo
 wd.2015$therm <- wd.2015$PT.WFrTo + wd.2015$PT.PSDel
@@ -172,7 +170,7 @@ for(i in 1:nobs) {
           }
 }
 
-# # export the above results so we don't have to run them every time
+# export the above results so we don't have to run them every time
 write.csv(demand, file="demand-temp.csv")
 #---------------------------------------
 
@@ -239,7 +237,7 @@ demand$ChangeSummerET <- demand$delta.spet
 
 # the following coefficients are taken from Tom Brown's work for the 2010 RPA Assessment
 # the coefficients give the change in gallons per capita per day for a 1cm change in precip 
-# adn ET
+# and ET
 cc.dp1 <- -1.415    # coefficient on change in summertime precip
 cc.dp2 <- 0.778     # coefficient on change in pet
 
