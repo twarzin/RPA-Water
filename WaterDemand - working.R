@@ -12,7 +12,7 @@ rm(list = ls())  # clears memory
 # Set working directory to file location
 # for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
-setwd("D:/5_RPA/Demand model")
+setwd("D:/Demand model")
 
 library(tidyr)
 library(ggplot2)
@@ -90,6 +90,12 @@ wd.2015$ind <- wd.2015$IN.WFrTo + wd.2015$MI.WFrTo
 wd.2015$therm <- wd.2015$PT.WFrTo + wd.2015$PT.PSDel
 wd.2015$ag <- wd.2015$IR.WFrTo
 wd.2015$la <- wd.2015$LI.WFrTo + wd.2015$AQ.WFrTo
+
+# calculating total withdrawals for baseline data
+wd.2015$total <- wd.2015$dom + wd.2015$ind + wd.2015$therm + wd.2015$dom +  
+                 wd.2015$ag + wd.2015$la
+
+all.wd.2015 <- sum(wd.2015$total)
 
 # baseline demand driver data from USGS
 wd.2015$acres <- wd.2015$IR.IrTot
@@ -181,6 +187,13 @@ demand <- read.csv(file="demand-temp.csv")
 demand$dom.t <- demand$pop * demand$wpu.dom
 demand$ind.t <- demand$inc * demand$wpu.ind
 demand$ag.t  <- demand$acres * demand$wpu.ag
+names(demand)
+demand_total <- demand %>% dplyr::select(year,dom.t,ind.t,ag.t,ssp) %>%
+  dplyr::group_by(year,ssp) %>%
+  summarise_all(sum,na.rm = T) %>% 
+  ungroup()
+
+demand_total$ag.dom.ind <- demand_total$dom.t + demand_total$ind.t + demand_total$ag.t
 
 demand.noCC <- demand
 
