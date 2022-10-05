@@ -12,32 +12,53 @@ rm(list = ls())  # clears memory
 # Set working directory to file location
 # for Pam: 
 #setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
-setwd("D:/Demand model")
+#setwd("D:/Demand model")
+
+# Set working directory to same location of the R file location
+base.dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+setwd(base.dir)
 
 library(tidyr)
+library(tibble)
 library(ggplot2)
 library(reshape2)
 library(dplyr)  # Has the pipe operator %>%.
 library(data.table)
 library(openxlsx)
 
-# ------------------------
+# Notes for faster functions
+'
+1) "data.table::fread" is faster than "read.csv" but I use "%>% as.data.frame" at the end
+fread doesnot change the column names even if they are not allowed, 
+so I will limit its use here not to distribe the original code
+
+2) "data.table::fwrite" is faster than "write.csv" and by default donot include the row names
+
+3) "dplyr::inner_join" is quivalent but faster than "merge" , other options are full_join and left_join
+
+4) "dplyr::arrange" is faster than attaching and using the order function
+
+5) I replaced the for loop with a different login that run in 3 min now instsead of 2 hr
+
+'
+
+# Read Data ------------------------
 # load baseline data
 
 # Population and income projections are from Wear and Prestemon
 # Population by FIPS: fields are ID (x), fips, year, pop, ssp, inc; 860,440 records
 # Population is in thousands
 # Income is in __________
-pop.inc <- read.csv("1_BaseData/popinc_proj.csv")
+pop.inc <- data.table::fread("1_BaseData/popinc_proj.csv") %>% as.data.frame()
 # projections of irrigated acreage for ag
-acre.data <- read.csv('1_BaseData/acredata-use.csv', header=TRUE)
+acre.data <- data.table::fread('1_BaseData/acredata-use.csv', header=TRUE) %>% as.data.frame()
 
 # acre.data does not vary by ssp, so collapse to shorten merges
 acre.data <- subset(acre.data, ssp == "ssp1")
 acre.data <- acre.data %>%
   select(fips, year, acres)
 # combine projection data
-proj.data <- merge(pop.inc, acre.data, by=c("fips", "year"))
+proj.data <- dplyr::inner_join(pop.inc, acre.data, by=c("fips", "year"))
 
 proj.data <- proj.data %>%
   select(fips, year, pop, ssp, inc, acres)
@@ -85,17 +106,19 @@ wd.2015[] <- lapply(wd.2015, as.numeric)
 wd.2015[is.na(wd.2015)] <- 0
 
 # Creating variables for total sector withdrawals + deliveries
-wd.2015$dom <- wd.2015$DO.WDelv
-wd.2015$ind <- wd.2015$IN.WFrTo + wd.2015$MI.WFrTo
+wd.2015$dom   <- wd.2015$DO.WDelv
+wd.2015$ind   <- wd.2015$IN.WFrTo + wd.2015$MI.WFrTo
 wd.2015$therm <- wd.2015$PT.WFrTo + wd.2015$PT.PSDel
-wd.2015$ag <- wd.2015$IR.WFrTo
-wd.2015$la <- wd.2015$LI.WFrTo + wd.2015$AQ.WFrTo
+wd.2015$ag    <- wd.2015$IR.WFrTo
+wd.2015$la    <- wd.2015$LI.WFrTo + wd.2015$AQ.WFrTo
 
-# calculating total withdrawals for baseline data
-wd.2015$total <- wd.2015$dom + wd.2015$ind + wd.2015$therm + wd.2015$dom +  
-                 wd.2015$ag + wd.2015$la
+# Check total withdrawals for baseline data
+wd.2015$total <- wd.2015$dom + wd.2015$ind + wd.2015$therm + 
+  wd.2015$ag + wd.2015$la
 
 all.wd.2015 <- sum(wd.2015$total)
+
+print(paste0('2015 total withdrawal is ',all.wd.2015,' MGD'))
 
 # baseline demand driver data from USGS
 wd.2015$acres <- wd.2015$IR.IrTot
@@ -114,7 +137,7 @@ growth <- read.csv("1_BaseData/WDGrowthCU.csv")
 # impacts are added in a separate section at the bottom of this code
 
 #---------------------------------------------------------------------------------.
-################# SECTOR PROJECTIONS TO 2070 - no climate #########################
+# -   SECTOR PROJECTIONS TO 2070 - no climate #########################
 # This calculates projections out to 2070 using function from
 # Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
 
@@ -130,9 +153,9 @@ keeps <- c("fips","year","ssp","inc","pop","dom","ag","ind","therm","la",
 demand.init <- demand.init1[,names(demand.init1) %in% keeps]
 
 # calculate initial withdrawals per unit
-demand.init$wpu.dom <- demand.init$dom / demand.init$pop
-demand.init$wpu.ind <- demand.init$ind / demand.init$inc
-demand.init$wpu.ag <- demand.init$ag / demand.init$acres
+demand.init$wpu.dom   <- demand.init$dom / demand.init$pop
+demand.init$wpu.ind   <- demand.init$ind / demand.init$inc
+demand.init$wpu.ag    <- demand.init$ag / demand.init$acres
 demand.init$wpu.therm <- demand.init$therm / demand.init$power
 # need to add thermo-electric, and aquaculture
 
@@ -152,55 +175,70 @@ demand.proj$wpu.therm <- NA
 
 demand <- rbind(demand.init, demand.proj)
 
-demand <- merge(demand, growth, by="fips")
+demand <- dplyr::inner_join(demand, growth, by="fips")
 
-# order data so I can run a loop on lagged values
-attach(demand)
-demand <- demand[order(fips,ssp,year),]
-detach(demand)
+# # order data so I can run a loop on lagged values
+demand <- demand %>% dplyr::arrange(fips,ssp,year)
 
-# subset demand to test code
-# demand <- subset(demand, fips < 1005)
+# # be sure to sort first!!
+demand2 <- demand 
+for(i in 1:55) {
+  demand2 <- demand2 %>%
+    group_by(fips,ssp) %>%
+    dplyr::mutate(
+      wpu.dom = ifelse(is.na(wpu.dom), dplyr::lag(wpu.dom) * (1+DP.growth*(1+DP.decay)^(year-2015)),wpu.dom),
+      wpu.ind = ifelse(is.na(wpu.ind), dplyr::lag(wpu.ind) * (1+IC.growth*(1+IC.decay)^(year-2015)),wpu.ind),
+      wpu.ag  = ifelse(is.na(wpu.ag),  dplyr::lag(wpu.ag)  * (1+IR.growth*(1+IR.decay)^(year-2015)),wpu.ag))
+  }
 
-# be sure to sort first!!
-# this loop takes hours on Travis' desktop
-# after it is run once, save results then read in data from code below loop
-# to run new data, un-comment the following
-# # ----------------------------------------
-nobs <- dim(demand)[1]
-for(i in 1:nobs) {
-  if (demand$year[i] != 2015) {
-    demand$wpu.dom[i] <- demand$wpu.dom[(i-1)] * (1+demand$DP.growth[i]*(1+demand$DP.decay[i])^(demand$year[i]-2015))
-    demand$wpu.ind[i] <- demand$wpu.ind[(i-1)] * (1+demand$IC.growth[i]*(1+demand$IC.decay[i])^(demand$year[i]-2015))
-    demand$wpu.ag[i]  <- demand$wpu.ag[(i-1)]  * (1+demand$IR.growth[i]*(1+demand$IR.decay[i])^(demand$year[i]-2015))
-          }
-}
-
-# export the above results so we don't have to run them every time
-write.csv(demand, file="demand-temp.csv")
-#---------------------------------------
-
-# assuming the above loop has run, read in demand-temp
-demand <- read.csv(file="demand-temp.csv")
-
-# calculate annual withdrawals for each sector
-demand$dom.t <- demand$pop * demand$wpu.dom
-demand$ind.t <- demand$inc * demand$wpu.ind
-demand$ag.t  <- demand$acres * demand$wpu.ag
-names(demand)
-demand_total <- demand %>% dplyr::select(year,dom.t,ind.t,ag.t,ssp) %>%
-  dplyr::group_by(year,ssp) %>%
-  summarise_all(sum,na.rm = T) %>% 
+demand2 <- demand2 %>%
   ungroup()
 
-demand_total$ag.dom.ind <- demand_total$dom.t + demand_total$ind.t + demand_total$ag.t
+# export the above results so we don't have to run them every time
+data.table::fwrite(demand2, file="demand_temp_Ahmed.csv")
+
+rm(demand,demand2)
+
+# assuming the above loop has run, read in demand-temp
+demand <- fread(file="demand_temp_Ahmed.csv") %>% as.data.frame()
+
+# calculate annual withdrawals for each sector
+demand <- demand %>%
+  dplyr::mutate(dom.t = pop * wpu.dom,
+                ind.t = inc * wpu.ind,
+                ag.t  = acres * wpu.ag)
+
+names(demand)
 
 demand.noCC <- demand
 
 keeps <- c("fips","state","county","year","ssp","inc","pop","acres","wpu.dom","wpu.ind","wpu.ag","dom.t","ag.t","ind.t")
 demand.noCC <- demand.noCC[,names(demand.noCC) %in% keeps]
 
-# -- PROJECTIONS WITH CLIMATE -------------
+# check total demands
+# thermal (therm), and life stock and aquaculture (la) are missing in withdrawal projections
+# So the total withdrawal are misleading
+# will come back to this
+
+demand.total <- demand %>% 
+  dplyr::select(year,ssp,dom.t,ind.t,ag.t,therm,la) %>%
+  dplyr::group_by(year,ssp) %>%
+  dplyr::summarise_all(sum,na.rm = T) %>% 
+  dplyr::ungroup() %>%
+  as.data.frame()
+
+demand.total <- demand.total %>%
+  mutate(total.ag.dom.ind = dom.t + ind.t + ag.t,
+         total = dom.t + ind.t + ag.t + therm + la)
+
+
+'
+Last Line I checked
+Ahmed
+"Sep,30,2022
+'
+
+# --  PROJECTIONS WITH CLIMATE -------------
 
 # Climate impacts the withdrawals needed per unit. Equations for climate effects
 # can be found in:
