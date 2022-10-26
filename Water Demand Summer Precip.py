@@ -421,9 +421,9 @@ try:
     # Cleanup, remove intermediate data ---------------------------------------
     #   May not ever use this section.
     #   I am keeping all the intermediate outputs for now.
-    # print('    Removing intermediate data...')
-    # deleteList = transposeSummerT +';'+ tblBasePrecip
-    # arcpy.management.Delete(deleteList)
+    print('    Removing intermediate data...')
+    deleteList = transposeSummerT + ';' + tblBasePrecip
+    arcpy.management.Delete(deleteList)
 
     print('Done!')
     print('You can remove any "temp_" layers from your map if they exist.')
