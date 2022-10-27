@@ -8,6 +8,7 @@ Date:           2022
 Updates:
 Description:    Calculate mean percent change in water demand from 2015 to 2070
                 across all scenarios.
+                    1. Group by
 Required Args:
 Optional Args:
 Notes:
@@ -20,7 +21,7 @@ import os
 from arcpy import env
 
 env.overwriteOutput = True
-COORDS = arcpy.SpatialReference(
+arcpy.SpatialReference(
     "USA Contiguous Albers Equal Area Conic")
 
 MAINFOLDER = \
@@ -31,12 +32,23 @@ GDB = os.path.join(
     'WaterDemandProject.gdb')
 
 # Data
-# Raw CSV water demand data
-inputTable = "E:\\_Projects\\WaterDemand\\WaterDemandProject\\DataWaterDemand" \
-             "\\MeanPctChange\\cons_and_withdrawal.csv"
+# Raw input CSV water demand data
+inputTable = os.path.join(
+    MAINFOLDER,
+    'DataWaterDemand',
+    'MeanPctChange',
+    'cons_and_withdrawal.csv')
 # Raw water demand data imported to the gdb
-outputTable = "E:\\_Projects\\WaterDemand\\WaterDemandProject" \
-              "\\WaterDemandProject.gdb\\ConsWithdrawal"
+outputTable = os.path.join(
+    GDB,
+    'ConsWithdrawal')
+# Sectors of interest (domestic and thermoelectric)
+sectorList = [
+    'dp',
+    'th']
+# Subset table for DP, RCP 4.5
+tblDP45 = \
+    'WithdrawalDP45'
 
 # Set the workspace.
 env.workspace = GDB
@@ -46,10 +58,34 @@ try:
         'Starting analysis for calculating mean percent change '
         'in water demand:')
     
-    # Import the CSV raw data table to the gdb.
-    arcpy.conversion.ExportTable(
-        inputTable,
-        outputTable)
+    # # Import the CSV raw data table to the gdb.
+    # print(
+    #     '    Importing the raw data...')
+    # arcpy.conversion.ExportTable(
+    #     inputTable,
+    #     outputTable)
+
+    # For loops:
+    # Select the sectors.
+    #   Select the dp sector for RCP 4.5.
+    #   Note - the 'year' field name is misspelled 'yearr' in the raw data.
+    print(
+        '    Selecting sector and scenario...')
+    sqlDP45 = \
+        "sector = 'dp' " \
+        "And scenario LIKE '%45%' " \
+        "And yearr = 2015 " \
+        "Or sector = 'dp' " \
+        "And scenario LIKE '%45%' " \
+        "And yearr = 2070"
+    arcpy.analysis.TableSelect(
+        outputTable,
+        tblDP45,
+        sqlDP45)
+
+    #       For each county, calculate % change from 2015 to 2070.
+    #       ((2070wd-2015wd)/2015wd)*100
+    #   Repeat for dp 8.5, th 4.5, and th 8.5.
     
     print('Done!')
 
