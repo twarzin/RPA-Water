@@ -46,8 +46,11 @@ outputTable = os.path.join(
 sectorList = [
     'dp',
     'th']
+rcpList = [
+    '45',
+    '85']
 # Subset table for DP, RCP 4.5
-tblDP45 = \
+tableDP45 = \
     'WithdrawalDP45'
 
 # Set the workspace.
@@ -67,25 +70,30 @@ try:
 
     # For loops:
     # Select the sectors.
-    #   Select the dp sector for RCP 4.5.
-    #   Note - the 'year' field name is misspelled 'yearr' in the raw data.
-    print(
-        '    Selecting sector and scenario...')
-    sqlDP45 = \
-        "sector = 'dp' " \
-        "And scenario LIKE '%45%' " \
-        "And yearr = 2015 " \
-        "Or sector = 'dp' " \
-        "And scenario LIKE '%45%' " \
-        "And yearr = 2070"
-    arcpy.analysis.TableSelect(
-        outputTable,
-        tblDP45,
-        sqlDP45)
-
-    #       For each county, calculate % change from 2015 to 2070.
-    #       ((2070wd-2015wd)/2015wd)*100
-    #   Repeat for dp 8.5, th 4.5, and th 8.5.
+    for sct in sectorList:
+        print(f'    Processing sector {sct}')
+        #   Select the dp sector for RCP 4.5.
+        #   Note - the 'year' field name is misspelled 'yearr' in the raw data.
+        print(
+            '    Selecting sector and scenario...')
+        '"sector" = \'4\''
+        '"sector" = ' + sct
+        for rcp in rcpList:
+            sqlDP45 = \
+                "sector = sct " \
+                "And scenario LIKE rcp " \
+                "And yearr = 2015 " \
+                "Or sector = sct " \
+                "And scenario LIKE rcp " \
+                "And yearr = 2070"
+            arcpy.analysis.TableSelect(
+                outputTable,
+                tableDP45,
+                sqlDP45)
+    
+        #       For each county, calculate % change from 2015 to 2070.
+        #       ((2070wd-2015wd)/2015wd)*100
+        #   Repeat for dp 8.5, th 4.5, and th 8.5.
     
     print('Done!')
 
