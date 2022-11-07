@@ -15,6 +15,7 @@ Notes:
 """
 
 # Import modules
+print()
 print('Importing required modules...')
 import arcpy
 import os
@@ -32,6 +33,12 @@ GDB = os.path.join(
     'WaterDemandProject.gdb')
 
 # Data
+# Counties feature class for RPA
+countiesRPA = r'E:\0_Common\Counties\Counties.gdb\CountiesRPA'
+# Copy of the RPA counties feature class for mapping the percent change data
+wdPctChgFC = 'WithdrawalsMeanPctChange'
+joinFipsField = 'FIPS'
+
 # Raw input CSV water demand data
 inputTable = os.path.join(
     MAINFOLDER,
@@ -41,6 +48,9 @@ inputTable = os.path.join(
 # Raw water demand data imported to the gdb
 cons_wdTable = \
     'ConsWithdrawals'
+# New field to act as a join field for the 2015 and 2070 data
+joinField = 'ID'
+
 # Filtered table with OIDs added and only for years 2015.
 wdTable = \
     'Withdrawals'
@@ -57,62 +67,80 @@ scenarioList = [
     '45',
     '85']
 
+# Field to store the 2015-2070 percent change in withdrawals
+pctField = "PctChange"
+
 # Set the workspace.
 env.workspace = GDB
 
 try:
+    print()
     print(
         'Starting analysis for calculating mean percent change '
         'in water demand:')
     
-    # # Import the CSV raw data table to the gdb and configure the imported table.
-    # print(
-    #     '    Importing the raw data...')
-    # # Convert the raw data to a supported format that will contain an OID field.
-    # arcpy.management.CopyRows(
-    #     in_rows=inputTable,
-    #     out_table=cons_wdTable)
+    # Create a feature class for mapping the mean percent changes.
+    arcpy.management.CopyFeatures(
+        in_features=countiesRPA,
+        out_feature_class=wdPctChgFC)
+    dropFields = [
+        "STATEFP",
+        "COUNTYFP",
+        "COUNTYNS",
+        "AFFGEOID",
+        "LSAD",
+        "ALAND",
+        "AWATER"]
+    arcpy.management.DeleteField(
+        in_table=wdPctChgFC,
+        drop_field=dropFields)
     
-    # Add a concatenated ID field. This will create a primary key for joining
-    #   the 2015 and 2070 data together.
+    # Import the CSV raw data table to the gdb and configure
+    #   the imported table.
+    print()
     print(
-        '    Adding an ID field...')
-    newID = 'ID'
+        '    Importing the raw data...')
+    # Convert the raw data to a supported format that will contain
+    #   an OID field.
+    arcpy.management.CopyRows(
+        in_rows=inputTable,
+        out_table=cons_wdTable)
+    # Add a primary key field for joining the 2015 and 2070 data together.
+    print(
+        '        Adding a primary key...')
     arcpy.management.AddField(
         in_table=cons_wdTable,
-        field_name=newID,
+        field_name=joinField,
         field_type='TEXT',
         field_length=50)
-    # Add a field for calculating the percent change.
-    print(
-        '    Adding a PctChange field...')
-    pctField = "PctChange"
-    arcpy.management.AddField(
-        in_table=cons_wdTable,
-        field_name=pctField,
-        field_type='DOUBLE',
-        field_alias="Pct Change")
+
     # Create a table for the Withdrawals data.
+    print()
+    print(
+        '    Defining field types for the new table...')
     # Field map for the 2015 and 2070 export tables.
     print(
         '    Creating a table for the 2015 data...')
-    fieldMap = r'fips "fips" true true false 4 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\DataWaterDemand\MeanPctChange\cons_and_withdrawal.csv,fips,-1,-1;sector "sector" true true false 8000 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\DataWaterDemand\MeanPctChange\cons_and_withdrawal.csv,sector,0,8000;scenario "scenario" true true false 8000 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\DataWaterDemand\MeanPctChange\cons_and_withdrawal.csv,scenario,0,8000;yearr "yearr" true true false 4 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\DataWaterDemand\MeanPctChange\cons_and_withdrawal.csv,yearr,-1,-1;withdrawal "withdrawal" true true false 8 Double 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\DataWaterDemand\MeanPctChange\cons_and_withdrawal.csv,withdrawal,-1,-1'
-    expr2015 = "yearr = 2015"
-    # Create the table with the 2015 data.
-    arcpy.conversion.ExportTable(  # error here: invalid sql
+    # Define output fields and field types.
+    #   This could be replaced with a FieldMap object and loop to determine
+    #   the output fields based on the input fields.
+    fieldMap = r'fips "fips" true true false 5 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConsWithdrawals,fips,-1,-1;sector "sector" true true false 8000 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConsWithdrawals,sector,0,8000;scenario "scenario" true true false 8000 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConsWithdrawals,scenario,0,8000;yearr "yearr" true true false 4 Long 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConsWithdrawals,yearr,-1,-1;withdrawal "withdrawal" true true false 8 Double 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConsWithdrawals,withdrawal,-1,-1;ID "ID" true true false 50 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConsWithdrawals,ID,0,50'
+    expr2015 = "yearr = 2015"  # 'year' is misspelled in the csv data
+    # Create a table with the 2015 data.
+    arcpy.conversion.ExportTable(
         in_table=cons_wdTable,
         out_table=wdTable,
         where_clause=expr2015,
         field_mapping=fieldMap)
-    # Calculate the concatenated ID field.
+    # Calculate the concatenated ID field (primary key field).
     #   Expression that concatenates the values of
     #   the fips and scenario fields.
     print(
-        '    Calculating the ID field in the 2015 data...')
+        '        Calculating the join field in the 2015 data...')
     fullName = "!fips! + !sector! + !scenario!"
     arcpy.management.CalculateField(
         in_table=wdTable,
-        field=newID,
+        field=joinField,
         expression=fullName,
         expression_type="PYTHON3")
     # Create a table for the 2070 data that will be joined to the 2015 data.
@@ -124,95 +152,102 @@ try:
         out_table=wdTable2070,
         where_clause=expr2070,
         field_mapping=fieldMap)
-    # Calculate the concatenated ID field.
+    # Calculate the concatenated ID field (primary key field).
     #   Expression that concatenates the values of
     #   the fips and scenario fields.
     print(
-        '    Calculating the ID field in the 2070 data...')
+        '        Calculating the join field in the 2070 data...')
     fullName = "!fips! + !sector! + !scenario!"
     arcpy.management.CalculateField(
         in_table=wdTable2070,
-        field=newID,
+        field=joinField,
         expression=fullName,
         expression_type="PYTHON3")
+    # Join the 2070 data to the 2015 data to complete the
+    #   withdrawals data table.
+    print(
+        '    Joining the 2070 data to the 2015 data...')
+    arcpy.management.JoinField(
+        in_data=wdTable,
+        in_field=joinField,
+        join_table=wdTable2070,
+        join_field=joinField)
+    # Add a field for calculating the percent change.
+    print(
+        '        Adding a PctChange field...')
+    arcpy.management.AddField(
+        in_table=wdTable,
+        field_name=pctField,
+        field_type='DOUBLE',
+        field_alias="Pct Change")
+    # Calculate percent change in withdrawals from 2015 to 2070.
+    #   ((2070wd-2015wd)/2015wd)*100
+    print(
+        '        Caclulating the percent change in withdrawals...')
+    yr2015 = '!withdrawal!'
+    yr2070 = '!withdrawal_1!'
+    exprPctChg = "((" + yr2070 + "-" + yr2015 + ")-" + yr2015 + ")*100"
+    arcpy.management.CalculateField(
+        in_table=wdTable,
+        field=pctField,
+        expression=exprPctChg,
+        expression_type="PYTHON3")
     
-# works to this point - need to add the Pct Change field to the field map.
+    # Evaluate each sector and RCP.
+    print()
+    print(
+        '    Determine the mean percent changes...')
+    for sct in sectorList:
+        for rcp in scenarioList:
+            print(
+                f"        Selecting records for sector '{sct}' "
+                f"and scenarios for 'RCP {rcp}'...")
+            # Table name example: Withdrawals_dp45
+            tableSubset = \
+                wdTable + '_' + sct + rcp
+            # Select statement pseudocode:
+            #   "sector = sct AND scenario LIKE rcp"
+            sql = \
+                "sector = '" + sct + "' And scenario LIKE '%" + rcp + "%'"
+            # The correct sql prints out like this:
+            #   sector = 'ir' And scenario LIKE '%45%'
+            arcpy.analysis.TableSelect(
+                in_table=wdTable,
+                out_table=tableSubset,
+                where_clause=sql)
 
-
-    # # Define output fields and field types.
-    # #   This could be replaced with a FieldMap object and loop to determine
-    # #   the output fields based on the input fields.
-    # print('    Defining field types in the final import table...')
-    # fieldMap = r'fips "fips" true true false 4 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConWithdrawals,fips,-1,-1;sector "sector" true true false 8000 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConWithdrawals,sector,0,8000;scenario "scenario" true true false 8000 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConWithdrawals,scenario,0,8000;yearr "yearr" true true false 4 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConWithdrawals,yearr,-1,-1;withdrawal "withdrawal" true true false 8 Double 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConWithdrawals,withdrawal,-1,-1'
-    # # Select records for the years 2015 and 2070.
-    # #   These are the years that the mean percent change is calculated from.
-    # #   All of the sectors are in this table in case we want to
-    # #   come back for more mean percent change calculations.
-    # arcpy.conversion.TableToTable(
-    #     in_rows=cons_wdTable,
-    #     out_path=GDB,
-    #     out_name=wdTable,
-    #     field_mapping=fieldMap)
-    #
-    # exprYears = "yearr = 2015 Or yearr = 2070"
-    #
-    # # Transpose the table.
-    #
-    # # Select the sectors and the data for 2015 and 2070.
-    # for sct in sectorList:
-    #     for rcp in scenarioList:
-    #         print(
-    #             f"Selecting records for sector '{sct}' "
-    #             f"and scenarios for 'RCP {rcp}'...")
-    #         # Table name example: Withdrawals_dp45
-    #         tableSubset = \
-    #             'Withdrawals_' + sct + rcp
-    #         # Select statement pseudocode:
-    #         #   sector = sct
-    #         #   And scenario LIKE rcp
-    #         #   And yearr = 2015
-    #         #   Or sector = sct
-    #         #   And scenario LIKE rcp
-    #         #   And yearr = 2070
-    #         sql = \
-    #             "sector = '" + sct + \
-    #             "' And scenario LIKE '%" + rcp + \
-    #             "%' And yearr = 2015 Or sector = '" + sct + \
-    #             "' And scenario LIKE '%" + rcp + "%' And yearr = 2070"
-    #         # The correct sql prints out like this:
-    #         #   sector = 'dp' And scenario LIKE '%45%' And yearr = 2015
-    #         #   Or sector = 'dp' And scenario LIKE '%45%' And yearr = 2070
-    #         print(
-    #             f"    The sql statement is: {sql}")
-    #         arcpy.analysis.TableSelect(
-    #             in_table=wdTable,
-    #             out_table=tableSubset,
-    #             where_clause=sql)
-    #
-    #         # Calculate percent change from 2015 to 2070.
-    #         # ((2070wd-2015wd)/2015wd)*100
-    #         yr2015 = '!2015!'
-    #         yr2070 = '!2070!'
-    #         exprPctChg = "((yr2070 - yr2015)-yr2015)*100"
-    #         arcpy.management.CalculateField(
-    #             in_table=tableSubset,
-    #             field=pctField,
-    #             expression=exprPctChg,
-    #             expression_type="PYTHON3")
-    #         # Calculate the mean percent change for all records in the table.
-    #         statsFields = ["PctChange", "MEAN"]
-    #         tableFinal = tableSubset + "_mean"
-    #         arcpy.analysis.Statistics(
-    #             in_table=tableSubset,
-    #             out_table=tableFinal,
-    #             statistics_fields=statsFields,
-    #             case_field='ID')
+            # Calculate the mean percent change for all
+            #   scenarios in each county.
+            print(
+                f'            Calculating the mean percent change '
+                f'for {tableSubset}...')
+            statsFields = [
+                [pctField,
+                 "MEAN"]]
+            # Summarize by county.
+            caseFields = "fips"
+            tableFinal = tableSubset + "_MeanPctChg_2015_2070"
+            arcpy.analysis.Statistics(
+                in_table=tableSubset,
+                out_table=tableFinal,
+                statistics_fields=statsFields,
+                case_field=caseFields)
             
-    # Clean up
-    # Remove intermediate data tables?
-    #   Could simply leave as is and use the four tables, or compile them into
-    #   one table and then remove the four.
+            # Remove the intermediate data for this round.
+            arcpy.management.Delete(tableSubset)
+            
+    # Finish cleaning up.
+    # Remove intermediate data tables.
+    print()
+    print(
+        'Cleaning up...')
+    # Define the items to delete.
+    deleteList = [
+        wdTable2070,
+        wdTable]
+    arcpy.management.Delete(deleteList)
 
+    print()
     print('Done!')
 
 except arcpy.ExecuteError as e:
