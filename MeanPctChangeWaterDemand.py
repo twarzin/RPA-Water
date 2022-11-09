@@ -51,7 +51,7 @@ cons_wdTable = \
 # Join field for the withdrawals data
 joinFieldWithdrawalsFips = 'fips'
 # New field to act as a join field for the 2015 and 2070 data
-joinFieldWithdrawals = 'ID'
+primaryKeyWithdrawals = 'ID'
 
 # Filtered table with OIDs added and only for years 2015.
 wdTable = \
@@ -80,7 +80,8 @@ try:
         'in water demand:')
     
     # Create a feature class for mapping the mean percent changes.
-    print('    Creating a feature class for mapping...')
+    print(
+        '    Creating a feature class for mapping...')
     arcpy.management.CopyFeatures(
         in_features=fc_countiesRPA,
         out_feature_class=fc_wdPctChg)
@@ -96,38 +97,38 @@ try:
         in_table=fc_wdPctChg,
         drop_field=dropFields)
     
-    # Import the CSV raw data table to the gdb and configure
-    #   the imported table.
-    print()
-    print(
-        '    Importing the raw data...')
-    # Convert the raw data to a supported format that will contain
-    #   an OID field.
-    arcpy.management.CopyRows(
-        in_rows=inputTable,
-        out_table=cons_wdTable)
-    # Add a primary key field for joining the 2015 and 2070 data together.
-    print(
-        '        Adding a primary key to the imported table...')
-    arcpy.management.AddField(
-        in_table=cons_wdTable,
-        field_name=joinFieldWithdrawals,
-        field_type='TEXT',
-        field_length=50)
+    # # Import the CSV raw data table to the gdb and configure
+    # #   the imported table.
+    # print()
+    # print(
+    #     '    Importing the raw data...')
+    # # Convert the raw data to a supported format that will contain
+    # #   an OID field.
+    # arcpy.management.CopyRows(
+    #     in_rows=inputTable,
+    #     out_table=cons_wdTable)
+    # # Add a primary key field for joining the 2015 and 2070 data together.
+    # print(
+    #     '        Adding a primary key to the imported table...')
+    # arcpy.management.AddField(
+    #     in_table=cons_wdTable,
+    #     field_name=primaryKeyWithdrawals,
+    #     field_type='TEXT',
+    #     field_length=50)
 
     # Create a table for the Withdrawals data.
     print()
     print(
         '    Defining field types for the new table...')
     # Field map for the 2015 and 2070 export tables.
-    print(
-        '    Creating a table for the 2015 data...')
     # Define output fields and field types.
     #   This could be replaced with a FieldMap object and loop to determine
     #   the output fields based on the input fields.
     fieldMap = r'fips "fips" true true false 5 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConsWithdrawals,fips,-1,-1;sector "sector" true true false 8000 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConsWithdrawals,sector,0,8000;scenario "scenario" true true false 8000 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConsWithdrawals,scenario,0,8000;yearr "yearr" true true false 4 Long 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConsWithdrawals,yearr,-1,-1;withdrawal "withdrawal" true true false 8 Double 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConsWithdrawals,withdrawal,-1,-1;ID "ID" true true false 50 Text 0 0,First,#,E:\_Projects\WaterDemand\WaterDemandProject\WaterDemandProject.gdb\ConsWithdrawals,ID,0,50'
-    expr2015 = "yearr = 2015"  # 'year' is misspelled in the csv data
     # Create a table with the 2015 data.
+    print(
+        '    Creating a table for the 2015 data...')
+    expr2015 = "yearr = 2015"  # 'year' is misspelled in the csv data
     arcpy.conversion.ExportTable(
         in_table=cons_wdTable,
         out_table=wdTable,
@@ -140,7 +141,7 @@ try:
     fullName = "!fips! + !sector! + !scenario!"
     arcpy.management.CalculateField(
         in_table=wdTable,
-        field=joinFieldWithdrawals,
+        field=primaryKeyWithdrawals,
         expression=fullName,
         expression_type="PYTHON3")
     # Create a table for the 2070 data that will be joined to the 2015 data.
@@ -160,7 +161,7 @@ try:
     fullName = "!fips! + !sector! + !scenario!"
     arcpy.management.CalculateField(
         in_table=wdTable2070,
-        field=joinFieldWithdrawals,
+        field=primaryKeyWithdrawals,
         expression=fullName,
         expression_type="PYTHON3")
     # Join the 2070 data to the 2015 data to complete the
@@ -169,9 +170,9 @@ try:
         '    Joining the 2070 data to the 2015 data...')
     arcpy.management.JoinField(
         in_data=wdTable,
-        in_field=joinFieldWithdrawals,
+        in_field=primaryKeyWithdrawals,
         join_table=wdTable2070,
-        join_field=joinFieldWithdrawals)
+        join_field=primaryKeyWithdrawals)
     
     # Evaluate each sector and RCP to determin the mean percent change
     #   in withdrawals.
@@ -214,7 +215,7 @@ try:
                 'in withdrawals...')
             yr2015 = '!withdrawal!'
             yr2070 = '!withdrawal_1!'
-            exprPctChg = "((" + yr2070 + "-" + yr2015 + ")-" + yr2015 + ")*100"
+            exprPctChg = "((" + yr2070 + "-" + yr2015 + ")/" + yr2015 + ")*100"
             arcpy.management.CalculateField(
                 in_table=tableSubset,
                 field=pctField,
@@ -242,7 +243,8 @@ try:
             print('            Adding the mean percent change field to the '
                   'counties feature class...')
             
-            joinFieldMPC = ["MEAN_" + pctField]
+            joinFieldMPC = [
+                "MEAN_" + pctField]
             arcpy.management.JoinField(
                 in_data=fc_wdPctChg,
                 in_field=joinFieldCounties,
@@ -250,19 +252,22 @@ try:
                 join_field=joinFieldWithdrawalsFips,
                 fields=[joinFieldMPC])
             
-            # Remove the intermediate data for this round.
-            arcpy.management.Delete(tableSubset)
-            
-    # Finish cleaning up by removing the intermediate data tables.
-    print()
-    print(
-        'Cleaning up...')
-    # Define the items to delete.
-    deleteList = [
-        wdTable2070,
-        wdTable]
-    # Delete the items in the list.
-    arcpy.management.Delete(deleteList)
+    #         # Remove the intermediate data for this round.
+    #         delIntData = [
+    #             tableSubset,
+    #             tableFinal]
+    #         arcpy.management.Delete(delIntData)
+    #
+    # # Finish cleaning up by removing the intermediate data tables.
+    # print()
+    # print(
+    #     'Cleaning up...')
+    # # Define the items to delete.
+    # deleteList = [
+    #     wdTable2070,
+    #     wdTable]
+    # # Delete the items in the list.
+    # arcpy.management.Delete(deleteList)
 
     print()
     print('Done!')
