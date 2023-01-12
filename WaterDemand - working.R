@@ -11,7 +11,8 @@ rm(list = ls())  # clears memory
 
 # Set working directory to file location
 # for Pam: 
-#setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand")
+setwd("C:/Users/twwarziniack/Documents/5_RPA/Demand model")
+#E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 #setwd("D:/Demand model")
 
 # Set working directory to same location of the R file location
