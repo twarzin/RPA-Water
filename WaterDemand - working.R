@@ -1,6 +1,3 @@
-# Testing
-# hi test 2
-
 # Program file for RPA Water Demand Model
 # Travis Warziniack
 # US Forest Service
@@ -14,7 +11,7 @@ rm(list = ls())  # clears memory
 
 # Set working directory to file location
 # for Pam: 
-setwd("C:/Users/twwarziniack/Documents/5_RPA/Demand model")
+setwd("/Users/leslie/Downloads")
 #E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 #setwd("D:/Demand model")
 
@@ -199,20 +196,18 @@ demand2 <- demand2 %>%
   ungroup()
 
 # export the above results so we don't have to run them every time
-data.table::fwrite(demand2, file="demand_temp_Ahmed.csv")
+data.table::fwrite(demand2, file="demand_temp.csv")
 
 rm(demand,demand2)
 
 # assuming the above loop has run, read in demand-temp
-demand <- fread(file="demand_temp_Ahmed.csv") %>% as.data.frame()
+demand <- fread(file="demand_temp.csv") %>% as.data.frame()
 
 # calculate annual withdrawals for each sector
 demand <- demand %>%
   dplyr::mutate(dom.t = pop * wpu.dom,
                 ind.t = inc * wpu.ind,
                 ag.t  = acres * wpu.ag)
-
-names(demand)
 
 demand.noCC <- demand
 
@@ -242,6 +237,7 @@ Ahmed
 "Sep,30,2022
 '
 
+data.table::fwrite(demand.noCC, file="withdrawals_noCC_Sanchez.csv")
 # --  PROJECTIONS WITH CLIMATE -------------
 
 # Climate impacts the withdrawals needed per unit. Equations for climate effects
