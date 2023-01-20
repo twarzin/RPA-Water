@@ -11,13 +11,13 @@ rm(list = ls())  # clears memory
 
 # Set working directory to file location
 # for Pam: 
-setwd("/Users/leslie/Downloads")
+setwd("/Users/leslie/Dropbox/RPA-Water")
 #E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 #setwd("D:/Demand model")
 
 # Set working directory to same location of the R file location
-base.dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
-setwd(base.dir)
+# base.dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+#setwd(base.dir)
 
 library(tidyr)
 library(tibble)
@@ -196,12 +196,12 @@ demand2 <- demand2 %>%
   ungroup()
 
 # export the above results so we don't have to run them every time
-data.table::fwrite(demand2, file="demand_temp.csv")
+data.table::fwrite(demand2, file="withdrawal_noCC.csv")
 
 rm(demand,demand2)
 
 # assuming the above loop has run, read in demand-temp
-demand <- fread(file="demand_temp.csv") %>% as.data.frame()
+demand <- fread(file="withdrawal_noCC.csv") %>% as.data.frame()
 
 # calculate annual withdrawals for each sector
 demand <- demand %>%
@@ -237,7 +237,7 @@ Ahmed
 "Sep,30,2022
 '
 
-data.table::fwrite(demand.noCC, file="withdrawals_noCC_Sanchez.csv")
+data.table::fwrite(demand.noCC, file="withdrawal_noCC.csv")
 # --  PROJECTIONS WITH CLIMATE -------------
 
 # Climate impacts the withdrawals needed per unit. Equations for climate effects
