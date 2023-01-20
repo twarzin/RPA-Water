@@ -4,3 +4,5 @@
 .Ruserdata
 .ipynb_checkpoints/Untitled-checkpoint.ipynb
 *.history
+withdrawal_noCC.csv
+.DS_Store
