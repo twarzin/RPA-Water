@@ -251,8 +251,8 @@ data.table::fwrite(demand.noCC, file="withdrawal_noCC.csv")
 
 # read in summer precip data
 precip.data <- read.xlsx(
-  xlsxFile="1_ClimateData/SummerPrecip.xlsx",
-  sheet = 2,
+  xlsxFile="1_ClimateData/CountyPrecip/SummerPrecip/pr_CNRM_CM5rcp45_month_spFinal.xlsx",
+  sheet = 1,
   startRow = 1,
   colNames = TRUE,
   rowNames = FALSE,
@@ -271,16 +271,20 @@ precip.data <- read.xlsx(
 colnames(precip.data)[colnames(precip.data) == "FIPS"] <- "fips"
 colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
 
+precip.data$pctchange_CNRMrcp45<- (precip.data$PrecipSummer_1/precip.data$PrecipSummer)
+
 # subset demand to test code
-precip.data <- subset(precip.data, FIPS < 1005)
+# precip.data <- subset(precip.data, FIPS < 1005)
 # if demand not already subsetted, 
-demand <- subset(demand, fips < 1005)
+# demand <- subset(demand, fips < 1005)
 
 demand <- merge(demand, precip.data, by=c('fips','year'))
-demand$delta.sprecip <- (100 + demand$PctChangePrecip) / 100
+demand$wpu.dom.cc <-demand$wpu.dom*demand$pctchange_CNRMrcp45
 
-# # for testing, we'll create fake changes in growing season pet:
-# demand$delta.spet <- rnorm(1, mean=1, sd=1)
+# This is change in domestic demand, by SSP for CNRMrcp4.5 model
+demand$dom.cc.CNRMrcp45 <- demand$pop*demand$wpu.dom.cc
+
+
 demand$delta.spet <- 0
 demand$ChangeSummerET <- demand$delta.spet
 
