@@ -6,7 +6,7 @@
 # Remove objects from environment. --------------------------------------------------------------------------------
 #    Clears out memory, stored values, etc.
 rm(list = ls())
-rm(precip)
+
 # Set working directory to file location.
 #    Use forward slashes in the path (the escape character is '\').
 # setwd("E:/WaterDemand/WaterDemandProject/DataWaterDemand") # Pam's WorkDir
@@ -34,17 +34,18 @@ gcm <- "noresm"  # Assign the value '85'noresm' to the 'gcm' variable.
 
 # Load population and withdrawal data. ----------------------------------------------------------------------------
 #    Population by FIPS: fields are ID (x), fips, year, pop, ssp, inc; 860,440 records.
+demand_noCC <- read.csv("withdrawal_noCC.csv")
 pop.inc <- read.csv("1_BaseData/popinc_proj.csv")
 head(pop.inc)
 #    Water withdrawals in 2015 (3,075 records):
 #    fields are x, fips, state, county, year, and 22 data fields
-wd.2015 <- read.csv("1_BaseData/USGS2015.csv")
+#    wd.2015 <- read.csv("1_BaseData/USGS2015.csv")
 # cu.ratios <- read.csv("consumptive use.csv")
 
 # Choose common variables in withdrawal data. ---------------------------------------------------------------------
 #    (handy for merging later).
 #    Select 4 fields from the wd_2015 data and save them in a dataset called 'ew'.
-ew <- demand %>%
+ew <- demand_noCC %>%
   select(fips, 
          EastWest, 
          DP.growth, 
@@ -135,16 +136,7 @@ colnames(summer_t) = summer_t[1, ]
 #    Removes the 1st-row year labels (selects all rows except the first and all columns).
 summer_t = summer_t[-1, ]
 
-library(tidyr)
-long <- wide %>%
-  pivot_longer(
-    cols = `2015`:`2070`,
-    names_to = "year",
-    values_to = "fips")
-  )
 
-library(data.table)
-long <- melt(setDT(summer_t), id.vars = c("year"), variable.name = "year")
 
 #    Exports to CSV file.
 #    Possibly the loop section would work better in Python
@@ -154,9 +146,814 @@ long <- melt(setDT(summer_t), id.vars = c("year"), variable.name = "year")
 
 
 
-write.csv(summer_t, file = "SummerT.csv", col.names = T) # File for importing into Excel/ArcGIS
+write.csv(summer_t, file = "SP_noresm_85.csv", col.names = T) # File for importing into Excel/ArcGIS
 #    Saves the transposed data back to growing_precip. Both are now the same.
-growing_precip <- summer_t
+# growing_precip <- summer_t
+
+carbon <- 45  # Assign the value 85 to the 'carbon' variable.
+#    Set the global climate model (gcm).
+#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
+gcm <- "noresm"  # Assign the value '85'noresm' to the 'gcm' variable.
+
+if(carbon==45 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
+}
+
+
+
+# Make a new table where columns = FIPS, rows = year --------------------------------------------------------------
+#    Same as the original precip, except the date column is gone (3,109 columns).
+#    Select from precip: all rows and all columns except the first one ('-1' = 'date').
+precip <- precip[,-1]
+
+# Summarize summer precipitation. ---------------------------------------------------------------------------------
+#    Sum ppt data by year (56 records, 3109 columns).
+#    The month column values are all 39, which is the sum of 4, 5, 6, 7, 8, and 9.
+#    The fips columns have the sum of annual ppt for each county, for every year from 2015 to 2070.
+growing_precip <- subset(precip, Month >= 4 & Month <= 9) %>%
+  group_by(Year) %>%
+  summarise_all(sum)
+# Eliminate the month column from the summper.precip data.
+#    The values are no longer useful since they all equal 39.
+#    Select all rows and all columns except the second one ('-2' = 'month').
+growing_precip <- growing_precip[,-2]
+
+
+# Transpose summer precip rows and columns. -----------------------------------------------------------------------
+#    Transposes rows and columns in the growing_precip table so that FIPS are in rows and years are in columns.
+#    Values in the first row will be the years and field names are assigned as 'V[n]'.
+#    Transpose columns and rows in growing_precip, save as summer_t.
+summer_t <- t(growing_precip)
+#    Not sure what this does - summer_t looks the same.
+summer_t <- as.data.frame(summer_t)
+#    Renames columns using values in the 1st row of data ([1, ] references the 1st row).
+colnames(summer_t) = summer_t[1, ]
+#    Now that you've renamed the columns, eliminate the first row with the year values.
+#    Removes the 1st-row year labels (selects all rows except the first and all columns).
+summer_t = summer_t[-1, ]
+
+#    Exports to CSV file.
+#    Possibly the loop section would work better in Python
+#    This write.csv statement produces output where the column names are in the first row instead of actually
+#    naming the columns.
+
+write.csv(summer_t, file = "SP_noresm_45.csv", col.names = T) # File for importing into Excel/ArcGIS
+#    Saves the transposed data back to growing_precip. Both are now the same.
+# growing_precip <- summer_t
+
+
+
+
+
+carbon <- 45  # Assign the value 85 to the 'carbon' variable.
+#    Set the global climate model (gcm).
+#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
+gcm <- "cnrm_c5"  # Assign the value '85'noresm' to the 'gcm' variable.
+
+if(carbon==45 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
+}
+
+
+
+# Make a new table where columns = FIPS, rows = year --------------------------------------------------------------
+#    Same as the original precip, except the date column is gone (3,109 columns).
+#    Select from precip: all rows and all columns except the first one ('-1' = 'date').
+precip <- precip[,-1]
+
+# Summarize summer precipitation. ---------------------------------------------------------------------------------
+#    Sum ppt data by year (56 records, 3109 columns).
+#    The month column values are all 39, which is the sum of 4, 5, 6, 7, 8, and 9.
+#    The fips columns have the sum of annual ppt for each county, for every year from 2015 to 2070.
+growing_precip <- subset(precip, Month >= 4 & Month <= 9) %>%
+  group_by(Year) %>%
+  summarise_all(sum)
+# Eliminate the month column from the summper.precip data.
+#    The values are no longer useful since they all equal 39.
+#    Select all rows and all columns except the second one ('-2' = 'month').
+growing_precip <- growing_precip[,-2]
+
+
+# Transpose summer precip rows and columns. -----------------------------------------------------------------------
+#    Transposes rows and columns in the growing_precip table so that FIPS are in rows and years are in columns.
+#    Values in the first row will be the years and field names are assigned as 'V[n]'.
+#    Transpose columns and rows in growing_precip, save as summer_t.
+summer_t <- t(growing_precip)
+#    Not sure what this does - summer_t looks the same.
+summer_t <- as.data.frame(summer_t)
+#    Renames columns using values in the 1st row of data ([1, ] references the 1st row).
+colnames(summer_t) = summer_t[1, ]
+#    Now that you've renamed the columns, eliminate the first row with the year values.
+#    Removes the 1st-row year labels (selects all rows except the first and all columns).
+summer_t = summer_t[-1, ]
+
+#    Exports to CSV file.
+#    Possibly the loop section would work better in Python
+#    This write.csv statement produces output where the column names are in the first row instead of actually
+#    naming the columns.
+
+write.csv(summer_t, file = "SP_cnrmc5_45.csv", col.names = T) # File for importing into Excel/ArcGIS
+#    Saves the transposed data back to growing_precip. Both are now the same.
+# growing_precip <- summer_t
+
+
+
+
+
+
+carbon <- 85  # Assign the value 85 to the 'carbon' variable.
+#    Set the global climate model (gcm).
+#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
+gcm <- "cnrm_c5"  # Assign the value '85'noresm' to the 'gcm' variable.
+
+if(carbon==45 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
+}
+
+
+
+# Make a new table where columns = FIPS, rows = year --------------------------------------------------------------
+#    Same as the original precip, except the date column is gone (3,109 columns).
+#    Select from precip: all rows and all columns except the first one ('-1' = 'date').
+precip <- precip[,-1]
+
+# Summarize summer precipitation. ---------------------------------------------------------------------------------
+#    Sum ppt data by year (56 records, 3109 columns).
+#    The month column values are all 39, which is the sum of 4, 5, 6, 7, 8, and 9.
+#    The fips columns have the sum of annual ppt for each county, for every year from 2015 to 2070.
+growing_precip <- subset(precip, Month >= 4 & Month <= 9) %>%
+  group_by(Year) %>%
+  summarise_all(sum)
+# Eliminate the month column from the summper.precip data.
+#    The values are no longer useful since they all equal 39.
+#    Select all rows and all columns except the second one ('-2' = 'month').
+growing_precip <- growing_precip[,-2]
+
+
+# Transpose summer precip rows and columns. -----------------------------------------------------------------------
+#    Transposes rows and columns in the growing_precip table so that FIPS are in rows and years are in columns.
+#    Values in the first row will be the years and field names are assigned as 'V[n]'.
+#    Transpose columns and rows in growing_precip, save as summer_t.
+summer_t <- t(growing_precip)
+#    Not sure what this does - summer_t looks the same.
+summer_t <- as.data.frame(summer_t)
+#    Renames columns using values in the 1st row of data ([1, ] references the 1st row).
+colnames(summer_t) = summer_t[1, ]
+#    Now that you've renamed the columns, eliminate the first row with the year values.
+#    Removes the 1st-row year labels (selects all rows except the first and all columns).
+summer_t = summer_t[-1, ]
+
+#    Exports to CSV file.
+#    Possibly the loop section would work better in Python
+#    This write.csv statement produces output where the column names are in the first row instead of actually
+#    naming the columns.
+
+write.csv(summer_t, file = "SP_cnrmc5_85.csv", col.names = T) # File for importing into Excel/ArcGIS
+#    Saves the transposed data back to growing_precip. Both are now the same.
+# growing_precip <- summer_t
+
+
+
+
+carbon <- 45  # Assign the value 85 to the 'carbon' variable.
+#    Set the global climate model (gcm).
+#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
+gcm <- "hadgem"  # Assign the value '85'noresm' to the 'gcm' variable.
+
+if(carbon==45 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
+}
+
+
+
+# Make a new table where columns = FIPS, rows = year --------------------------------------------------------------
+#    Same as the original precip, except the date column is gone (3,109 columns).
+#    Select from precip: all rows and all columns except the first one ('-1' = 'date').
+precip <- precip[,-1]
+
+# Summarize summer precipitation. ---------------------------------------------------------------------------------
+#    Sum ppt data by year (56 records, 3109 columns).
+#    The month column values are all 39, which is the sum of 4, 5, 6, 7, 8, and 9.
+#    The fips columns have the sum of annual ppt for each county, for every year from 2015 to 2070.
+growing_precip <- subset(precip, Month >= 4 & Month <= 9) %>%
+  group_by(Year) %>%
+  summarise_all(sum)
+# Eliminate the month column from the summper.precip data.
+#    The values are no longer useful since they all equal 39.
+#    Select all rows and all columns except the second one ('-2' = 'month').
+growing_precip <- growing_precip[,-2]
+
+
+# Transpose summer precip rows and columns. -----------------------------------------------------------------------
+#    Transposes rows and columns in the growing_precip table so that FIPS are in rows and years are in columns.
+#    Values in the first row will be the years and field names are assigned as 'V[n]'.
+#    Transpose columns and rows in growing_precip, save as summer_t.
+summer_t <- t(growing_precip)
+#    Not sure what this does - summer_t looks the same.
+summer_t <- as.data.frame(summer_t)
+#    Renames columns using values in the 1st row of data ([1, ] references the 1st row).
+colnames(summer_t) = summer_t[1, ]
+#    Now that you've renamed the columns, eliminate the first row with the year values.
+#    Removes the 1st-row year labels (selects all rows except the first and all columns).
+summer_t = summer_t[-1, ]
+
+#    Exports to CSV file.
+#    Possibly the loop section would work better in Python
+#    This write.csv statement produces output where the column names are in the first row instead of actually
+#    naming the columns.
+
+write.csv(summer_t, file = "SP_hadgem_45.csv", col.names = T) # File for importing into Excel/ArcGIS
+#    Saves the transposed data back to growing_precip. Both are now the same.
+# growing_precip <- summer_t
+
+
+
+carbon <- 85  # Assign the value 85 to the 'carbon' variable.
+#    Set the global climate model (gcm).
+#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
+gcm <- "hadgem"  # Assign the value '85'noresm' to the 'gcm' variable.
+
+if(carbon==45 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
+}
+
+
+
+# Make a new table where columns = FIPS, rows = year --------------------------------------------------------------
+#    Same as the original precip, except the date column is gone (3,109 columns).
+#    Select from precip: all rows and all columns except the first one ('-1' = 'date').
+precip <- precip[,-1]
+
+# Summarize summer precipitation. ---------------------------------------------------------------------------------
+#    Sum ppt data by year (56 records, 3109 columns).
+#    The month column values are all 39, which is the sum of 4, 5, 6, 7, 8, and 9.
+#    The fips columns have the sum of annual ppt for each county, for every year from 2015 to 2070.
+growing_precip <- subset(precip, Month >= 4 & Month <= 9) %>%
+  group_by(Year) %>%
+  summarise_all(sum)
+# Eliminate the month column from the summper.precip data.
+#    The values are no longer useful since they all equal 39.
+#    Select all rows and all columns except the second one ('-2' = 'month').
+growing_precip <- growing_precip[,-2]
+
+
+# Transpose summer precip rows and columns. -----------------------------------------------------------------------
+#    Transposes rows and columns in the growing_precip table so that FIPS are in rows and years are in columns.
+#    Values in the first row will be the years and field names are assigned as 'V[n]'.
+#    Transpose columns and rows in growing_precip, save as summer_t.
+summer_t <- t(growing_precip)
+#    Not sure what this does - summer_t looks the same.
+summer_t <- as.data.frame(summer_t)
+#    Renames columns using values in the 1st row of data ([1, ] references the 1st row).
+colnames(summer_t) = summer_t[1, ]
+#    Now that you've renamed the columns, eliminate the first row with the year values.
+#    Removes the 1st-row year labels (selects all rows except the first and all columns).
+summer_t = summer_t[-1, ]
+
+#    Exports to CSV file.
+#    Possibly the loop section would work better in Python
+#    This write.csv statement produces output where the column names are in the first row instead of actually
+#    naming the columns.
+
+write.csv(summer_t, file = "SP_hadgem_85.csv", col.names = T) # File for importing into Excel/ArcGIS
+#    Saves the transposed data back to growing_precip. Both are now the same.
+# growing_precip <- summer_t
+carbon <- 85  # Assign the value 85 to the 'carbon' variable.
+#    Set the global climate model (gcm).
+#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
+gcm <- "hadgem"  # Assign the value '85'noresm' to the 'gcm' variable.
+
+if(carbon==45 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
+}
+
+
+
+# Make a new table where columns = FIPS, rows = year --------------------------------------------------------------
+#    Same as the original precip, except the date column is gone (3,109 columns).
+#    Select from precip: all rows and all columns except the first one ('-1' = 'date').
+precip <- precip[,-1]
+
+# Summarize summer precipitation. ---------------------------------------------------------------------------------
+#    Sum ppt data by year (56 records, 3109 columns).
+#    The month column values are all 39, which is the sum of 4, 5, 6, 7, 8, and 9.
+#    The fips columns have the sum of annual ppt for each county, for every year from 2015 to 2070.
+growing_precip <- subset(precip, Month >= 4 & Month <= 9) %>%
+  group_by(Year) %>%
+  summarise_all(sum)
+# Eliminate the month column from the summper.precip data.
+#    The values are no longer useful since they all equal 39.
+#    Select all rows and all columns except the second one ('-2' = 'month').
+growing_precip <- growing_precip[,-2]
+
+
+# Transpose summer precip rows and columns. -----------------------------------------------------------------------
+#    Transposes rows and columns in the growing_precip table so that FIPS are in rows and years are in columns.
+#    Values in the first row will be the years and field names are assigned as 'V[n]'.
+#    Transpose columns and rows in growing_precip, save as summer_t.
+summer_t <- t(growing_precip)
+#    Not sure what this does - summer_t looks the same.
+summer_t <- as.data.frame(summer_t)
+#    Renames columns using values in the 1st row of data ([1, ] references the 1st row).
+colnames(summer_t) = summer_t[1, ]
+#    Now that you've renamed the columns, eliminate the first row with the year values.
+#    Removes the 1st-row year labels (selects all rows except the first and all columns).
+summer_t = summer_t[-1, ]
+
+#    Exports to CSV file.
+#    Possibly the loop section would work better in Python
+#    This write.csv statement produces output where the column names are in the first row instead of actually
+#    naming the columns.
+
+write.csv(summer_t, file = "SP_hadgem_85.csv", col.names = T) # File for importing into Excel/ArcGIS
+#    Saves the transposed data back to growing_precip. Both are now the same.
+# growing_precip <- summer_t
+
+
+
+
+carbon <- 45  # Assign the value 85 to the 'carbon' variable.
+#    Set the global climate model (gcm).
+#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
+gcm <- "ipsl_cm5a"  # Assign the value '85'noresm' to the 'gcm' variable.
+
+if(carbon==45 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
+}
+
+
+
+# Make a new table where columns = FIPS, rows = year --------------------------------------------------------------
+#    Same as the original precip, except the date column is gone (3,109 columns).
+#    Select from precip: all rows and all columns except the first one ('-1' = 'date').
+precip <- precip[,-1]
+
+# Summarize summer precipitation. ---------------------------------------------------------------------------------
+#    Sum ppt data by year (56 records, 3109 columns).
+#    The month column values are all 39, which is the sum of 4, 5, 6, 7, 8, and 9.
+#    The fips columns have the sum of annual ppt for each county, for every year from 2015 to 2070.
+growing_precip <- subset(precip, Month >= 4 & Month <= 9) %>%
+  group_by(Year) %>%
+  summarise_all(sum)
+# Eliminate the month column from the summper.precip data.
+#    The values are no longer useful since they all equal 39.
+#    Select all rows and all columns except the second one ('-2' = 'month').
+growing_precip <- growing_precip[,-2]
+
+
+# Transpose summer precip rows and columns. -----------------------------------------------------------------------
+#    Transposes rows and columns in the growing_precip table so that FIPS are in rows and years are in columns.
+#    Values in the first row will be the years and field names are assigned as 'V[n]'.
+#    Transpose columns and rows in growing_precip, save as summer_t.
+summer_t <- t(growing_precip)
+#    Not sure what this does - summer_t looks the same.
+summer_t <- as.data.frame(summer_t)
+#    Renames columns using values in the 1st row of data ([1, ] references the 1st row).
+colnames(summer_t) = summer_t[1, ]
+#    Now that you've renamed the columns, eliminate the first row with the year values.
+#    Removes the 1st-row year labels (selects all rows except the first and all columns).
+summer_t = summer_t[-1, ]
+
+#    Exports to CSV file.
+#    Possibly the loop section would work better in Python
+#    This write.csv statement produces output where the column names are in the first row instead of actually
+#    naming the columns.
+
+write.csv(summer_t, file = "SP_ipsl_cm5a_45.csv", col.names = T) # File for importing into Excel/ArcGIS
+#    Saves the transposed data back to growing_precip. Both are now the same.
+# growing_precip <- summer_t
+
+
+
+carbon <- 85  # Assign the value 85 to the 'carbon' variable.
+#    Set the global climate model (gcm).
+#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
+gcm <- "ipsl_cm5a"  # Assign the value '85'noresm' to the 'gcm' variable.
+
+if(carbon==45 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
+}
+
+
+
+# Make a new table where columns = FIPS, rows = year --------------------------------------------------------------
+#    Same as the original precip, except the date column is gone (3,109 columns).
+#    Select from precip: all rows and all columns except the first one ('-1' = 'date').
+precip <- precip[,-1]
+
+# Summarize summer precipitation. ---------------------------------------------------------------------------------
+#    Sum ppt data by year (56 records, 3109 columns).
+#    The month column values are all 39, which is the sum of 4, 5, 6, 7, 8, and 9.
+#    The fips columns have the sum of annual ppt for each county, for every year from 2015 to 2070.
+growing_precip <- subset(precip, Month >= 4 & Month <= 9) %>%
+  group_by(Year) %>%
+  summarise_all(sum)
+# Eliminate the month column from the summper.precip data.
+#    The values are no longer useful since they all equal 39.
+#    Select all rows and all columns except the second one ('-2' = 'month').
+growing_precip <- growing_precip[,-2]
+
+
+# Transpose summer precip rows and columns. -----------------------------------------------------------------------
+#    Transposes rows and columns in the growing_precip table so that FIPS are in rows and years are in columns.
+#    Values in the first row will be the years and field names are assigned as 'V[n]'.
+#    Transpose columns and rows in growing_precip, save as summer_t.
+summer_t <- t(growing_precip)
+#    Not sure what this does - summer_t looks the same.
+summer_t <- as.data.frame(summer_t)
+#    Renames columns using values in the 1st row of data ([1, ] references the 1st row).
+colnames(summer_t) = summer_t[1, ]
+#    Now that you've renamed the columns, eliminate the first row with the year values.
+#    Removes the 1st-row year labels (selects all rows except the first and all columns).
+summer_t = summer_t[-1, ]
+
+#    Exports to CSV file.
+#    Possibly the loop section would work better in Python
+#    This write.csv statement produces output where the column names are in the first row instead of actually
+#    naming the columns.
+
+write.csv(summer_t, file = "SP_ipsl_cm5a_85.csv", col.names = T) # File for importing into Excel/ArcGIS
+#    Saves the transposed data back to growing_precip. Both are now the same.
+# growing_precip <- summer_t
+
+
+
+carbon <- 45  # Assign the value 85 to the 'carbon' variable.
+#    Set the global climate model (gcm).
+#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
+gcm <- "mri_cgcm3"  # Assign the value '85'noresm' to the 'gcm' variable.
+
+if(carbon==45 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
+}
+
+
+
+# Make a new table where columns = FIPS, rows = year --------------------------------------------------------------
+#    Same as the original precip, except the date column is gone (3,109 columns).
+#    Select from precip: all rows and all columns except the first one ('-1' = 'date').
+precip <- precip[,-1]
+
+# Summarize summer precipitation. ---------------------------------------------------------------------------------
+#    Sum ppt data by year (56 records, 3109 columns).
+#    The month column values are all 39, which is the sum of 4, 5, 6, 7, 8, and 9.
+#    The fips columns have the sum of annual ppt for each county, for every year from 2015 to 2070.
+growing_precip <- subset(precip, Month >= 4 & Month <= 9) %>%
+  group_by(Year) %>%
+  summarise_all(sum)
+# Eliminate the month column from the summper.precip data.
+#    The values are no longer useful since they all equal 39.
+#    Select all rows and all columns except the second one ('-2' = 'month').
+growing_precip <- growing_precip[,-2]
+
+
+# Transpose summer precip rows and columns. -----------------------------------------------------------------------
+#    Transposes rows and columns in the growing_precip table so that FIPS are in rows and years are in columns.
+#    Values in the first row will be the years and field names are assigned as 'V[n]'.
+#    Transpose columns and rows in growing_precip, save as summer_t.
+summer_t <- t(growing_precip)
+#    Not sure what this does - summer_t looks the same.
+summer_t <- as.data.frame(summer_t)
+#    Renames columns using values in the 1st row of data ([1, ] references the 1st row).
+colnames(summer_t) = summer_t[1, ]
+#    Now that you've renamed the columns, eliminate the first row with the year values.
+#    Removes the 1st-row year labels (selects all rows except the first and all columns).
+summer_t = summer_t[-1, ]
+
+#    Exports to CSV file.
+#    Possibly the loop section would work better in Python
+#    This write.csv statement produces output where the column names are in the first row instead of actually
+#    naming the columns.
+
+write.csv(summer_t, file = "SP_mri_cgcm3_45.csv", col.names = T) # File for importing into Excel/ArcGIS
+#    Saves the transposed data back to growing_precip. Both are now the same.
+# growing_precip <- summer_t
+
+
+
+carbon <- 85  # Assign the value 85 to the 'carbon' variable.
+#    Set the global climate model (gcm).
+#    Options are: "cnrm_c5", "hadgem","ipsl_cm5a","mri_cgcm3","noresm", and "base".
+gcm <- "mri_cgcm3"  # Assign the value '85'noresm' to the 'gcm' variable.
+
+if(carbon==45 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="cnrm_c5"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_CNRM_CM5rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="hadgem"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_HadGEM2_ES365rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="ipsl_cm5a"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_IPSL_CM5A_MRrcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="mri_cgcm3"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_MRI_CGCM3rcp85_month.csv", check.names=F)
+}
+if(carbon==45 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp45_month.csv", check.names=F)
+}
+if(carbon==85 & gcm=="noresm"){
+  precip <-read.csv("1_ClimateData/CountyPrecip/Monthly/pr_NorESM1_Mrcp85_month.csv", check.names=F)
+}
+
+
+
+# Make a new table where columns = FIPS, rows = year --------------------------------------------------------------
+#    Same as the original precip, except the date column is gone (3,109 columns).
+#    Select from precip: all rows and all columns except the first one ('-1' = 'date').
+precip <- precip[,-1]
+
+# Summarize summer precipitation. ---------------------------------------------------------------------------------
+#    Sum ppt data by year (56 records, 3109 columns).
+#    The month column values are all 39, which is the sum of 4, 5, 6, 7, 8, and 9.
+#    The fips columns have the sum of annual ppt for each county, for every year from 2015 to 2070.
+growing_precip <- subset(precip, Month >= 4 & Month <= 9) %>%
+  group_by(Year) %>%
+  summarise_all(sum)
+# Eliminate the month column from the summper.precip data.
+#    The values are no longer useful since they all equal 39.
+#    Select all rows and all columns except the second one ('-2' = 'month').
+growing_precip <- growing_precip[,-2]
+
+
+# Transpose summer precip rows and columns. -----------------------------------------------------------------------
+#    Transposes rows and columns in the growing_precip table so that FIPS are in rows and years are in columns.
+#    Values in the first row will be the years and field names are assigned as 'V[n]'.
+#    Transpose columns and rows in growing_precip, save as summer_t.
+summer_t <- t(growing_precip)
+#    Not sure what this does - summer_t looks the same.
+summer_t <- as.data.frame(summer_t)
+#    Renames columns using values in the 1st row of data ([1, ] references the 1st row).
+colnames(summer_t) = summer_t[1, ]
+#    Now that you've renamed the columns, eliminate the first row with the year values.
+#    Removes the 1st-row year labels (selects all rows except the first and all columns).
+summer_t = summer_t[-1, ]
+
+#    Exports to CSV file.
+#    Possibly the loop section would work better in Python
+#    This write.csv statement produces output where the column names are in the first row instead of actually
+#    naming the columns.
+
+write.csv(summer_t, file = "SP_mri_cgcm3_85.csv", col.names = T) # File for importing into Excel/ArcGIS
+#    Saves the transposed data back to growing_precip. Both are now the same.
+# growing_precip <- summer_t
+
+
+
 
 # This section transferred to Python script (output is the SummerT gdb table): ------------------------------------
 # # Start loop: Copy data for 1 year, add & calculate fields for 'fips' & 'year'.
