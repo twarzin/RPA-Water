@@ -147,7 +147,7 @@ pop.inc.2015 <- subset(pop.inc, year == 2015)
 # join population projections with base year withdrawals data
 demand.init1 <- merge(pop.inc.2015, wd.2015, by = "fips")
 
-# select variables needed for calcuations:
+# select variables needed for calculations:
 # Note, Pop is from withdrawal data. pop used here is from population projections
 keeps <- c("fips","year","ssp","inc","pop","dom","ag","ind","therm","la",
            "acres", "power")
@@ -249,9 +249,9 @@ data.table::fwrite(demand.noCC, file="withdrawal_noCC.csv")
 # files for summer precip and et used here. That code is in the same GitHub 
 # repository
 
-# read in summer precip data
+# read in summer precip data; Excel file columns include summer precip data for all models
 precip.data <- read.xlsx(
-  xlsxFile="1_ClimateData/CountyPrecip/SummerPrecip/pr_CNRM_CM5rcp45_month_spFinal.xlsx",
+  xlsxFile="1_ClimateData/CountyPrecip/SummerPrecip/SummerPrecip.xlsx",
   sheet = 1,
   startRow = 1,
   colNames = TRUE,
@@ -271,18 +271,66 @@ precip.data <- read.xlsx(
 colnames(precip.data)[colnames(precip.data) == "FIPS"] <- "fips"
 colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
 
-precip.data$pctchange_CNRMrcp45<- (precip.data$PrecipSummer_1/precip.data$PrecipSummer)
+## PROBLEM: Summer precip data in "1_ClimateData/CountyPrecip" only has precipitation for 252 counties
+# Have to rerun Pam's "SummerPrecipR" code in the Github folder to see why only a subset of counties are included
+
+
+# Calculate percent change in precip for each model:
+precip.data$pctchange_CNRM45<- (precip.data$PS_base_CM5_45/precip.data$PS_CM5_45)
+precip.data$pctchange_CNRM85<- (precip.data$PS_base_CM5_85/precip.data$PS_CM5_85)
+
+precip.data$pctchange_ES45<- (precip.data$PS_base_ES_45/precip.data$PS_ES_45)
+precip.data$pctchange_ES85<- (precip.data$PS_base_ES_85/precip.data$PS_ES_85)
+
+precip.data$pctchange_MR45<- (precip.data$PS_base_MR_45/precip.data$PS_MR_45)
+precip.data$pctchange_MR85<- (precip.data$PS_base_MR_85/precip.data$PS_MR_85)
+
+precip.data$pctchange_CGCM45<- (precip.data$PS_base_CGCM_45/precip.data$PS_CGCM_45)
+precip.data$pctchange_CGCM85<- (precip.data$PS_base_CGCM_85/precip.data$PS_CGCM_85)
+
+precip.data$pctchange_M45<- (precip.data$PS_base_M_45/precip.data$PS_M_45)
+precip.data$pctchange_M85<- (precip.data$PS_base_M_85/precip.data$PS_M_85)
 
 # subset demand to test code
 # precip.data <- subset(precip.data, FIPS < 1005)
 # if demand not already subsetted, 
 # demand <- subset(demand, fips < 1005)
 
-demand <- merge(demand, precip.data, by=c('fips','year'))
-demand$wpu.dom.cc <-demand$wpu.dom*demand$pctchange_CNRMrcp45
+# Multiply estimated change in precip by per person domestic water use volumes (wpu)
+# This is change in per person domestic water use, by SSP, by climate change model
+demand <- merge(demand.noCC, precip.data, by=c('fips','year'))
+demand$wpu.dom.cc.CM5_45 <-demand$wpu.dom*demand$pctchange_CNRM45
+demand$wpu.dom.cc.CM5_85 <-demand$wpu.dom*demand$pctchange_CNRM85
 
-# This is change in domestic demand, by SSP for CNRMrcp4.5 model
-demand$dom.cc.CNRMrcp45 <- demand$pop*demand$wpu.dom.cc
+demand$wpu.dom.cc.ES_45 <-demand$wpu.dom*demand$pctchange_ES45
+demand$wpu.dom.cc.ES_85 <-demand$wpu.dom*demand$pctchange_ES85
+
+demand$wpu.dom.cc.MR_45 <-demand$wpu.dom*demand$pctchange_MR45
+demand$wpu.dom.cc.MR_85 <-demand$wpu.dom*demand$pctchange_MR85
+
+demand$wpu.dom.cc.CGCM_45 <-demand$wpu.dom*demand$pctchange_CGCM45
+demand$wpu.dom.cc.CGCM_85 <-demand$wpu.dom*demand$pctchange_CGCM85
+
+demand$wpu.dom.cc.M_45 <-demand$wpu.dom*demand$pctchange_M45
+demand$wpu.dom.cc.M_85 <-demand$wpu.dom*demand$pctchange_M85
+
+
+# For each climate model, multiply estimate change in per person domestic water use volume by estimated population:
+# This is change in domestic demand, by SSP, by climate change model
+demand$dom.cc.CM5_45 <- demand$pop*demand$wpu.dom.cc
+demand$dom.cc.CM5_85 <- demand$pop*demand$wpu.dom.cc
+
+demand$dom.cc.ES_45 <- demand$pop*demand$wpu.dom.cc
+demand$dom.cc.ES_85 <- demand$pop*demand$wpu.dom.cc
+
+demand$dom.cc.MR_45 <- demand$pop*demand$wpu.dom.cc
+demand$dom.cc.MR_85 <- demand$pop*demand$wpu.dom.cc
+
+demand$dom.cc.CGCM_45 <- demand$pop*demand$wpu.dom.cc
+demand$dom.cc.CGCM_85 <- demand$pop*demand$wpu.dom.cc
+
+demand$dom.cc.CGCM_45 <- demand$pop*demand$wpu.dom.cc
+demand$dom.cc.CGCM_85 <- demand$pop*demand$wpu.dom.cc
 
 
 demand$delta.spet <- 0
