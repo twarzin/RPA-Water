@@ -231,11 +231,7 @@ demand.total <- demand.total %>%
          total = dom.t + ind.t + ag.t + therm + la)
 
 
-'
-Last Line I checked
-Ahmed
-"Sep,30,2022
-'
+
 
 data.table::fwrite(demand.noCC, file="withdrawal_noCC.csv")
 # --  PROJECTIONS WITH CLIMATE -------------
@@ -243,12 +239,12 @@ data.table::fwrite(demand.noCC, file="withdrawal_noCC.csv")
 # Climate impacts the withdrawals needed per unit. Equations for climate effects
 # can be found in:
 # Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
-
+rm(precip.data)
 # Domestic water use: Climate change only affects outdoor water use for domestic uses
 # during the growing season (April - September). Pam Froemke has created 
 # files for summer precip and et used here. That code is in the same GitHub 
 # repository
-
+# rm(precip.data)
 # read in summer precip data; Excel file columns include summer precip data for all models
 precip.data <- read.xlsx(
   xlsxFile="1_ClimateData/CountyPrecip/SummerPrecip/SummerPrecip.xlsx",
@@ -271,25 +267,21 @@ precip.data <- read.xlsx(
 colnames(precip.data)[colnames(precip.data) == "FIPS"] <- "fips"
 colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
 
-## PROBLEM: Summer precip data in "1_ClimateData/CountyPrecip" only has precipitation for 252 counties
-# Have to rerun Pam's "SummerPrecipR" code in the Github folder to see why only a subset of counties are included
-
-
 # Calculate percent change in precip for each model:
-precip.data$pctchange_CNRM45<- (precip.data$PS_base_CM5_45/precip.data$PS_CM5_45)
-precip.data$pctchange_CNRM85<- (precip.data$PS_base_CM5_85/precip.data$PS_CM5_85)
+precip.data$sp_pctchange_cm5a45<- (precip.data$spBase_cm5a_45/precip.data$sp_cm5a_45)
+precip.data$sp_pctchange_cm5a85<- (precip.data$spBase_cm5a_85/precip.data$sp_cm5a_85)
 
-precip.data$pctchange_ES45<- (precip.data$PS_base_ES_45/precip.data$PS_ES_45)
-precip.data$pctchange_ES85<- (precip.data$PS_base_ES_85/precip.data$PS_ES_85)
+precip.data$sp_pctchange_esm45<- (precip.data$spBase_esm_45/precip.data$sp_esm_45)
+precip.data$sp_pctchange_esm85<- (precip.data$spBase_esm_85/precip.data$sp_esm_85)
 
-precip.data$pctchange_MR45<- (precip.data$PS_base_MR_45/precip.data$PS_MR_45)
-precip.data$pctchange_MR85<- (precip.data$PS_base_MR_85/precip.data$PS_MR_85)
+precip.data$sp_pctchange_cn45<- (precip.data$spBase_cn_45/precip.data$sp_cn_45)
+precip.data$sp_pctchange_cn85<- (precip.data$spBase_cn_85/precip.data$sp_cn_85)
 
-precip.data$pctchange_CGCM45<- (precip.data$PS_base_CGCM_45/precip.data$PS_CGCM_45)
-precip.data$pctchange_CGCM85<- (precip.data$PS_base_CGCM_85/precip.data$PS_CGCM_85)
+precip.data$sp_pctchange_cgcm45<- (precip.data$spBase_cgcm_45/precip.data$sp_cgcm_45)
+precip.data$sp_pctchange_cgcm85<- (precip.data$spBase_cgcm_85/precip.data$sp_cgcm_85)
 
-precip.data$pctchange_M45<- (precip.data$PS_base_M_45/precip.data$PS_M_45)
-precip.data$pctchange_M85<- (precip.data$PS_base_M_85/precip.data$PS_M_85)
+precip.data$sp_pctchange_had45<- (precip.data$spBase_had_45/precip.data$sp_had_45)
+precip.data$sp_pctchange_had85<- (precip.data$spBase_had_85/precip.data$sp_had_85)
 
 # subset demand to test code
 # precip.data <- subset(precip.data, FIPS < 1005)
@@ -299,38 +291,38 @@ precip.data$pctchange_M85<- (precip.data$PS_base_M_85/precip.data$PS_M_85)
 # Multiply estimated change in precip by per person domestic water use volumes (wpu)
 # This is change in per person domestic water use, by SSP, by climate change model
 demand <- merge(demand.noCC, precip.data, by=c('fips','year'))
-demand$wpu.dom.cc.CM5_45 <-demand$wpu.dom*demand$pctchange_CNRM45
-demand$wpu.dom.cc.CM5_85 <-demand$wpu.dom*demand$pctchange_CNRM85
+demand$wpu.dom.cc.cn45 <-demand$wpu.dom*demand$sp_pctchange_cn45
+demand$wpu.dom.cc.cn85 <-demand$wpu.dom*demand$sp_pctchange_cn85
 
-demand$wpu.dom.cc.ES_45 <-demand$wpu.dom*demand$pctchange_ES45
-demand$wpu.dom.cc.ES_85 <-demand$wpu.dom*demand$pctchange_ES85
+demand$wpu.dom.cc.esm45 <-demand$wpu.dom*demand$sp_pctchange_esm45
+demand$wpu.dom.cc.esm85 <-demand$wpu.dom*demand$sp_pctchange_esm85
 
-demand$wpu.dom.cc.MR_45 <-demand$wpu.dom*demand$pctchange_MR45
-demand$wpu.dom.cc.MR_85 <-demand$wpu.dom*demand$pctchange_MR85
+demand$wpu.dom.cc.cm5a45 <-demand$wpu.dom*demand$sp_pctchange_cm5a45
+demand$wpu.dom.cc.cm5a85 <-demand$wpu.dom*demand$sp_pctchange_cm5a85
 
-demand$wpu.dom.cc.CGCM_45 <-demand$wpu.dom*demand$pctchange_CGCM45
-demand$wpu.dom.cc.CGCM_85 <-demand$wpu.dom*demand$pctchange_CGCM85
+demand$wpu.dom.cc.cgcm45 <-demand$wpu.dom*demand$sp_pctchange_cgcm45
+demand$wpu.dom.cc.cgcm85 <-demand$wpu.dom*demand$sp_pctchange_cgcm85
 
-demand$wpu.dom.cc.M_45 <-demand$wpu.dom*demand$pctchange_M45
-demand$wpu.dom.cc.M_85 <-demand$wpu.dom*demand$pctchange_M85
+demand$wpu.dom.cc.had45 <-demand$wpu.dom*demand$sp_pctchange_had45
+demand$wpu.dom.cc.had85 <-demand$wpu.dom*demand$sp_pctchange_had85
 
 
 # For each climate model, multiply estimate change in per person domestic water use volume by estimated population:
 # This is change in domestic demand, by SSP, by climate change model
-demand$dom.cc.CM5_45 <- demand$pop*demand$wpu.dom.cc
-demand$dom.cc.CM5_85 <- demand$pop*demand$wpu.dom.cc
+demand$dom.cc.cm5a45 <- demand$pop*demand$wpu.dom.cc.cm5a45
+demand$dom.cc.cm5a85 <- demand$pop*demand$wpu.dom.cc.cm5a85
 
-demand$dom.cc.ES_45 <- demand$pop*demand$wpu.dom.cc
-demand$dom.cc.ES_85 <- demand$pop*demand$wpu.dom.cc
+demand$dom.cc.esm45 <- demand$pop*demand$wpu.dom.cc.esm45
+demand$dom.cc.esm85 <- demand$pop*demand$wpu.dom.cc.esm85
 
-demand$dom.cc.MR_45 <- demand$pop*demand$wpu.dom.cc
-demand$dom.cc.MR_85 <- demand$pop*demand$wpu.dom.cc
+demand$dom.cc.cm5a45 <- demand$pop*demand$wpu.dom.cc.cm5a45
+demand$dom.cc.cm5a85 <- demand$pop*demand$wpu.dom.cc.cm5a85
 
-demand$dom.cc.CGCM_45 <- demand$pop*demand$wpu.dom.cc
-demand$dom.cc.CGCM_85 <- demand$pop*demand$wpu.dom.cc
+demand$dom.cc.cgcm45 <- demand$pop*demand$wpu.dom.cc.cgcm45
+demand$dom.cc.cgcm85 <- demand$pop*demand$wpu.dom.cc.cgcm85
 
-demand$dom.cc.CGCM_45 <- demand$pop*demand$wpu.dom.cc
-demand$dom.cc.CGCM_85 <- demand$pop*demand$wpu.dom.cc
+demand$dom.cc.had45 <- demand$pop*demand$wpu.dom.cc.had45
+demand$dom.cc.had85 <- demand$pop*demand$wpu.dom.cc.had85
 
 
 demand$delta.spet <- 0
