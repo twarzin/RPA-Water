@@ -239,13 +239,15 @@ data.table::fwrite(demand.noCC, file="withdrawal_noCC.csv")
 # Climate impacts the withdrawals needed per unit. Equations for climate effects
 # can be found in:
 # Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
-rm(precip.data)
+
 # Domestic water use: Climate change only affects outdoor water use for domestic uses
 # during the growing season (April - September). Pam Froemke has created 
 # files for summer precip and et used here. That code is in the same GitHub 
 # repository
-# rm(precip.data)
+
 # read in summer precip data; Excel file columns include summer precip data for all models
+
+# precip is measured in mm; this is 
 precip.data <- read.xlsx(
   xlsxFile="1_ClimateData/CountyPrecip/SummerPrecip/SummerPrecip.xlsx",
   sheet = 1,
@@ -268,61 +270,66 @@ colnames(precip.data)[colnames(precip.data) == "FIPS"] <- "fips"
 colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
 
 # Calculate percent change in precip for each model:
-precip.data$sp_pctchange_cm5a45<- (precip.data$spBase_cm5a_45/precip.data$sp_cm5a_45)
-precip.data$sp_pctchange_cm5a85<- (precip.data$spBase_cm5a_85/precip.data$sp_cm5a_85)
-
-precip.data$sp_pctchange_esm45<- (precip.data$spBase_esm_45/precip.data$sp_esm_45)
-precip.data$sp_pctchange_esm85<- (precip.data$spBase_esm_85/precip.data$sp_esm_85)
-
 precip.data$sp_pctchange_cn45<- (precip.data$spBase_cn_45/precip.data$sp_cn_45)
-precip.data$sp_pctchange_cn85<- (precip.data$spBase_cn_85/precip.data$sp_cn_85)
+#precip.data$sp_pctchange_cm5a85<- (precip.data$spBase_cm5a_85/precip.data$sp_cm5a_85)
 
-precip.data$sp_pctchange_cgcm45<- (precip.data$spBase_cgcm_45/precip.data$sp_cgcm_45)
-precip.data$sp_pctchange_cgcm85<- (precip.data$spBase_cgcm_85/precip.data$sp_cgcm_85)
+#precip.data$sp_pctchange_esm45<- (precip.data$spBase_esm_45/precip.data$sp_esm_45)
+#precip.data$sp_pctchange_esm85<- (precip.data$spBase_esm_85/precip.data$sp_esm_85)
 
-precip.data$sp_pctchange_had45<- (precip.data$spBase_had_45/precip.data$sp_had_45)
-precip.data$sp_pctchange_had85<- (precip.data$spBase_had_85/precip.data$sp_had_85)
+#precip.data$sp_pctchange_cn45<- (precip.data$spBase_cn_45/precip.data$sp_cn_45)
+#precip.data$sp_pctchange_cn85<- (precip.data$spBase_cn_85/precip.data$sp_cn_85)
+
+#precip.data$sp_pctchange_cgcm45<- (precip.data$spBase_cgcm_45/precip.data$sp_cgcm_45)
+#precip.data$sp_pctchange_cgcm85<- (precip.data$spBase_cgcm_85/precip.data$sp_cgcm_85)
+
+#precip.data$sp_pctchange_had45<- (precip.data$spBase_had_45/precip.data$sp_had_45)
+#precip.data$sp_pctchange_had85<- (precip.data$spBase_had_85/precip.data$sp_had_85)
 
 # subset demand to test code
 # precip.data <- subset(precip.data, FIPS < 1005)
 # if demand not already subsetted, 
 # demand <- subset(demand, fips < 1005)
 
-# Multiply estimated change in precip by per person domestic water use volumes (wpu)
+# Multiply estimated pct change in precip by per person domestic water use volumes (wpu)
 # This is change in per person domestic water use, by SSP, by climate change model
+
+# wpu.dom is ⏀nocc
+# wpu.dom.cc is ∆P
+
 demand <- merge(demand.noCC, precip.data, by=c('fips','year'))
 demand$wpu.dom.cc.cn45 <-demand$wpu.dom*demand$sp_pctchange_cn45
-demand$wpu.dom.cc.cn85 <-demand$wpu.dom*demand$sp_pctchange_cn85
+#demand$wpu.dom.cc.cn85 <-demand$wpu.dom*demand$sp_pctchange_cn85
 
-demand$wpu.dom.cc.esm45 <-demand$wpu.dom*demand$sp_pctchange_esm45
-demand$wpu.dom.cc.esm85 <-demand$wpu.dom*demand$sp_pctchange_esm85
+#demand$wpu.dom.cc.esm45 <-demand$wpu.dom*demand$sp_pctchange_esm45
+#demand$wpu.dom.cc.esm85 <-demand$wpu.dom*demand$sp_pctchange_esm85
 
-demand$wpu.dom.cc.cm5a45 <-demand$wpu.dom*demand$sp_pctchange_cm5a45
-demand$wpu.dom.cc.cm5a85 <-demand$wpu.dom*demand$sp_pctchange_cm5a85
+#demand$wpu.dom.cc.cm5a45 <-demand$wpu.dom*demand$sp_pctchange_cm5a45
+#demand$wpu.dom.cc.cm5a85 <-demand$wpu.dom*demand$sp_pctchange_cm5a85
 
-demand$wpu.dom.cc.cgcm45 <-demand$wpu.dom*demand$sp_pctchange_cgcm45
-demand$wpu.dom.cc.cgcm85 <-demand$wpu.dom*demand$sp_pctchange_cgcm85
+#demand$wpu.dom.cc.cgcm45 <-demand$wpu.dom*demand$sp_pctchange_cgcm45
+#demand$wpu.dom.cc.cgcm85 <-demand$wpu.dom*demand$sp_pctchange_cgcm85
 
-demand$wpu.dom.cc.had45 <-demand$wpu.dom*demand$sp_pctchange_had45
-demand$wpu.dom.cc.had85 <-demand$wpu.dom*demand$sp_pctchange_had85
+#demand$wpu.dom.cc.had45 <-demand$wpu.dom*demand$sp_pctchange_had45
+#demand$wpu.dom.cc.had85 <-demand$wpu.dom*demand$sp_pctchange_had85
 
 
 # For each climate model, multiply estimate change in per person domestic water use volume by estimated population:
 # This is change in domestic demand, by SSP, by climate change model
-demand$dom.cc.cm5a45 <- demand$pop*demand$wpu.dom.cc.cm5a45
-demand$dom.cc.cm5a85 <- demand$pop*demand$wpu.dom.cc.cm5a85
+# This is U*(⏀nocc + ∆⏀cc)
+demand$dom.cc.cn45 <- demand$pop*demand$wpu.dom.cc.cn45
+#demand$dom.cc.cn85 <- demand$pop*demand$wpu.dom.cc.cn85
 
-demand$dom.cc.esm45 <- demand$pop*demand$wpu.dom.cc.esm45
-demand$dom.cc.esm85 <- demand$pop*demand$wpu.dom.cc.esm85
+#demand$dom.cc.esm45 <- demand$pop*demand$wpu.dom.cc.esm45
+#demand$dom.cc.esm85 <- demand$pop*demand$wpu.dom.cc.esm85
 
-demand$dom.cc.cm5a45 <- demand$pop*demand$wpu.dom.cc.cm5a45
-demand$dom.cc.cm5a85 <- demand$pop*demand$wpu.dom.cc.cm5a85
+#demand$dom.cc.cm5a45 <- demand$pop*demand$wpu.dom.cc.cm5a45
+#demand$dom.cc.cm5a85 <- demand$pop*demand$wpu.dom.cc.cm5a85
 
-demand$dom.cc.cgcm45 <- demand$pop*demand$wpu.dom.cc.cgcm45
-demand$dom.cc.cgcm85 <- demand$pop*demand$wpu.dom.cc.cgcm85
+#demand$dom.cc.cgcm45 <- demand$pop*demand$wpu.dom.cc.cgcm45
+#demand$dom.cc.cgcm85 <- demand$pop*demand$wpu.dom.cc.cgcm85
 
-demand$dom.cc.had45 <- demand$pop*demand$wpu.dom.cc.had45
-demand$dom.cc.had85 <- demand$pop*demand$wpu.dom.cc.had85
+#demand$dom.cc.had45 <- demand$pop*demand$wpu.dom.cc.had45
+#demand$dom.cc.had85 <- demand$pop*demand$wpu.dom.cc.had85
 
 
 demand$delta.spet <- 0
@@ -337,7 +344,8 @@ cc.dp1 <- -1.415    # coefficient on change in summertime precip
 cc.dp2 <- 0.778     # coefficient on change in pet
 
 # convert precip data in mm height to cm height 
-demand$ChangeSummerPrecip.cm <- demand$ChangeSummerPrecip * 0.1
+demand$dom.cc.cn45.cm <- demand$dom.cc.cn45 * 0.1
+
 
 # precip.data$ChangeSummerPrecip.meters <- precip.data$ChangeSummerPrecip / 1000
 # # read in county area to turn height into volume
@@ -354,8 +362,12 @@ demand$ChangeSummerPrecip.cm <- demand$ChangeSummerPrecip * 0.1
 
 ### change in ag
 
+# Multiply dom.cc.cm by n^p, which is a constant equal to -1.415
+# This is ∆Φcc, which is the change in precipitation projected forward, for each 
+# climate change scenario, by SSP. The unit is precip in cm
 ### verify that the following is additive
-demand$wpu.dp.cc <- demand$wpu.dom + (cc.dp1*demand$ChangeSummerPrecip.cm + cc.dp2*demand$ChangeSummerET) / 1000
+demand$wpu.dp.cc <- demand$wpu.dom + (cc.dp1*demand$dom.cc.cn45 + cc.dp2*demand$ChangeSummerET) 
+#/ 1000 --> This is to convert from m back to mm
 # the original code did not have the last term and divided by 1000
 # domestic demand with climate change:
 demand$dom.cc <- demand$wpu.dp.cc * demand$pop
