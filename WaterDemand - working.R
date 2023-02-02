@@ -298,38 +298,38 @@ precip.data$sp_pctchange_cn45<- (precip.data$spBase_cn_45/precip.data$sp_cn_45)
 
 demand <- merge(demand.noCC, precip.data, by=c('fips','year'))
 demand$wpu.dom.cc.cn45 <-demand$wpu.dom*demand$sp_pctchange_cn45
-#demand$wpu.dom.cc.cn85 <-demand$wpu.dom*demand$sp_pctchange_cn85
+demand$wpu.dom.cc.cn85 <-demand$wpu.dom*demand$sp_pctchange_cn85
 
-#demand$wpu.dom.cc.esm45 <-demand$wpu.dom*demand$sp_pctchange_esm45
-#demand$wpu.dom.cc.esm85 <-demand$wpu.dom*demand$sp_pctchange_esm85
+demand$wpu.dom.cc.esm45 <-demand$wpu.dom*demand$sp_pctchange_esm45
+demand$wpu.dom.cc.esm85 <-demand$wpu.dom*demand$sp_pctchange_esm85
 
-#demand$wpu.dom.cc.cm5a45 <-demand$wpu.dom*demand$sp_pctchange_cm5a45
-#demand$wpu.dom.cc.cm5a85 <-demand$wpu.dom*demand$sp_pctchange_cm5a85
+demand$wpu.dom.cc.cm5a45 <-demand$wpu.dom*demand$sp_pctchange_cm5a45
+demand$wpu.dom.cc.cm5a85 <-demand$wpu.dom*demand$sp_pctchange_cm5a85
 
-#demand$wpu.dom.cc.cgcm45 <-demand$wpu.dom*demand$sp_pctchange_cgcm45
-#demand$wpu.dom.cc.cgcm85 <-demand$wpu.dom*demand$sp_pctchange_cgcm85
+demand$wpu.dom.cc.cgcm45 <-demand$wpu.dom*demand$sp_pctchange_cgcm45
+demand$wpu.dom.cc.cgcm85 <-demand$wpu.dom*demand$sp_pctchange_cgcm85
 
-#demand$wpu.dom.cc.had45 <-demand$wpu.dom*demand$sp_pctchange_had45
-#demand$wpu.dom.cc.had85 <-demand$wpu.dom*demand$sp_pctchange_had85
+demand$wpu.dom.cc.had45 <-demand$wpu.dom*demand$sp_pctchange_had45
+demand$wpu.dom.cc.had85 <-demand$wpu.dom*demand$sp_pctchange_had85
 
 
 # For each climate model, multiply estimate change in per person domestic water use volume by estimated population:
 # This is change in domestic demand, by SSP, by climate change model
 # This is U*(⏀nocc + ∆⏀cc)
 demand$dom.cc.cn45 <- demand$pop*demand$wpu.dom.cc.cn45
-#demand$dom.cc.cn85 <- demand$pop*demand$wpu.dom.cc.cn85
+demand$dom.cc.cn85 <- demand$pop*demand$wpu.dom.cc.cn85
 
-#demand$dom.cc.esm45 <- demand$pop*demand$wpu.dom.cc.esm45
-#demand$dom.cc.esm85 <- demand$pop*demand$wpu.dom.cc.esm85
+demand$dom.cc.esm45 <- demand$pop*demand$wpu.dom.cc.esm45
+demand$dom.cc.esm85 <- demand$pop*demand$wpu.dom.cc.esm85
 
-#demand$dom.cc.cm5a45 <- demand$pop*demand$wpu.dom.cc.cm5a45
-#demand$dom.cc.cm5a85 <- demand$pop*demand$wpu.dom.cc.cm5a85
+demand$dom.cc.cm5a45 <- demand$pop*demand$wpu.dom.cc.cm5a45
+demand$dom.cc.cm5a85 <- demand$pop*demand$wpu.dom.cc.cm5a85
 
-#demand$dom.cc.cgcm45 <- demand$pop*demand$wpu.dom.cc.cgcm45
-#demand$dom.cc.cgcm85 <- demand$pop*demand$wpu.dom.cc.cgcm85
+demand$dom.cc.cgcm45 <- demand$pop*demand$wpu.dom.cc.cgcm45
+demand$dom.cc.cgcm85 <- demand$pop*demand$wpu.dom.cc.cgcm85
 
-#demand$dom.cc.had45 <- demand$pop*demand$wpu.dom.cc.had45
-#demand$dom.cc.had85 <- demand$pop*demand$wpu.dom.cc.had85
+demand$dom.cc.had45 <- demand$pop*demand$wpu.dom.cc.had45
+demand$dom.cc.had85 <- demand$pop*demand$wpu.dom.cc.had85
 
 
 demand$delta.spet <- 0
@@ -345,6 +345,13 @@ cc.dp2 <- 0.778     # coefficient on change in pet
 
 # convert precip data in mm height to cm height 
 demand$dom.cc.cn45.cm <- demand$dom.cc.cn45 * 0.1
+demand$dom.cc.cn85.cm <- demand$dom.cc.cn85 * 0.1
+
+demand$dom.cc.had45.cm <- demand$dom.cc.had45 * 0.1
+demand$dom.cc.had85.cm <- demand$dom.cc.had85 * 0.1
+
+demand$dom.cc.cgcm45.cm <- demand$dom.cc.cgcm45 * 0.1
+demand$dom.cc.cgcm85.cm <- demand$dom.cc.cgcm85 * 0.1
 
 
 # precip.data$ChangeSummerPrecip.meters <- precip.data$ChangeSummerPrecip / 1000
