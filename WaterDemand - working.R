@@ -111,7 +111,7 @@ wd.2015[] <- lapply(wd.2015, as.numeric)
 #   convert NAs to zeros
 wd.2015[is.na(wd.2015)] <- 0
 
-# Creating variables for total sector withdrawals + deliveries
+# Creating variables for total sector withdrawals + deliveries (Mgal/day)
 wd.2015$dom   <- wd.2015$DO.WDelv
 wd.2015$ind   <- wd.2015$IN.WFrTo + wd.2015$MI.WFrTo
 wd.2015$therm <- wd.2015$PT.WFrTo + wd.2015$PT.PSDel
@@ -161,11 +161,10 @@ keeps <- c("fips","year","ssp","inc","pop","dom","ag","ind","therm","la",
 demand.init <- demand.init1[,names(demand.init1) %in% keeps]
 
 # calculate initial withdrawals per unit
-  # wpu.dom = (Mgallons per day per person)
-  # wpu.inc = (Mgallons per day per dollar)
-  # wpu.ag = (Mgallons per day per acre)
-  # wpu.ag = (Mgallons per day per acre)
-  # wpu.therm = (Mgallons per day per gigawatt hour)
+  # wpu.dom = (Mgallons per day / person)
+  # wpu.inc = (Mgallons per day / dollar)
+  # wpu.ag = (Mgallons per day / acre)
+  
 demand.init$wpu.dom   <- demand.init$dom / demand.init$pop
 demand.init$wpu.ind   <- demand.init$ind / demand.init$inc
 demand.init$wpu.ag    <- demand.init$ag / demand.init$acres
@@ -190,6 +189,7 @@ demand <- rbind(demand.init, demand.proj)
 
 demand <- dplyr::inner_join(demand, growth, by="fips")
 
+# This is water demand, by sector, by SSR, projected to 2017
 # # order data so I can run a loop on lagged values
 demand <- demand %>% dplyr::arrange(fips,ssp,year)
 
@@ -258,8 +258,7 @@ data.table::fwrite(demand.noCC, file="withdrawal_noCC.csv")
 # repository
 
 # read in summer precip data; Excel file columns include summer precip data for all models
-
-# precip is measured in mm; this is 
+  # precip is measured in mm
 precip.data <- read.xlsx(
   xlsxFile="1_ClimateData/CountyPrecip/SummerPrecip/SummerPrecip.xlsx",
   sheet = 1,
@@ -281,45 +280,42 @@ precip.data <- read.xlsx(
 colnames(precip.data)[colnames(precip.data) == "FIPS"] <- "fips"
 colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
 
-# Calculate percent change in precip for each model:
+# Calculate percent change from base precipitation for each model:
+precip.data$sp_pctchange_cm5a45<- (precip.data$spBase_cm5a_45/precip.data$sp_cm5a_45)
+precip.data$sp_pctchange_cm5a85<- (precip.data$spBase_cm5a_85/precip.data$sp_cm5a_85)
+
+precip.data$sp_pctchange_esm45<- (precip.data$spBase_esm_45/precip.data$sp_esm_45)
+precip.data$sp_pctchange_esm85<- (precip.data$spBase_esm_85/precip.data$sp_esm_85)
+
 precip.data$sp_pctchange_cn45<- (precip.data$spBase_cn_45/precip.data$sp_cn_45)
-#precip.data$sp_pctchange_cm5a85<- (precip.data$spBase_cm5a_85/precip.data$sp_cm5a_85)
+precip.data$sp_pctchange_cn85<- (precip.data$spBase_cn_85/precip.data$sp_cn_85)
 
-#precip.data$sp_pctchange_esm45<- (precip.data$spBase_esm_45/precip.data$sp_esm_45)
-#precip.data$sp_pctchange_esm85<- (precip.data$spBase_esm_85/precip.data$sp_esm_85)
+precip.data$sp_pctchange_cgcm45<- (precip.data$spBase_cgcm_45/precip.data$sp_cgcm_45)
+precip.data$sp_pctchange_cgcm85<- (precip.data$spBase_cgcm_85/precip.data$sp_cgcm_85)
 
-#precip.data$sp_pctchange_cn45<- (precip.data$spBase_cn_45/precip.data$sp_cn_45)
-#precip.data$sp_pctchange_cn85<- (precip.data$spBase_cn_85/precip.data$sp_cn_85)
+precip.data$sp_pctchange_had45<- (precip.data$spBase_had_45/precip.data$sp_had_45)
+precip.data$sp_pctchange_had85<- (precip.data$spBase_had_85/precip.data$sp_had_85)
 
-#precip.data$sp_pctchange_cgcm45<- (precip.data$spBase_cgcm_45/precip.data$sp_cgcm_45)
-#precip.data$sp_pctchange_cgcm85<- (precip.data$spBase_cgcm_85/precip.data$sp_cgcm_85)
-
-#precip.data$sp_pctchange_had45<- (precip.data$spBase_had_45/precip.data$sp_had_45)
-#precip.data$sp_pctchange_had85<- (precip.data$spBase_had_85/precip.data$sp_had_85)
-
-# subset demand to test code
-# precip.data <- subset(precip.data, FIPS < 1005)
-# if demand not already subsetted, 
-# demand <- subset(demand, fips < 1005)
 
 # Multiply estimated pct change in precip by per person domestic water use volumes (wpu)
 # This is change in per person domestic water use, by SSP, by climate change model
 
 # wpu.dom is ⏀nocc
-# wpu.dom.cc is ∆P
+# wpu.dom.cc is change in demand over time, by SSP, by ∆P for each CC model
 
 demand <- merge(demand.noCC, precip.data, by=c('fips','year'))
-demand$wpu.dom.cc.cn45 <-demand$wpu.dom*demand$sp_pctchange_cn45
-demand$wpu.dom.cc.cn85 <-demand$wpu.dom*demand$sp_pctchange_cn85
+
+demand$wpu.dom.cc.cgcm45 <-demand$wpu.dom*demand$sp_pctchange_cgcm45
+demand$wpu.dom.cc.cgcm85 <-demand$wpu.dom*demand$sp_pctchange_cgcm85
 
 demand$wpu.dom.cc.esm45 <-demand$wpu.dom*demand$sp_pctchange_esm45
 demand$wpu.dom.cc.esm85 <-demand$wpu.dom*demand$sp_pctchange_esm85
 
+demand$wpu.dom.cc.cn45 <-demand$wpu.dom*demand$sp_pctchange_cn45
+demand$wpu.dom.cc.cn85 <-demand$wpu.dom*demand$sp_pctchange_cn85
+
 demand$wpu.dom.cc.cm5a45 <-demand$wpu.dom*demand$sp_pctchange_cm5a45
 demand$wpu.dom.cc.cm5a85 <-demand$wpu.dom*demand$sp_pctchange_cm5a85
-
-demand$wpu.dom.cc.cgcm45 <-demand$wpu.dom*demand$sp_pctchange_cgcm45
-demand$wpu.dom.cc.cgcm85 <-demand$wpu.dom*demand$sp_pctchange_cgcm85
 
 demand$wpu.dom.cc.had45 <-demand$wpu.dom*demand$sp_pctchange_had45
 demand$wpu.dom.cc.had85 <-demand$wpu.dom*demand$sp_pctchange_had85
