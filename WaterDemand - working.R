@@ -10,8 +10,8 @@
 rm(list = ls())  # clears memory
 
 # Set working directory to file location
-# for Pam: 
-setwd("/Users/leslie/Dropbox/RPA-Water")
+# for Leslie: 
+setwd("/Users/leslie/Dropbox/RPA-Water")  
 #E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 #setwd("D:/Demand model")
 
@@ -48,8 +48,9 @@ so I will limit its use here not to distribe the original code
 
 # Population and income projections are from Wear and Prestemon
 # Population by FIPS: fields are ID (x), fips, year, pop, ssp, inc; 860,440 records
+## Population and income are projected through 2070
 # Population is in thousands
-# Income is in __________
+# Income is in thousands ($)
 pop.inc <- data.table::fread("1_BaseData/popinc_proj.csv") %>% as.data.frame()
 # projections of irrigated acreage for ag
 acre.data <- data.table::fread('1_BaseData/acredata-use.csv', header=TRUE) %>% as.data.frame()
@@ -58,11 +59,14 @@ acre.data <- data.table::fread('1_BaseData/acredata-use.csv', header=TRUE) %>% a
 acre.data <- subset(acre.data, ssp == "ssp1")
 acre.data <- acre.data %>%
   select(fips, year, acres)
+
 # combine projection data
 proj.data <- dplyr::inner_join(pop.inc, acre.data, by=c("fips", "year"))
 
+## This is population, income, and acreage projected through 2070:
 proj.data <- proj.data %>%
   select(fips, year, pop, ssp, inc, acres)
+
 
 # Water withdrawals in 2015 from USGS (3,223 records):
 # Data fields:
@@ -79,6 +83,7 @@ proj.data <- proj.data %>%
 # PT.CUsFr  Thermoelectric, total consumptive use, fresh, in Mgal/d
 # PT.Power  Thermoelectric, power generated, in gigawatt-hours
 
+## This is baseline (i.e., 2015) water demand, by sector:
 wd.2015 <- read.csv("1_BaseData/USGS2015.csv")
 wd.2015 <- wd.2015 %>%
   select(FIPS,
@@ -96,7 +101,7 @@ wd.2015 <- wd.2015 %>%
          'PT.Power')
 
 # FIPS codes are off between USGS data and population projections. Will need to adjust
-# population data later (outside of R)
+# population data later (outside of R) - (2023-02-06: not sure if this is still a problem?)
 
 # Create baseline withdrawals for surface water fresh for each sector
 # - first calculate total withdrawals for public supply, then calculate percent
@@ -137,6 +142,8 @@ growth <- read.csv("1_BaseData/WDGrowthCU.csv")
 # First calculate withdrawals for each sector without climate impacts. Climate
 # impacts are added in a separate section at the bottom of this code
 
+
+
 #---------------------------------------------------------------------------------.
 # -   SECTOR PROJECTIONS TO 2070 - no climate #########################
 # This calculates projections out to 2070 using function from
@@ -154,6 +161,11 @@ keeps <- c("fips","year","ssp","inc","pop","dom","ag","ind","therm","la",
 demand.init <- demand.init1[,names(demand.init1) %in% keeps]
 
 # calculate initial withdrawals per unit
+  # wpu.dom = (Mgallons per day per person)
+  # wpu.inc = (Mgallons per day per dollar)
+  # wpu.ag = (Mgallons per day per acre)
+  # wpu.ag = (Mgallons per day per acre)
+  # wpu.therm = (Mgallons per day per gigawatt hour)
 demand.init$wpu.dom   <- demand.init$dom / demand.init$pop
 demand.init$wpu.ind   <- demand.init$ind / demand.init$inc
 demand.init$wpu.ag    <- demand.init$ag / demand.init$acres
@@ -352,6 +364,12 @@ demand$dom.cc.had85.cm <- demand$dom.cc.had85 * 0.1
 
 demand$dom.cc.cgcm45.cm <- demand$dom.cc.cgcm45 * 0.1
 demand$dom.cc.cgcm85.cm <- demand$dom.cc.cgcm85 * 0.1
+
+demand$dom.cc.cm5a45.cm <- demand$dom.cc.cm5a45 * 0.1
+demand$dom.cc.cm5a85.cm <- demand$dom.cc.cm5a85 * 0.1
+
+demand$dom.cc.esm45.cm <- demand$dom.cc.esm45 * 0.1
+demand$dom.cc.esm85.cm <- demand$dom.cc.esm85 * 0.1
 
 
 # precip.data$ChangeSummerPrecip.meters <- precip.data$ChangeSummerPrecip / 1000
