@@ -44,18 +44,18 @@ so I will limit its use here not to distribe the original code
 '
 #####
   ##  1. Estimate baseline water use: 
-  ##  Water Use   = withdrawal units * wpu = Unit * ⏀    
-  ##          ⏀ = (⏀nocc+∆⏀cc)(1-∂)
-  ##               Mgal/day per person with climate change
+  ##  Water Use   = withdrawal units * wpu = Unit * ϕ
+  ##          ϕ   = (ϕnocc+ϕcc)(1-∂)
+  ##                Mgal/day per unit with climate change
 
   ##  2. Estimate water use rate projected to 2070
-  ##      ⏀nocc = ⏀nocc,Y-5(1+growth(1+decay)^(Y-LDY))^5
-  ##               Mgal/day per person, without climate change            
+  ##      ϕnocc   = ϕnocc,Y-5(1+growth(1+decay)^(Y-LDY))^5
+  ##                Mgal/day per unit, without climate change            
   ##                This is projections to 2070
 
   ##  3. Estimate change in water use rate under CC scenarios, projected to 2070
-  ##       ∆⏀cc = ∆P'*nP+ ∆ET*nETp
-  ##              Mgal/day per person difference with climate change
+  ##       ∆ϕcc   = ∆P'*nP+ ∆ET*nETp
+  ##                Mgal/day per unit difference with climate change
   
 
 
@@ -158,8 +158,12 @@ wd.2015 <- rename(wd.2015, fips = FIPS)
 
         ## 2. Estimate Sector Projections to 2070 - no climate change
 #-------------------------------------------------------------------------------
-##  Water Use   = Units * ⏀nocc
-##        ⏀nocc = ⏀nocc,Y-5(1+growth(1+decay)^(Y-LDY))^5
+##  Water Use   =   Units * ϕnocc
+##  Domestic: 
+##      ϕnocc   =   ϕnocc,Y-5*(1+growth(1+decay)^(Y-LDY))^5
+## Agriculture:
+##      ϕnocc   =   W_t / A_t
+##        A_t   =   A_wrrt * (A_cnty,2015 / A_wrr,1995) + A^RFS
 
 # This calculates projections out to 2070 using function from
 # Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
@@ -172,7 +176,6 @@ growth <- read.csv("1_BaseData/WDGrowthCU.csv")
 
 # First calculate withdrawals for each sector without climate impacts. Climate
 # impacts are added in a separate section at the bottom of this code
-
 
 pop.inc.2015 <- subset(pop.inc, year == 2015)
 
@@ -234,7 +237,7 @@ demand2 <- demand2 %>%
   ungroup()
 
 # export the above results so we don't have to run them every time
-data.table::fwrite(demand2, file="withdrawal_noCC.csv")
+data.table::fwrite(demand2, file="DPwithdrawal_noCC.csv")
 
 rm(demand,demand2)
 
@@ -275,7 +278,7 @@ data.table::fwrite(demand.noCC, file="withdrawal_noCC.csv")
 
         ## 3. Estimate Sector Projections to 2070 - WITH CLIMATE CHANGE
 #-------------------------------------------------------------------------------
-##  ∆⏀cc = ∆P'*nP+ ∆ET*nETp
+##  ∆ϕcc = ∆P'*nP+ ∆ET*nETp
 
 # Climate impacts the withdrawals needed per unit. Equations for climate effects
 # can be found in:
@@ -311,7 +314,8 @@ colnames(precip.data)[colnames(precip.data) == "FIPS"] <- "fips"
 colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
 
 demand <- merge(demand.noCC, precip.data, by=c('fips','year'))
-# --- domestic water use with climate change: 
+
+# --- 3a. Domestic water use with climate change: 
 
 # the following coefficients are taken from Tom Brown's work for the 2010 RPA Assessment
 # the coefficients give the change in gallons per capita per day for a 1cm change in precip 
@@ -319,16 +323,16 @@ demand <- merge(demand.noCC, precip.data, by=c('fips','year'))
 cc.dp1 <- -1.415    # coefficient on change in summertime precip
 cc.dp2 <- 0.778     # coefficient on change in pet
 
-demand$delta.spet <- 0
+demand$delta.spet     <- 0
 demand$ChangeSummerET <- demand$delta.spet
 
 
 # convert precip data in mm height to cm height (per equation 11) 
-demand$spChange.cn45.cm <- demand$spChange_cn_45 * 0.1
-demand$spChange.cn85.cm <- demand$spChange_cn_85 * 0.1
+demand$spChange.cn45.cm   <- demand$spChange_cn_45 * 0.1
+demand$spChange.cn85.cm   <- demand$spChange_cn_85 * 0.1
 
-demand$spChange.had45.cm <- demand$spChange_had_45 * 0.1
-demand$spChange.had85.cm <- demand$spChange_had_85 * 0.1
+demand$spChange.had45.cm  <- demand$spChange_had_45 * 0.1
+demand$spChange.had85.cm  <- demand$spChange_had_85 * 0.1
 
 demand$spChange.cgcm45.cm <- demand$spChange_cgcm_45 * 0.1
 demand$spChange.cgcm85.cm <- demand$spChange_cgcm_85 * 0.1
@@ -336,20 +340,21 @@ demand$spChange.cgcm85.cm <- demand$spChange_cgcm_85 * 0.1
 demand$spChange.cm5a45.cm <- demand$spChange_cm5a_45 * 0.1
 demand$spChange.cm5a85.cm <- demand$spChange_cm5a_85 * 0.1
 
-demand$spChange.esm45.cm <- demand$spChange_esm_45 * 0.1
-demand$spChange.esm85.cm <- demand$spChange_esm_85 * 0.1
+demand$spChange.esm45.cm  <- demand$spChange_esm_45 * 0.1
+demand$spChange.esm85.cm  <- demand$spChange_esm_85 * 0.1
 
 
 # Multiply change in precip by n^p, which is a constant equal to -1.415
-# This is in equation 11: ∆Φ = (ΦnoCC + ∆Φcc), where ∆Φcc=∆P'*nP + ∆ETp*nET
+# This is in equation 11: ∆Φ = (ΦnoCC + ∆Φcc), where ∆Φcc=∆P'*n^p + ∆ETp*nET
+
 # for each climate change scenario, for each SSP
 
 
-demand$deltaP.n.cn45.cm <- (cc.dp1*demand$spChange.cn45.cm + cc.dp2*demand$ChangeSummerET) 
-demand$deltaP.n.cn85.cm <- (cc.dp1*demand$spChange.cn85.cm + cc.dp2*demand$ChangeSummerET)
+demand$deltaP.n.cn45.cm   <- (cc.dp1*demand$spChange.cn45.cm + cc.dp2*demand$ChangeSummerET) 
+demand$deltaP.n.cn85.cm   <- (cc.dp1*demand$spChange.cn85.cm + cc.dp2*demand$ChangeSummerET)
 
-demand$deltaP.n.esm45.cm <- (cc.dp1*demand$spChange.esm45.cm + cc.dp2*demand$ChangeSummerET) 
-demand$deltaP.n.esm85.cm <- (cc.dp1*demand$spChange.esm85.cm + cc.dp2*demand$ChangeSummerET)
+demand$deltaP.n.esm45.cm  <- (cc.dp1*demand$spChange.esm45.cm + cc.dp2*demand$ChangeSummerET) 
+demand$deltaP.n.esm85.cm  <- (cc.dp1*demand$spChange.esm85.cm + cc.dp2*demand$ChangeSummerET)
 
 demand$deltaP.n.cgcm45.cm <- (cc.dp1*demand$spChange.cgcm45.cm + cc.dp2*demand$ChangeSummerET) 
 demand$deltaP.n.cgcm85.cm <- (cc.dp1*demand$spChange.cgcm85.cm + cc.dp2*demand$ChangeSummerET)
@@ -357,32 +362,32 @@ demand$deltaP.n.cgcm85.cm <- (cc.dp1*demand$spChange.cgcm85.cm + cc.dp2*demand$C
 demand$deltaP.n.cm5a45.cm <- (cc.dp1*demand$spChange.cm5a45.cm + cc.dp2*demand$ChangeSummerET) 
 demand$deltaP.n.cm5a85.cm <- (cc.dp1*demand$spChange.cm5a85.cm + cc.dp2*demand$ChangeSummerET)
 
-demand$deltaP.n.had45.cm <- (cc.dp1*demand$spChange.had45.cm + cc.dp2*demand$ChangeSummerET) 
-demand$deltaP.n.had85.cm <- (cc.dp1*demand$spChange.had85.cm + cc.dp2*demand$ChangeSummerET)
+demand$deltaP.n.had45.cm  <- (cc.dp1*demand$spChange.had45.cm + cc.dp2*demand$ChangeSummerET) 
+demand$deltaP.n.had85.cm  <- (cc.dp1*demand$spChange.had85.cm + cc.dp2*demand$ChangeSummerET)
 
-# Convert cm precip to volume at the county level
-## Firstm convert cm to meters
-demand$deltaP.n.cn45.m <- demand$deltaP.n.cn45.cm/100
-demand$deltaP.n.cn85.m <- demand$deltaP.n.cn85.cm/100
+# Steps to convert cm precip to volume at the county level
+## First, convert cm to meters
+demand$deltaP.n.cn45.m    <- demand$deltaP.n.cn45.cm/100
+demand$deltaP.n.cn85.m    <- demand$deltaP.n.cn85.cm/100
 
-demand$deltaP.n.esm45.m <- demand$deltaP.n.esm45.cm/100
-demand$deltaP.n.esm85.m <- demand$deltaP.n.esm85.cm/100
+demand$deltaP.n.esm45.m   <- demand$deltaP.n.esm45.cm/100
+demand$deltaP.n.esm85.m   <- demand$deltaP.n.esm85.cm/100
 
-demand$deltaP.n.cgcm45.m <- demand$deltaP.n.cgcm45.cm/100
-demand$deltaP.n.cgcm85.m <- demand$deltaP.n.cgcm85.cm/100
+demand$deltaP.n.cgcm45.m  <- demand$deltaP.n.cgcm45.cm/100
+demand$deltaP.n.cgcm85.m  <- demand$deltaP.n.cgcm85.cm/100
 
-demand$deltaP.n.cm5a45.m <- demand$deltaP.n.cm5a45.cm/100
-demand$deltaP.n.cm5a85.m <- demand$deltaP.n.cm5a85.cm/100
+demand$deltaP.n.cm5a45.m  <- demand$deltaP.n.cm5a45.cm/100
+demand$deltaP.n.cm5a85.m  <- demand$deltaP.n.cm5a85.cm/100
 
-demand$deltaP.n.had45.m <- demand$deltaP.n.had45.cm/100
-demand$deltaP.n.had85.m <- demand$deltaP.n.had85.cm/100
+demand$deltaP.n.had45.m   <- demand$deltaP.n.had45.cm/100
+demand$deltaP.n.had85.m   <- demand$deltaP.n.had85.cm/100
 
 # Next, multiply precip meters by county area (m2) to get volume of rainfall
-demand$deltaP.n.cn45.m3 <- demand$deltaP.n.cn45.m*demand$aland
-demand$deltaP.n.cn85.m3 <- demand$deltaP.n.cn85.m*demand$aland
+demand$deltaP.n.cn45.m3   <- demand$deltaP.n.cn45.m*demand$aland
+demand$deltaP.n.cn85.m3   <- demand$deltaP.n.cn85.m*demand$aland
 
-demand$deltaP.n.esm45.m3 <- demand$deltaP.n.esm45.m*demand$aland
-demand$deltaP.n.esm85.m3 <- demand$deltaP.n.esm85.m*demand$aland
+demand$deltaP.n.esm45.m3  <- demand$deltaP.n.esm45.m*demand$aland
+demand$deltaP.n.esm85.m3  <- demand$deltaP.n.esm85.m*demand$aland
 
 demand$deltaP.n.cgcm45.m3 <- demand$deltaP.n.cgcm45.m*demand$aland
 demand$deltaP.n.cgcm85.m3 <- demand$deltaP.n.cgcm85.m*demand$aland
@@ -390,20 +395,20 @@ demand$deltaP.n.cgcm85.m3 <- demand$deltaP.n.cgcm85.m*demand$aland
 demand$deltaP.n.cm5a45.m3 <- demand$deltaP.n.cm5a45.m*demand$aland
 demand$deltaP.n.cm5a85.m3 <- demand$deltaP.n.cm5a85.m*demand$aland
 
-demand$deltaP.n.had45.m3 <- demand$deltaP.n.had45.m*demand$aland
-demand$deltaP.n.had85.m3 <- demand$deltaP.n.had85.m*demand$aland
+demand$deltaP.n.had45.m3  <- demand$deltaP.n.had45.m*demand$aland
+demand$deltaP.n.had85.m3  <- demand$deltaP.n.had85.m*demand$aland
 
 # # divide by number of days in growing season April - Sept (6*30)
 # And convert to gallons (*264); can do this in one step
 # This is ∆P'*nP in Mgal/day
-demand$Dom.deltaP.n.cn45.Mgal <- (demand$deltaP.n.cn45.m3/(6*30)*264)/1000000
-demand$Dom.deltaP.n.cn85.Mgal <- (demand$deltaP.n.cn85.m3/(6*30)*264)/1000000
+demand$Dom.deltaP.n.cn45.Mgal   <- (demand$deltaP.n.cn45.m3/(6*30)*264)/1000000
+demand$Dom.deltaP.n.cn85.Mgal   <- (demand$deltaP.n.cn85.m3/(6*30)*264)/1000000
 
-demand$Dom.deltaP.n.esm45.Mgal <- (demand$deltaP.n.esm45.m3/(6*30)*264)/1000000
-demand$Dom.deltaP.n.esm85.Mgal <- (demand$deltaP.n.esm85.m3/(6*30)*264)/1000000
+demand$Dom.deltaP.n.esm45.Mgal  <- (demand$deltaP.n.esm45.m3/(6*30)*264)/1000000
+demand$Dom.deltaP.n.esm85.Mgal  <- (demand$deltaP.n.esm85.m3/(6*30)*264)/1000000
 
-demand$Dom.deltaP.n.had45.Mgal <- (demand$deltaP.n.had45.m3/(6*30)*264)/1000000
-demand$Dom.deltaP.n.had85.Mgal <- (demand$deltaP.n.had85.m3/(6*30)*264)/1000000
+demand$Dom.deltaP.n.had45.Mgal  <- (demand$deltaP.n.had45.m3/(6*30)*264)/1000000
+demand$Dom.deltaP.n.had85.Mgal  <- (demand$deltaP.n.had85.m3/(6*30)*264)/1000000
 
 demand$Dom.deltaP.n.cgcm45.Mgal <- (demand$deltaP.n.cgcm45.m3/(6*30)*264)/1000000
 demand$Dom.deltaP.n.cgcm85.Mgal <- (demand$deltaP.n.cgcm85.m3/(6*30)*264)/1000000
@@ -412,13 +417,13 @@ demand$Dom.deltaP.n.cm5a45.Mgal <- (demand$deltaP.n.cm5a45.m3/(6*30)*264)/100000
 demand$Dom.deltaP.n.cm5a85.Mgal <- (demand$deltaP.n.cm5a85.m3/(6*30)*264)/1000000
 
                                          
-# In the main equation, withdrawal = U * ⏀, this is is ⏀, where ⏀=⏀nocc+∆⏀cc:
+# In the main equation, withdrawal = U * ϕ, this is is ϕ where ϕ=ϕnocc+∆ϕcc:
 
-demand$wpu.dp.cc.cn45 <- demand$wpu.dom + (demand$Dom.deltaP.n.cn45.Mgal + cc.dp2*demand$ChangeSummerET) 
-demand$wpu.dp.cc.cn85 <- demand$wpu.dom + (demand$Dom.deltaP.n.cn85.Mgal + cc.dp2*demand$ChangeSummerET)
+demand$wpu.dp.cc.cn45   <- demand$wpu.dom + (demand$Dom.deltaP.n.cn45.Mgal + cc.dp2*demand$ChangeSummerET) 
+demand$wpu.dp.cc.cn85   <- demand$wpu.dom + (demand$Dom.deltaP.n.cn85.Mgal + cc.dp2*demand$ChangeSummerET)
 
-demand$wpu.dp.cc.esm45 <- demand$wpu.dom + (demand$Dom.deltaP.n.esm45.Mgal + cc.dp2*demand$ChangeSummerET) 
-demand$wpu.dp.cc.esm85 <- demand$wpu.dom + (demand$Dom.deltaP.n.esm85.Mgal + cc.dp2*demand$ChangeSummerET)
+demand$wpu.dp.cc.esm45  <- demand$wpu.dom + (demand$Dom.deltaP.n.esm45.Mgal + cc.dp2*demand$ChangeSummerET) 
+demand$wpu.dp.cc.esm85  <- demand$wpu.dom + (demand$Dom.deltaP.n.esm85.Mgal + cc.dp2*demand$ChangeSummerET)
 
 demand$wpu.dp.cc.cgcm45 <- demand$wpu.dom + (demand$Dom.deltaP.n.cgcm45.Mgal + cc.dp2*demand$ChangeSummerET) 
 demand$wpu.dp.cc.cgcm85 <- demand$wpu.dom + (demand$Dom.deltaP.n.cgcm85.Mgal + cc.dp2*demand$ChangeSummerET)
@@ -426,8 +431,8 @@ demand$wpu.dp.cc.cgcm85 <- demand$wpu.dom + (demand$Dom.deltaP.n.cgcm85.Mgal + c
 demand$wpu.dp.cc.cm5a45 <- demand$wpu.dom + (demand$Dom.deltaP.n.cm5a45.Mgal + cc.dp2*demand$ChangeSummerET) 
 demand$wpu.dp.cc.cm5a85 <- demand$wpu.dom + (demand$Dom.deltaP.n.cm5a85.Mgal + cc.dp2*demand$ChangeSummerET)
 
-demand$wpu.dp.cc.had45 <- demand$wpu.dom + (demand$Dom.deltaP.n.had45.Mgal + cc.dp2*demand$ChangeSummerET) 
-demand$wpu.dp.cc.had85 <- demand$wpu.dom + (demand$Dom.deltaP.n.had85.Mgal + cc.dp2*demand$ChangeSummerET)
+demand$wpu.dp.cc.had45  <- demand$wpu.dom + (demand$Dom.deltaP.n.had45.Mgal + cc.dp2*demand$ChangeSummerET) 
+demand$wpu.dp.cc.had85  <- demand$wpu.dom + (demand$Dom.deltaP.n.had85.Mgal + cc.dp2*demand$ChangeSummerET)
 
 
 # Multiply population projections by WPU to get total domestic withdrawals
@@ -435,164 +440,141 @@ demand$wpu.dp.cc.had85 <- demand$wpu.dom + (demand$Dom.deltaP.n.had85.Mgal + cc.
 # This is W = U*⏀
 # U = population; ⏀=WPUcc
 
-demand$W.dp.cc.cn45 <- demand$pop*demand$wpu.dp.cc.cn45
-demand$W.dp.cc.cn85 <- demand$pop*demand$wpu.dp.cc.cn48
+demand$W.dom.cc.cn45    <- demand$pop*demand$wpu.dp.cc.cn45
+demand$W.dom.cc.cn85    <- demand$pop*demand$wpu.dp.cc.cn85
 
-demand$W.dp.cc.esm45 <- demand$pop*demand$wpu.dp.cc.esm45
-demand$W.dp.cc.esm85 <- demand$pop*demand$wpu.dp.cc.esm48
+demand$W.dom.cc.esm45   <- demand$pop*demand$wpu.dp.cc.esm45
+demand$W.dom.cc.esm85   <- demand$pop*demand$wpu.dp.cc.esm85
 
-demand$W.dp.cc.cgcm45 <- demand$pop*demand$wpu.dp.cc.cgcm45
-demand$W.dp.cc.cgcm85 <- demand$pop*demand$wpu.dp.cc.cgcm48
+demand$W.dom.cc.cgcm45  <- demand$pop*demand$wpu.dp.cc.cgcm45
+demand$W.dom.cc.cgcm85  <- demand$pop*demand$wpu.dp.cc.cgcm85
 
-demand$W.dp.cc.cm5a45 <- demand$pop*demand$wpu.dp.cc.cm5a45
-demand$W.dp.cc.cm5a85 <- demand$pop*demand$wpu.dp.cc.cm5a.85
+demand$W.dom.cc.cm5a45  <- demand$pop*demand$wpu.dp.cc.cm5a45
+demand$W.dom.cc.cm5a85  <- demand$pop*demand$wpu.dp.cc.cm5a85
 
-demand$W.dp.cc.had45 <- demand$pop*demand$wpu.dp.cc.had45
-demand$W.dp.cc.had85 <- demand$pop*demand$wpu.dp.cc.had48
-
-
-# precip.data$ChangeSummerPrecip.meters <- precip.data$ChangeSummerPrecip / 1000
-# # read in county area to turn height into volume
-# countyArea <- read.csv(file="1_BaseData/CountyAreas.csv")
-# colnames(countyArea)[colnames(countyArea) == "FIPS"] <- "fips"
-# precip.data <- merge(precip.data, countyArea, by="fips")
-# colnames(precip.data)[colnames(precip.data) == "Shape_Area..m2."] <- "area"
-# precip.data$ChangeSummerP.volume <- precip.data$ChangeSummerPrecip.meters * precip.data$area 
-
-# precip.data$ChangeSummerPrecip <- precip.data$ChangeSummerP.volume / (6*30)
-# # convert m3/day to gallons / day
-# precip.data$ChangeSummerPrecipGD <- precip.data$ChangeSummerPrecip * 264
-# precip.data$ChangeSummerPrecipMGD <- precip.data$ChangeSummerPrecipGD / 1000000
+demand$W.dom.cc.had45   <- demand$pop*demand$wpu.dp.cc.had45
+demand$W.dom.cc.had85   <- demand$pop*demand$wpu.dp.cc.had85
 
 
+data.table::fwrite(demand, file="withdrawal_CC.csv")
 
-#-----------
+# --- 3b. Agricultural Water Use with Climate Change: 
 
-# Calculate percent change from base precipitation for each model:
-#precip.data$sp_pctchange_cm5a45<- (precip.data$spBase_cm5a_45/precip.data$sp_cm5a_45)
-#precip.data$sp_pctchange_cm5a85<- (precip.data$spBase_cm5a_85/precip.data$sp_cm5a_85)
+##     W  = A * ϕ * ∂
+##     ϕ  = Irrigation withdrawal in feet of depth
+##     ∂  = 893 gallons per acre-foot
 
-#precip.data$sp_pctchange_esm45<- (precip.data$spBase_esm_45/precip.data$sp_esm_45)
-#precip.data$sp_pctchange_esm85<- (precip.data$spBase_esm_85/precip.data$sp_esm_85)
+##     ϕ  = (ϕnocc + ∆ϕcc)
+## ϕnocc  = Withdrawals_t/Acres_t
 
-#precip.data$sp_pctchange_cn45<- (precip.data$spBase_cn_45/precip.data$sp_cn_45)
-#precip.data$sp_pctchange_cn85<- (precip.data$spBase_cn_85/precip.data$sp_cn_85)
+# In this section, we estimate this:
+##  ∆ϕcc  = ϑ (-∆P' + ˚ETp)/(γ)
+###    ϑ  = 0.0328, number of feet per cm
+###   ∆P' = Change in effective precipitation (cm)
+### ∆ETp  = Change in potential ET during growing season
+###    γ  = Consumptive use portion, which we'll ignore for now
 
-#precip.data$sp_pctchange_cgcm45<- (precip.data$spBase_cgcm_45/precip.data$sp_cgcm_45)
-#precip.data$sp_pctchange_cgcm85<- (precip.data$spBase_cgcm_85/precip.data$sp_cgcm_85)
+# ϑ (- ∆P' + ETp)
+cc.ag1 <- 0.0328  # number of feet per cm
+cc.ag2 <- 893  # gallon-days per acre-foot
 
-#precip.data$sp_pctchange_had45<- (precip.data$spBase_had_45/precip.data$sp_had_45)
-#precip.data$sp_pctchange_had85<- (precip.data$spBase_had_85/precip.data$sp_had_85)
+# This is ∆wpu_cc in feet (-∆P' + ˚ETp)
+demand$wpu.Delta.ag.cc.cn45.ft    <- cc.ag1*(-1*demand$deltaP.n.cn45.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.cn85.ft    <- cc.ag1*(-1*demand$deltaP.n.cn85.cm + demand$delta.spet)
 
+demand$wpu.Delta.ag.cc.esm45.ft   <- cc.ag1*(-1*demand$deltaP.n.esm45.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.esm85.ft   <- cc.ag1*(-1*demand$deltaP.n.esm85.cm + demand$delta.spet)
 
-# Multiply %∆ precip by per person domestic water use volumes (wpu)
-# to get the change in per person domestic water use, by SSP, by climate change model
+demand$wpu.Delta.ag.cc.cgcm45.ft  <- cc.ag1*(-1*demand$deltaP.n.cgcm45.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.cgcm85.ft  <- cc.ag1*(-1*demand$deltaP.n.cgcm85.cm + demand$delta.spet)
 
-## wpu.dom.cc.XX is change in demand over time, by SSP, by ∆P for each CC model
+demand$wpu.Delta.ag.cc.cm5a45.ft  <- cc.ag1*(-1*demand$deltaP.n.cm5a45.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.cm5a85.ft  <- cc.ag1*(-1*demand$deltaP.n.cm5a85.cm + demand$delta.spet)
 
-
-
-#demand$wpu.dom.cc.cgcm45 <-demand$wpu.dom*demand$sp_pctchange_cgcm45
-#demand$wpu.dom.cc.cgcm85 <-demand$wpu.dom*demand$sp_pctchange_cgcm85
-
-#demand$wpu.dom.cc.esm45 <-demand$wpu.dom*demand$sp_pctchange_esm45
-#demand$wpu.dom.cc.esm85 <-demand$wpu.dom*demand$sp_pctchange_esm85
-
-#demand$wpu.dom.cc.cn45 <-demand$wpu.dom*demand$sp_pctchange_cn45
-#demand$wpu.dom.cc.cn85 <-demand$wpu.dom*demand$sp_pctchange_cn85
-
-#demand$wpu.dom.cc.cm5a45 <-demand$wpu.dom*demand$sp_pctchange_cm5a45
-#demand$wpu.dom.cc.cm5a85 <-demand$wpu.dom*demand$sp_pctchange_cm5a85
-
-#demand$wpu.dom.cc.had45 <-demand$wpu.dom*demand$sp_pctchange_had45
-#demand$wpu.dom.cc.had85 <-demand$wpu.dom*demand$sp_pctchange_had85
+demand$wpu.Delta.ag.cc.had45.ft   <- cc.ag1*(-1*demand$deltaP.n.had45.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.had85.ft   <- cc.ag1*(-1*demand$deltaP.n.had85.cm + demand$delta.spet)
 
 
-# For each climate model, multiply estimate change in per person domestic water use volume by estimated population:
-# This is change in domestic demand, by SSP, by climate change model
-  ## (∆P' in equation 11)
+#   Divide by irrigated acres to get AF
+##  Irrigated acres, acres, are in 1000s, so have to multiply by 1000
+##  This is ∆wpu_cc in Acre-Feet (-∆P' + ˚ETp)
 
-#demand$dom.cc.cn45 <- demand$pop*demand$wpu.dom.cc.cn45
-#demand$dom.cc.cn85 <- demand$pop*demand$wpu.dom.cc.cn85
+################################### Question: divide by irrigated acres or by county acreage?
+#----------
+demand$wpu.Delta.ag.cc.cn45.AF   <-  demand$wpu.Delta.ag.cc.cn45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.cn85.AF   <-  demand$wpu.Delta.ag.cc.cn85.ft/(demand$acres*1000)
 
-#demand$dom.cc.esm45 <- demand$pop*demand$wpu.dom.cc.esm45
-#demand$dom.cc.esm85 <- demand$pop*demand$wpu.dom.cc.esm85
+demand$wpu.Delta.ag.cc.esm45.AF  <-  demand$wpu.Delta.ag.cc.esm45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.esm85.AF  <-  demand$wpu.Delta.ag.cc.esm45.ft/(demand$acres*1000)
 
-#demand$dom.cc.cm5a45 <- demand$pop*demand$wpu.dom.cc.cm5a45
-#demand$dom.cc.cm5a85 <- demand$pop*demand$wpu.dom.cc.cm5a85
+demand$wpu.Delta.ag.cc.cgcm45.AF <-  demand$wpu.Delta.ag.cc.cgcm45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.cgcm85.AF <-  demand$wpu.Delta.ag.cc.cgcm45.ft/(demand$acres*1000)
 
-#demand$dom.cc.cgcm45 <- demand$pop*demand$wpu.dom.cc.cgcm45
-#demand$dom.cc.cgcm85 <- demand$pop*demand$wpu.dom.cc.cgcm85
+demand$wpu.Delta.ag.cc.cm5a45.AF <-  demand$wpu.Delta.ag.cc.cm5a45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.cm5a85.AF <-  demand$wpu.Delta.ag.cc.cm5a45.ft/(demand$acres*1000)
 
-#demand$dom.cc.had45 <- demand$pop*demand$wpu.dom.cc.had45
-#demand$dom.cc.had85 <- demand$pop*demand$wpu.dom.cc.had85
+demand$wpu.Delta.ag.cc.had45.AF  <-  demand$wpu.Delta.ag.cc.had45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.had85.AF  <-  demand$wpu.Delta.ag.cc.had45.ft/(demand$acres*1000)
 
 
 
 
-# convert precip data in mm height to cm height (per equation 11) 
-#demand$dom.cc.cn45.cm <- demand$dom.cc.cn45 * 0.1
-#demand$dom.cc.cn85.cm <- demand$dom.cc.cn85 * 0.1
-
-#demand$dom.cc.had45.cm <- demand$dom.cc.had45 * 0.1
-#demand$dom.cc.had85.cm <- demand$dom.cc.had85 * 0.1
-
-#demand$dom.cc.cgcm45.cm <- demand$dom.cc.cgcm45 * 0.1
-#demand$dom.cc.cgcm85.cm <- demand$dom.cc.cgcm85 * 0.1
-
-#demand$dom.cc.cm5a45.cm <- demand$dom.cc.cm5a45 * 0.1
-#demand$dom.cc.cm5a85.cm <- demand$dom.cc.cm5a85 * 0.1
-
-#demand$dom.cc.esm45.cm <- demand$dom.cc.esm45 * 0.1
-#demand$dom.cc.esm85.cm <- demand$dom.cc.esm85 * 0.1
-
-# Multiply dom.cc.cm by n^p, which is a constant equal to -1.415
-# This is ∆Φ = (ΦnoCC + ∆Φcc), where ∆Φ=∆P'*nP + ∆ETp*nET
-  # for each climate change scenario, for each SSP
-  #The unit is gallons per capita per day + (cm/year precip in cm
-#  
-# demand$wpu.dp.cc.cn45 <- demand$wpu.dom + (cc.dp1*demand$dom.cc.cn45 + cc.dp2*demand$ChangeSummerET) 
-# demand$wpu.dp.cc.cn85 <- demand$wpu.dom + (cc.dp1*demand$dom.cc.cn85 + cc.dp2*demand$ChangeSummerET)
-# 
-# demand$wpu.dp.cc.esm45 <- demand$wpu.dom + (cc.dp1*demand$dom.cc.esm45 + cc.dp2*demand$ChangeSummerET) 
-# demand$wpu.dp.cc.esm85 <- demand$wpu.dom + (cc.dp1*demand$dom.cc.esm85 + cc.dp2*demand$ChangeSummerET)
-# 
-# demand$wpu.dp.cc.cgcm45 <- demand$wpu.dom + (cc.dp1*demand$dom.cc.cgcm45 + cc.dp2*demand$ChangeSummerET) 
-# demand$wpu.dp.cc.cgcm85 <- demand$wpu.dom + (cc.dp1*demand$dom.cc.cgcm85 + cc.dp2*demand$ChangeSummerET)
-# 
-# demand$wpu.dp.cc.cm5a45 <- demand$wpu.dom + (cc.dp1*demand$dom.cc.cm5a45 + cc.dp2*demand$ChangeSummerET) 
-# demand$wpu.dp.cc.cm5a45 <- demand$wpu.dom + (cc.dp1*demand$dom.cc.cm5a85 + cc.dp2*demand$ChangeSummerET)
-# 
-# demand$wpu.dp.cc.had45 <- demand$wpu.dom + (cc.dp1*demand$dom.cc.had45 + cc.dp2*demand$ChangeSummerET) 
-# demand$wpu.dp.cc.had45 <- demand$wpu.dom + (cc.dp1*demand$dom.cc.had85 + cc.dp2*demand$ChangeSummerET)
-# 
-
-#/ 1000 --> This is to convert from m back to mm
-# the original code did not have the last term and divided by 1000
-# domestic demand with climate change:
-#demand$dom.cc <- demand$wpu.dp.cc * demand$pop
-
-
-
-
-
-### change in ag
-
-
-# agricultural water use with climate change:
 # Multiply wpu by percentage change in summer precip to get 
 # demands with climate impacts
-demand$wpu.ag.cc <- demand$wpu.ag * (1/demand$delta.sprecip)
-demand$ag.cc <- demand$wpu.ag.cc * demand$acres
+## This is  ϕ  = (ϕnocc + ∆ϕcc):
+
+#################### Question: what unit is wpu_nocc? If it's already in Mgal/day, then will add it after
+# convewrting AF units on ∆wpu_cc to Mgal/day
+demand$wpu.ag.cc.cn45   <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.cn45.AF*cc.ag2)
+demand$wpu.ag.cc.cn85   <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.cn85.AF*cc.ag2)
+
+demand$wpu.ag.cc.esm45  <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.esm45.AF*cc.ag2)
+demand$wpu.ag.cc.esm85  <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.esm85.AF*cc.ag2)
+
+demand$wpu.ag.cc.cgcm45 <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.cgcm45.AF*cc.ag2)
+demand$wpu.ag.cc.cgcm85 <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.cgcm85.AF*cc.ag2)
+
+demand$wpu.ag.cc.cm5a45 <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.cm5a45.AF*cc.ag2)
+demand$wpu.ag.cc.cm5a85 <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.cm5a85.AF*cc.ag2)
+
+demand$wpu.ag.cc.had45  <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.had45.AF*cc.ag2)
+demand$wpu.ag.cc.had85  <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.had85.AF*cc.ag2)
+
+
+## Finally, W  = A * ϕ * ∂
+
+demand$W.ag.cc.cn45   <-  demand$acres * wpu.ag.cc.cn45 * cc.ag2
+demand$W.ag.cc.cn85   <-  demand$acres * wpu.ag.cc.cn85 * cc.ag2
+
+demand$W.ag.cc.esm45  <-  demand$acres * wpu.ag.cc.esm45 * cc.ag2
+demand$W.ag.cc.esm85  <-  demand$acres * wpu.ag.cc.esm85 * cc.ag2
+
+demand$W.ag.cc.cgcm45 <-  demand$acres * wpu.ag.cc.cgcm45 * cc.ag2
+demand$W.ag.cc.cgcm85 <-  demand$acres * wpu.ag.cc.cgcm85 * cc.ag2 
+
+demand$W.ag.cc.cm5a45 <-  demand$acres * wpu.ag.cc.cm5a45 * cc.ag2
+demand$W.ag.cc.cm5a85 <-  demand$acres * wpu.ag.cc.cm5a85 * cc.ag2
+
+demand$W.ag.cc.had45  <-  demand$acres * wpu.ag.cc.had45 * cc.ag2
+demand$W.ag.cc.had85  <-  demand$acres * wpu.ag.cc.had85 * cc.ag2
+  
+
+
+
+# Multiply wpu by percentage change in summer precip to get 
+# demands with climate impacts
+# demand$wpu.ag.cc <- demand$wpu.ag * (1/demand$delta.sprecip)
+# demand$ag.cc <- demand$wpu.ag.cc * demand$acres
 
 # comparing domestic demand with and without climate change
-keeps <- c("fips","year","ssp","GCM","RCP","dom.t","dom.cc","ag.t","ag.cc")
-dcheck <- demand
-dcheck <- dcheck[,names(dcheck) %in% keeps]
-dcheck$compare.dom <- dcheck$dom.cc / dcheck$dom.t
-dcheck$compare.ag <- dcheck$ag.cc / dcheck$ag.t
+# keeps <- c("fips","year","ssp","GCM","RCP","dom.t","dom.cc","ag.t","ag.cc")
+# dcheck <- demand
+# dcheck <- dcheck[,names(dcheck) %in% keeps]
+# dcheck$compare.dom <- dcheck$dom.cc / dcheck$dom.t
+# dcheck$compare.ag <- dcheck$ag.cc / dcheck$ag.t
 
 write.csv(demand, file="demand-final.csv")
+
 
 # --- OUTPUT FORMAT ----
 
