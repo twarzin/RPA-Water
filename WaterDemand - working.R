@@ -521,24 +521,44 @@ demand$wpu.Delta.ag.cc.had85.AF  <-  demand$wpu.Delta.ag.cc.had45.ft/(demand$acr
 
 # Multiply wpu by percentage change in summer precip to get 
 # demands with climate impacts
-## This is  ϕ  = (ϕnocc + ∆ϕcc):
+
 
 #################### Question: what unit is wpu_nocc? If it's already in Mgal/day, then will add it after
-# convewrting AF units on ∆wpu_cc to Mgal/day
-demand$wpu.ag.cc.cn45   <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.cn45.AF*cc.ag2)
-demand$wpu.ag.cc.cn85   <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.cn85.AF*cc.ag2)
+# converting AF units on ∆wpu_cc to Mgal/day
 
-demand$wpu.ag.cc.esm45  <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.esm45.AF*cc.ag2)
-demand$wpu.ag.cc.esm85  <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.esm85.AF*cc.ag2)
+## This is  ∆ϕcc converted from AF to Mgal/day
 
-demand$wpu.ag.cc.cgcm45 <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.cgcm45.AF*cc.ag2)
-demand$wpu.ag.cc.cgcm85 <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.cgcm85.AF*cc.ag2)
+demand$wpu.Delta.ag.cc.cn45.Mgal <- demand$wpu.Delta.ag.cc.cn45.AF*cc.ag2
+demand$wpu.Delta.ag.cc.cn85.Mgal <- demand$wpu.Delta.ag.cc.cn85.AF*cc.ag2
 
-demand$wpu.ag.cc.cm5a45 <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.cm5a45.AF*cc.ag2)
-demand$wpu.ag.cc.cm5a85 <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.cm5a85.AF*cc.ag2)
+demand$wpu.Delta.ag.cc.cgcm45.Mgal <- demand$wpu.Delta.ag.cc.cgcm45.AF*cc.ag2
+demand$wpu.Delta.ag.cc.cgcm85.Mgal <- demand$wpu.Delta.ag.cc.cgcm85.AF*cc.ag2
 
-demand$wpu.ag.cc.had45  <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.had45.AF*cc.ag2)
-demand$wpu.ag.cc.had85  <- demand$wpu.ag + (demand$acres*demand$wpu.Delta.ag.cc.had85.AF*cc.ag2)
+demand$wpu.Delta.ag.cc.esm45.Mgal <- demand$wpu.Delta.ag.cc.esm45.AF*cc.ag2
+demand$wpu.Delta.ag.cc.esm85.Mgal <- demand$wpu.Delta.ag.cc.esm85.AF*cc.ag2
+
+demand$wpu.Delta.ag.cc.cm5a45.Mgal <- demand$wpu.Delta.ag.cc.cm5a45.AF*cc.ag2
+demand$wpu.Delta.ag.cc.cm5a85.Mgal <- demand$wpu.Delta.ag.cc.cm5a85.AF*cc.ag2
+
+demand$wpu.Delta.ag.cc.had45.Mgal <- demand$wpu.Delta.ag.cc.had45.AF*cc.ag2
+demand$wpu.Delta.ag.cc.had85.Mgal <- demand$wpu.Delta.ag.cc.had85.AF*cc.ag2
+
+
+## This is  ϕ  = (ϕnocc + ∆ϕcc):
+demand$wpu.ag.cc.cn45   <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cn45.Mgal
+demand$wpu.ag.cc.cn85   <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cn85.Mgal
+
+demand$wpu.ag.cc.esm45  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.esm45.Mgal
+demand$wpu.ag.cc.esm85  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.esm85.Mgal
+
+demand$wpu.ag.cc.cgcm45 <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cgcm45.Mgal
+demand$wpu.ag.cc.cgcm85 <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cgcm85.Mgal
+
+demand$wpu.ag.cc.cm5a45 <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cm5a45.Mgal
+demand$wpu.ag.cc.cm5a85 <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cm5a85.Mgal
+
+demand$wpu.ag.cc.had45  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.had45.Mgal
+demand$wpu.ag.cc.had85  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.had85.Mgal
 
 
 ## Finally, W  = A * ϕ * ∂
