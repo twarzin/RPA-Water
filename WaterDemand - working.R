@@ -505,22 +505,17 @@ demand$wpu.Delta.ag.cc.cn45.AF   <-  demand$wpu.Delta.ag.cc.cn45.ft/(demand$acre
 demand$wpu.Delta.ag.cc.cn85.AF   <-  demand$wpu.Delta.ag.cc.cn85.ft/(demand$acres*1000)
 
 demand$wpu.Delta.ag.cc.esm45.AF  <-  demand$wpu.Delta.ag.cc.esm45.ft/(demand$acres*1000)
-demand$wpu.Delta.ag.cc.esm85.AF  <-  demand$wpu.Delta.ag.cc.esm45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.esm85.AF  <-  demand$wpu.Delta.ag.cc.esm85.ft/(demand$acres*1000)
 
 demand$wpu.Delta.ag.cc.cgcm45.AF <-  demand$wpu.Delta.ag.cc.cgcm45.ft/(demand$acres*1000)
-demand$wpu.Delta.ag.cc.cgcm85.AF <-  demand$wpu.Delta.ag.cc.cgcm45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.cgcm85.AF <-  demand$wpu.Delta.ag.cc.cgcm85.ft/(demand$acres*1000)
 
 demand$wpu.Delta.ag.cc.cm5a45.AF <-  demand$wpu.Delta.ag.cc.cm5a45.ft/(demand$acres*1000)
-demand$wpu.Delta.ag.cc.cm5a85.AF <-  demand$wpu.Delta.ag.cc.cm5a45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.cm5a85.AF <-  demand$wpu.Delta.ag.cc.cm5a85.ft/(demand$acres*1000)
 
 demand$wpu.Delta.ag.cc.had45.AF  <-  demand$wpu.Delta.ag.cc.had45.ft/(demand$acres*1000)
-demand$wpu.Delta.ag.cc.had85.AF  <-  demand$wpu.Delta.ag.cc.had45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.had85.AF  <-  demand$wpu.Delta.ag.cc.had85.ft/(demand$acres*1000)
 
-
-
-
-# Multiply wpu by percentage change in summer precip to get 
-# demands with climate impacts
 
 
 #################### Question: what unit is wpu_nocc? If it's already in Mgal/day, then will add it after
@@ -563,22 +558,22 @@ demand$wpu.ag.cc.had85  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.had85.Mgal
 
 ## Finally, W  = A * ϕ * ∂
 
-demand$W.ag.cc.cn45   <-  demand$acres * wpu.ag.cc.cn45 * cc.ag2
-demand$W.ag.cc.cn85   <-  demand$acres * wpu.ag.cc.cn85 * cc.ag2
+demand$W.ag.cc.cn45   <-  demand$acres * demand$wpu.ag.cc.cn45 * cc.ag2
+demand$W.ag.cc.cn85   <-  demand$acres * demand$wpu.ag.cc.cn85 * cc.ag2
 
-demand$W.ag.cc.esm45  <-  demand$acres * wpu.ag.cc.esm45 * cc.ag2
-demand$W.ag.cc.esm85  <-  demand$acres * wpu.ag.cc.esm85 * cc.ag2
+demand$W.ag.cc.esm45  <-  demand$acres * demand$wpu.ag.cc.esm45 * cc.ag2
+demand$W.ag.cc.esm85  <-  demand$acres * demand$wpu.ag.cc.esm85 * cc.ag2
 
-demand$W.ag.cc.cgcm45 <-  demand$acres * wpu.ag.cc.cgcm45 * cc.ag2
-demand$W.ag.cc.cgcm85 <-  demand$acres * wpu.ag.cc.cgcm85 * cc.ag2 
+demand$W.ag.cc.cgcm45 <-  demand$acres * demand$wpu.ag.cc.cgcm45 * cc.ag2
+demand$W.ag.cc.cgcm85 <-  demand$acres * demand$wpu.ag.cc.cgcm85 * cc.ag2 
 
-demand$W.ag.cc.cm5a45 <-  demand$acres * wpu.ag.cc.cm5a45 * cc.ag2
-demand$W.ag.cc.cm5a85 <-  demand$acres * wpu.ag.cc.cm5a85 * cc.ag2
+demand$W.ag.cc.cm5a45 <-  demand$acres * demand$wpu.ag.cc.cm5a45 * cc.ag2
+demand$W.ag.cc.cm5a85 <-  demand$acres * demand$wpu.ag.cc.cm5a85 * cc.ag2
 
-demand$W.ag.cc.had45  <-  demand$acres * wpu.ag.cc.had45 * cc.ag2
-demand$W.ag.cc.had85  <-  demand$acres * wpu.ag.cc.had85 * cc.ag2
+demand$W.ag.cc.had45  <-  demand$acres * demand$wpu.ag.cc.had45 * cc.ag2
+demand$W.ag.cc.had85  <-  demand$acres * demand$wpu.ag.cc.had85 * cc.ag2
   
-
+write.csv(demand, file="demand-final.csv")
 
 
 # Multiply wpu by percentage change in summer precip to get 
@@ -593,7 +588,7 @@ demand$W.ag.cc.had85  <-  demand$acres * wpu.ag.cc.had85 * cc.ag2
 # dcheck$compare.dom <- dcheck$dom.cc / dcheck$dom.t
 # dcheck$compare.ag <- dcheck$ag.cc / dcheck$ag.t
 
-write.csv(demand, file="demand-final.csv")
+
 
 
 # --- OUTPUT FORMAT ----
