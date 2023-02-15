@@ -134,12 +134,13 @@ wd.2015[is.na(wd.2015)] <- 0
 # Creating variables for total sector withdrawals + deliveries (Mgal/day)
 wd.2015$dom   <- wd.2015$DO.WDelv
 wd.2015$ind   <- wd.2015$IN.WFrTo + wd.2015$MI.WFrTo
-wd.2015$therm <- wd.2015$PT.WFrTo + wd.2015$PT.PSDel
 wd.2015$ag    <- wd.2015$IR.WFrTo
+wd.2015$therm <- wd.2015$PT.WFrTo + wd.2015$PT.PSDel
 wd.2015$la    <- wd.2015$LI.WFrTo + wd.2015$AQ.WFrTo
 
 # Check total withdrawals for baseline data
-wd.2015$total <- wd.2015$dom + wd.2015$ind + wd.2015$therm + 
+
+wd.2015$total <- wd.2015$dom + wd.2015$ind + wd.2015$therm +  
   wd.2015$ag + wd.2015$la
 
 all.wd.2015 <- sum(wd.2015$total)
@@ -189,16 +190,17 @@ keeps <- c("fips","year","ssp","inc","pop","dom","ag","ind","therm","la",
 demand.init <- demand.init1[,names(demand.init1) %in% keeps]
 
 # calculate initial withdrawals per unit
-  # wpu.dom = (Mgal per day / person)
-  # wpu.inc = (Mgal per day / dollar)
-  # wpu.ag  = (Mgal per day / acre)
-  
+  # wpu.dom   = (Mgal per day / person)
+  # wpu.inc   = (Mgal per day / dollar)
+  # wpu.ag    = (Mgal per day / acre)
+  # wpu.therm = (Mgal per day / person)
+
 demand.init$wpu.dom   <- demand.init$dom / demand.init$pop
 demand.init$wpu.ind   <- demand.init$ind / demand.init$inc
 demand.init$wpu.ag    <- demand.init$ag / demand.init$acres
 demand.init$wpu.therm <- demand.init$therm / demand.init$power
 
-# need to add thermo-electric, and aquaculture
+# need to add aquaculture
 
 # create dataframe for projections
 demand.proj <- subset(proj.data, year != 2015)
@@ -242,15 +244,16 @@ data.table::fwrite(demand2, file="DPwithdrawal_noCC.csv")
 rm(demand,demand2)
 
 # assuming the above loop has run, read in demand-temp
-demand <- fread(file="withdrawal_noCC.csv") %>% as.data.frame()
+demand <- fread(file="DPwithdrawal_noCC.csv") %>% as.data.frame()
 
 # calculate annual withdrawals (Mgal/day = wpu * units) for each sector
 
 demand <- demand %>%
   dplyr::mutate(dom.t = pop * wpu.dom,
                 ind.t = inc * wpu.ind,
-                ag.t  = acres * wpu.ag)
-
+                ag.t  = acres * wpu.ag
+                )
+names(demand)
 demand.noCC <- demand
 
 keeps <- c("fips","state","county","year","ssp","inc","pop","acres","wpu.dom","wpu.ind","wpu.ag","dom.t","ag.t","ind.t")
@@ -315,6 +318,29 @@ colnames(precip.data)[colnames(precip.data) == "Year"] <- "year"
 
 demand <- merge(demand.noCC, precip.data, by=c('fips','year'))
 
+pet.data <- read.xlsx(
+  xlsxFile="1_ClimateData/CountyPrecip/SummerPrecip/WaterYieldFutureClimatePET_County.xlsx",
+  sheet = 2,
+  startRow = 1,
+  colNames = TRUE,
+  rowNames = FALSE,
+  detectDates = FALSE,
+  skipEmptyRows = TRUE,
+  skipEmptyCols = TRUE,
+  rows = NULL,
+  cols = NULL,
+  check.names = FALSE,
+  sep.names = ".",
+  namedRegion = NULL,
+  na.strings = "NA",
+  fillMergedCells = FALSE
+)
+
+colnames(pet.data)[colnames(pet.data) == "FIPS"] <- "fips"
+
+delta.cc <- merge(precip.data, pet.data, by=c('fips'))
+demand <- merge(demand.noCC, delta.cc, by=c('fips', 'year'))
+
 # --- 3a. Domestic water use with climate change: 
 
 # the following coefficients are taken from Tom Brown's work for the 2010 RPA Assessment
@@ -328,20 +354,20 @@ demand$ChangeSummerET <- demand$delta.spet
 
 
 # convert precip data in mm height to cm height (per equation 11) 
-demand$spChange.cn45.cm   <- demand$spChange_cn_45 * 0.1
-demand$spChange.cn85.cm   <- demand$spChange_cn_85 * 0.1
+demand$spChange.cnrmc45.cm   <- demand$spChange_cnrmc45 * 0.1
+demand$spChange.cnrmc85.cm   <- demand$spChange_cnrmc85 * 0.1
 
-demand$spChange.had45.cm  <- demand$spChange_had_45 * 0.1
-demand$spChange.had85.cm  <- demand$spChange_had_85 * 0.1
+demand$spChange.had45.cm  <- demand$spChange_had45 * 0.1
+demand$spChange.had85.cm  <- demand$spChange_had85 * 0.1
 
-demand$spChange.cgcm45.cm <- demand$spChange_cgcm_45 * 0.1
-demand$spChange.cgcm85.cm <- demand$spChange_cgcm_85 * 0.1
+demand$spChange.mri45.cm <- demand$spChange_mri45 * 0.1
+demand$spChange.mri85.cm <- demand$spChange_mri85 * 0.1
 
-demand$spChange.cm5a45.cm <- demand$spChange_cm5a_45 * 0.1
-demand$spChange.cm5a85.cm <- demand$spChange_cm5a_85 * 0.1
+demand$spChange.ipsl45.cm <- demand$spChange_ipsl45 * 0.1
+demand$spChange.ipsl85.cm <- demand$spChange_ipsl85 * 0.1
 
-demand$spChange.esm45.cm  <- demand$spChange_esm_45 * 0.1
-demand$spChange.esm85.cm  <- demand$spChange_esm_85 * 0.1
+demand$spChange.nor45.cm  <- demand$spChange_nor45 * 0.1
+demand$spChange.nor85.cm  <- demand$spChange_nor85 * 0.1
 
 
 # Multiply change in precip by n^p, which is a constant equal to -1.415
@@ -350,50 +376,50 @@ demand$spChange.esm85.cm  <- demand$spChange_esm_85 * 0.1
 # for each climate change scenario, for each SSP
 
 
-demand$deltaP.n.cn45.cm   <- (cc.dp1*demand$spChange.cn45.cm + cc.dp2*demand$ChangeSummerET) 
-demand$deltaP.n.cn85.cm   <- (cc.dp1*demand$spChange.cn85.cm + cc.dp2*demand$ChangeSummerET)
+demand$deltaP.n.cnrmc45.cm   <- (cc.dp1*demand$spChange.cnrmc45.cm + cc.dp2*demand$ChangeSummerET) 
+demand$deltaP.n.cnrmc85.cm   <- (cc.dp1*demand$spChange.cnrmc85.cm + cc.dp2*demand$ChangeSummerET)
 
-demand$deltaP.n.esm45.cm  <- (cc.dp1*demand$spChange.esm45.cm + cc.dp2*demand$ChangeSummerET) 
-demand$deltaP.n.esm85.cm  <- (cc.dp1*demand$spChange.esm85.cm + cc.dp2*demand$ChangeSummerET)
+demand$deltaP.n.nor45.cm  <- (cc.dp1*demand$spChange.nor45.cm + cc.dp2*demand$ChangeSummerET) 
+demand$deltaP.n.nor85.cm  <- (cc.dp1*demand$spChange.nor85.cm + cc.dp2*demand$ChangeSummerET)
 
-demand$deltaP.n.cgcm45.cm <- (cc.dp1*demand$spChange.cgcm45.cm + cc.dp2*demand$ChangeSummerET) 
-demand$deltaP.n.cgcm85.cm <- (cc.dp1*demand$spChange.cgcm85.cm + cc.dp2*demand$ChangeSummerET)
+demand$deltaP.n.mri45.cm <- (cc.dp1*demand$spChange.mri45.cm + cc.dp2*demand$ChangeSummerET) 
+demand$deltaP.n.mri85.cm <- (cc.dp1*demand$spChange.mri85.cm + cc.dp2*demand$ChangeSummerET)
 
-demand$deltaP.n.cm5a45.cm <- (cc.dp1*demand$spChange.cm5a45.cm + cc.dp2*demand$ChangeSummerET) 
-demand$deltaP.n.cm5a85.cm <- (cc.dp1*demand$spChange.cm5a85.cm + cc.dp2*demand$ChangeSummerET)
+demand$deltaP.n.ipsl45.cm <- (cc.dp1*demand$spChange.ipsl45.cm + cc.dp2*demand$ChangeSummerET) 
+demand$deltaP.n.ipsl85.cm <- (cc.dp1*demand$spChange.ipsl85.cm + cc.dp2*demand$ChangeSummerET)
 
 demand$deltaP.n.had45.cm  <- (cc.dp1*demand$spChange.had45.cm + cc.dp2*demand$ChangeSummerET) 
 demand$deltaP.n.had85.cm  <- (cc.dp1*demand$spChange.had85.cm + cc.dp2*demand$ChangeSummerET)
 
 # Steps to convert cm precip to volume at the county level
 ## First, convert cm to meters
-demand$deltaP.n.cn45.m    <- demand$deltaP.n.cn45.cm/100
-demand$deltaP.n.cn85.m    <- demand$deltaP.n.cn85.cm/100
+demand$deltaP.n.cnrmc45.m    <- demand$deltaP.n.cnrmc45.cm/100
+demand$deltaP.n.cnrmc85.m    <- demand$deltaP.n.cnrmc85.cm/100
 
-demand$deltaP.n.esm45.m   <- demand$deltaP.n.esm45.cm/100
-demand$deltaP.n.esm85.m   <- demand$deltaP.n.esm85.cm/100
+demand$deltaP.n.nor45.m   <- demand$deltaP.n.nor45.cm/100
+demand$deltaP.n.nor85.m   <- demand$deltaP.n.nor85.cm/100
 
-demand$deltaP.n.cgcm45.m  <- demand$deltaP.n.cgcm45.cm/100
-demand$deltaP.n.cgcm85.m  <- demand$deltaP.n.cgcm85.cm/100
+demand$deltaP.n.mri45.m  <- demand$deltaP.n.mri45.cm/100
+demand$deltaP.n.mri85.m  <- demand$deltaP.n.mri85.cm/100
 
-demand$deltaP.n.cm5a45.m  <- demand$deltaP.n.cm5a45.cm/100
-demand$deltaP.n.cm5a85.m  <- demand$deltaP.n.cm5a85.cm/100
+demand$deltaP.n.ipsl45.m  <- demand$deltaP.n.ipsl45.cm/100
+demand$deltaP.n.ipsl85.m  <- demand$deltaP.n.ipsl85.cm/100
 
 demand$deltaP.n.had45.m   <- demand$deltaP.n.had45.cm/100
 demand$deltaP.n.had85.m   <- demand$deltaP.n.had85.cm/100
 
 # Next, multiply precip meters by county area (m2) to get volume of rainfall
-demand$deltaP.n.cn45.m3   <- demand$deltaP.n.cn45.m*demand$aland
-demand$deltaP.n.cn85.m3   <- demand$deltaP.n.cn85.m*demand$aland
+demand$deltaP.n.cnrmc45.m3   <- demand$deltaP.n.cnrmc45.m*demand$aland
+demand$deltaP.n.cnrmc85.m3   <- demand$deltaP.n.cnrmc85.m*demand$aland
 
-demand$deltaP.n.esm45.m3  <- demand$deltaP.n.esm45.m*demand$aland
-demand$deltaP.n.esm85.m3  <- demand$deltaP.n.esm85.m*demand$aland
+demand$deltaP.n.nor45.m3  <- demand$deltaP.n.nor45.m*demand$aland
+demand$deltaP.n.nor85.m3  <- demand$deltaP.n.nor85.m*demand$aland
 
-demand$deltaP.n.cgcm45.m3 <- demand$deltaP.n.cgcm45.m*demand$aland
-demand$deltaP.n.cgcm85.m3 <- demand$deltaP.n.cgcm85.m*demand$aland
+demand$deltaP.n.mri45.m3 <- demand$deltaP.n.mri45.m*demand$aland
+demand$deltaP.n.mri85.m3 <- demand$deltaP.n.mri85.m*demand$aland
 
-demand$deltaP.n.cm5a45.m3 <- demand$deltaP.n.cm5a45.m*demand$aland
-demand$deltaP.n.cm5a85.m3 <- demand$deltaP.n.cm5a85.m*demand$aland
+demand$deltaP.n.ipsl45.m3 <- demand$deltaP.n.ipsl45.m*demand$aland
+demand$deltaP.n.ipsl85.m3 <- demand$deltaP.n.ipsl85.m*demand$aland
 
 demand$deltaP.n.had45.m3  <- demand$deltaP.n.had45.m*demand$aland
 demand$deltaP.n.had85.m3  <- demand$deltaP.n.had85.m*demand$aland
@@ -404,17 +430,17 @@ demand$deltaP.n.had85.m3  <- demand$deltaP.n.had85.m*demand$aland
 demand$Dom.deltaP.n.cn45.Mgal   <- (demand$deltaP.n.cn45.m3/(6*30)*264)/1000000
 demand$Dom.deltaP.n.cn85.Mgal   <- (demand$deltaP.n.cn85.m3/(6*30)*264)/1000000
 
-demand$Dom.deltaP.n.esm45.Mgal  <- (demand$deltaP.n.esm45.m3/(6*30)*264)/1000000
-demand$Dom.deltaP.n.esm85.Mgal  <- (demand$deltaP.n.esm85.m3/(6*30)*264)/1000000
+demand$Dom.deltaP.n.nor45.Mgal  <- (demand$deltaP.n.nor45.m3/(6*30)*264)/1000000
+demand$Dom.deltaP.n.nor85.Mgal  <- (demand$deltaP.n.nor85.m3/(6*30)*264)/1000000
 
 demand$Dom.deltaP.n.had45.Mgal  <- (demand$deltaP.n.had45.m3/(6*30)*264)/1000000
 demand$Dom.deltaP.n.had85.Mgal  <- (demand$deltaP.n.had85.m3/(6*30)*264)/1000000
 
-demand$Dom.deltaP.n.cgcm45.Mgal <- (demand$deltaP.n.cgcm45.m3/(6*30)*264)/1000000
-demand$Dom.deltaP.n.cgcm85.Mgal <- (demand$deltaP.n.cgcm85.m3/(6*30)*264)/1000000
+demand$Dom.deltaP.n.mri45.Mgal <- (demand$deltaP.n.mri45.m3/(6*30)*264)/1000000
+demand$Dom.deltaP.n.mri85.Mgal <- (demand$deltaP.n.mri85.m3/(6*30)*264)/1000000
 
-demand$Dom.deltaP.n.cm5a45.Mgal <- (demand$deltaP.n.cm5a45.m3/(6*30)*264)/1000000
-demand$Dom.deltaP.n.cm5a85.Mgal <- (demand$deltaP.n.cm5a85.m3/(6*30)*264)/1000000
+demand$Dom.deltaP.n.ipsl45.Mgal <- (demand$deltaP.n.ipsl45.m3/(6*30)*264)/1000000
+demand$Dom.deltaP.n.ipsl85.Mgal <- (demand$deltaP.n.ipsl85.m3/(6*30)*264)/1000000
 
                                          
 # In the main equation, withdrawal = U * ϕ, this is is ϕ where ϕ=ϕnocc+∆ϕcc:
@@ -422,14 +448,14 @@ demand$Dom.deltaP.n.cm5a85.Mgal <- (demand$deltaP.n.cm5a85.m3/(6*30)*264)/100000
 demand$wpu.dp.cc.cn45   <- demand$wpu.dom + (demand$Dom.deltaP.n.cn45.Mgal + cc.dp2*demand$ChangeSummerET) 
 demand$wpu.dp.cc.cn85   <- demand$wpu.dom + (demand$Dom.deltaP.n.cn85.Mgal + cc.dp2*demand$ChangeSummerET)
 
-demand$wpu.dp.cc.esm45  <- demand$wpu.dom + (demand$Dom.deltaP.n.esm45.Mgal + cc.dp2*demand$ChangeSummerET) 
-demand$wpu.dp.cc.esm85  <- demand$wpu.dom + (demand$Dom.deltaP.n.esm85.Mgal + cc.dp2*demand$ChangeSummerET)
+demand$wpu.dp.cc.nor45  <- demand$wpu.dom + (demand$Dom.deltaP.n.nor45.Mgal + cc.dp2*demand$ChangeSummerET) 
+demand$wpu.dp.cc.nor85  <- demand$wpu.dom + (demand$Dom.deltaP.n.nor85.Mgal + cc.dp2*demand$ChangeSummerET)
 
-demand$wpu.dp.cc.cgcm45 <- demand$wpu.dom + (demand$Dom.deltaP.n.cgcm45.Mgal + cc.dp2*demand$ChangeSummerET) 
-demand$wpu.dp.cc.cgcm85 <- demand$wpu.dom + (demand$Dom.deltaP.n.cgcm85.Mgal + cc.dp2*demand$ChangeSummerET)
+demand$wpu.dp.cc.mri45 <- demand$wpu.dom + (demand$Dom.deltaP.n.mri45.Mgal + cc.dp2*demand$ChangeSummerET) 
+demand$wpu.dp.cc.mri85 <- demand$wpu.dom + (demand$Dom.deltaP.n.mri85.Mgal + cc.dp2*demand$ChangeSummerET)
 
-demand$wpu.dp.cc.cm5a45 <- demand$wpu.dom + (demand$Dom.deltaP.n.cm5a45.Mgal + cc.dp2*demand$ChangeSummerET) 
-demand$wpu.dp.cc.cm5a85 <- demand$wpu.dom + (demand$Dom.deltaP.n.cm5a85.Mgal + cc.dp2*demand$ChangeSummerET)
+demand$wpu.dp.cc.ipsl45 <- demand$wpu.dom + (demand$Dom.deltaP.n.ipsl45.Mgal + cc.dp2*demand$ChangeSummerET) 
+demand$wpu.dp.cc.ipsl85 <- demand$wpu.dom + (demand$Dom.deltaP.n.ipsl85.Mgal + cc.dp2*demand$ChangeSummerET)
 
 demand$wpu.dp.cc.had45  <- demand$wpu.dom + (demand$Dom.deltaP.n.had45.Mgal + cc.dp2*demand$ChangeSummerET) 
 demand$wpu.dp.cc.had85  <- demand$wpu.dom + (demand$Dom.deltaP.n.had85.Mgal + cc.dp2*demand$ChangeSummerET)
@@ -440,17 +466,17 @@ demand$wpu.dp.cc.had85  <- demand$wpu.dom + (demand$Dom.deltaP.n.had85.Mgal + cc
 # This is W = U*⏀
 # U = population; ⏀=WPUcc
 
-demand$W.dom.cc.cn45    <- demand$pop*demand$wpu.dp.cc.cn45
-demand$W.dom.cc.cn85    <- demand$pop*demand$wpu.dp.cc.cn85
+demand$W.dom.cc.cnrmc45 <- demand$pop*demand$wpu.dp.cc.cn45
+demand$W.dom.cc.cnrmc85 <- demand$pop*demand$wpu.dp.cc.cn85
 
-demand$W.dom.cc.esm45   <- demand$pop*demand$wpu.dp.cc.esm45
-demand$W.dom.cc.esm85   <- demand$pop*demand$wpu.dp.cc.esm85
+demand$W.dom.cc.nor45   <- demand$pop*demand$wpu.dp.cc.nor45
+demand$W.dom.cc.nor85   <- demand$pop*demand$wpu.dp.cc.nor85
 
-demand$W.dom.cc.cgcm45  <- demand$pop*demand$wpu.dp.cc.cgcm45
-demand$W.dom.cc.cgcm85  <- demand$pop*demand$wpu.dp.cc.cgcm85
+demand$W.dom.cc.mri45  <- demand$pop*demand$wpu.dp.cc.mri45
+demand$W.dom.cc.mri85  <- demand$pop*demand$wpu.dp.cc.mri85
 
-demand$W.dom.cc.cm5a45  <- demand$pop*demand$wpu.dp.cc.cm5a45
-demand$W.dom.cc.cm5a85  <- demand$pop*demand$wpu.dp.cc.cm5a85
+demand$W.dom.cc.ipsl45  <- demand$pop*demand$wpu.dp.cc.ipsl45
+demand$W.dom.cc.ipsl85  <- demand$pop*demand$wpu.dp.cc.ipsl85
 
 demand$W.dom.cc.had45   <- demand$pop*demand$wpu.dp.cc.had45
 demand$W.dom.cc.had85   <- demand$pop*demand$wpu.dp.cc.had85
@@ -479,17 +505,17 @@ cc.ag1 <- 0.0328  # number of feet per cm
 cc.ag2 <- 893  # gallon-days per acre-foot
 
 # This is ∆wpu_cc in feet (-∆P' + ˚ETp)
-demand$wpu.Delta.ag.cc.cn45.ft    <- cc.ag1*(-1*demand$deltaP.n.cn45.cm + demand$delta.spet)
-demand$wpu.Delta.ag.cc.cn85.ft    <- cc.ag1*(-1*demand$deltaP.n.cn85.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.cnrmc45.ft <- cc.ag1*(-1*demand$deltaP.n.cn45.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.cnrmc85.ft <- cc.ag1*(-1*demand$deltaP.n.cn85.cm + demand$delta.spet)
 
-demand$wpu.Delta.ag.cc.esm45.ft   <- cc.ag1*(-1*demand$deltaP.n.esm45.cm + demand$delta.spet)
-demand$wpu.Delta.ag.cc.esm85.ft   <- cc.ag1*(-1*demand$deltaP.n.esm85.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.nor45.ft   <- cc.ag1*(-1*demand$deltaP.n.nor45.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.nor85.ft   <- cc.ag1*(-1*demand$deltaP.n.nor85.cm + demand$delta.spet)
 
-demand$wpu.Delta.ag.cc.cgcm45.ft  <- cc.ag1*(-1*demand$deltaP.n.cgcm45.cm + demand$delta.spet)
-demand$wpu.Delta.ag.cc.cgcm85.ft  <- cc.ag1*(-1*demand$deltaP.n.cgcm85.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.mri45.ft  <- cc.ag1*(-1*demand$deltaP.n.mri45.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.mri85.ft  <- cc.ag1*(-1*demand$deltaP.n.mri85.cm + demand$delta.spet)
 
-demand$wpu.Delta.ag.cc.cm5a45.ft  <- cc.ag1*(-1*demand$deltaP.n.cm5a45.cm + demand$delta.spet)
-demand$wpu.Delta.ag.cc.cm5a85.ft  <- cc.ag1*(-1*demand$deltaP.n.cm5a85.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.ipsl45.ft  <- cc.ag1*(-1*demand$deltaP.n.ipsl45.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.ipsl85.ft  <- cc.ag1*(-1*demand$deltaP.n.ipsl85.cm + demand$delta.spet)
 
 demand$wpu.Delta.ag.cc.had45.ft   <- cc.ag1*(-1*demand$deltaP.n.had45.cm + demand$delta.spet)
 demand$wpu.Delta.ag.cc.had85.ft   <- cc.ag1*(-1*demand$deltaP.n.had85.cm + demand$delta.spet)
@@ -501,17 +527,17 @@ demand$wpu.Delta.ag.cc.had85.ft   <- cc.ag1*(-1*demand$deltaP.n.had85.cm + deman
 
 ################################### Question: divide by irrigated acres or by county acreage?
 #----------
-demand$wpu.Delta.ag.cc.cn45.AF   <-  demand$wpu.Delta.ag.cc.cn45.ft/(demand$acres*1000)
-demand$wpu.Delta.ag.cc.cn85.AF   <-  demand$wpu.Delta.ag.cc.cn85.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.cnrmc45.AF   <-  demand$wpu.Delta.ag.cc.cnrmc45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.cnrmc85.AF   <-  demand$wpu.Delta.ag.cc.cnrmc85.ft/(demand$acres*1000)
 
-demand$wpu.Delta.ag.cc.esm45.AF  <-  demand$wpu.Delta.ag.cc.esm45.ft/(demand$acres*1000)
-demand$wpu.Delta.ag.cc.esm85.AF  <-  demand$wpu.Delta.ag.cc.esm85.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.nor45.AF  <-  demand$wpu.Delta.ag.cc.nor45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.nor85.AF  <-  demand$wpu.Delta.ag.cc.nor85.ft/(demand$acres*1000)
 
-demand$wpu.Delta.ag.cc.cgcm45.AF <-  demand$wpu.Delta.ag.cc.cgcm45.ft/(demand$acres*1000)
-demand$wpu.Delta.ag.cc.cgcm85.AF <-  demand$wpu.Delta.ag.cc.cgcm85.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.mri45.AF <-  demand$wpu.Delta.ag.cc.mri45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.mri85.AF <-  demand$wpu.Delta.ag.cc.mri85.ft/(demand$acres*1000)
 
-demand$wpu.Delta.ag.cc.cm5a45.AF <-  demand$wpu.Delta.ag.cc.cm5a45.ft/(demand$acres*1000)
-demand$wpu.Delta.ag.cc.cm5a85.AF <-  demand$wpu.Delta.ag.cc.cm5a85.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.ipsl45.AF <-  demand$wpu.Delta.ag.cc.ipsl45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.ipsl85.AF <-  demand$wpu.Delta.ag.cc.ipsl85.ft/(demand$acres*1000)
 
 demand$wpu.Delta.ag.cc.had45.AF  <-  demand$wpu.Delta.ag.cc.had45.ft/(demand$acres*1000)
 demand$wpu.Delta.ag.cc.had85.AF  <-  demand$wpu.Delta.ag.cc.had85.ft/(demand$acres*1000)
@@ -526,31 +552,31 @@ demand$wpu.Delta.ag.cc.had85.AF  <-  demand$wpu.Delta.ag.cc.had85.ft/(demand$acr
 demand$wpu.Delta.ag.cc.cn45.Mgal <- demand$wpu.Delta.ag.cc.cn45.AF*cc.ag2
 demand$wpu.Delta.ag.cc.cn85.Mgal <- demand$wpu.Delta.ag.cc.cn85.AF*cc.ag2
 
-demand$wpu.Delta.ag.cc.cgcm45.Mgal <- demand$wpu.Delta.ag.cc.cgcm45.AF*cc.ag2
-demand$wpu.Delta.ag.cc.cgcm85.Mgal <- demand$wpu.Delta.ag.cc.cgcm85.AF*cc.ag2
+demand$wpu.Delta.ag.cc.mri45.Mgal <- demand$wpu.Delta.ag.cc.mri45.AF*cc.ag2
+demand$wpu.Delta.ag.cc.mri85.Mgal <- demand$wpu.Delta.ag.cc.mri85.AF*cc.ag2
 
-demand$wpu.Delta.ag.cc.esm45.Mgal <- demand$wpu.Delta.ag.cc.esm45.AF*cc.ag2
-demand$wpu.Delta.ag.cc.esm85.Mgal <- demand$wpu.Delta.ag.cc.esm85.AF*cc.ag2
+demand$wpu.Delta.ag.cc.nor45.Mgal <- demand$wpu.Delta.ag.cc.nor45.AF*cc.ag2
+demand$wpu.Delta.ag.cc.nor85.Mgal <- demand$wpu.Delta.ag.cc.nor85.AF*cc.ag2
 
-demand$wpu.Delta.ag.cc.cm5a45.Mgal <- demand$wpu.Delta.ag.cc.cm5a45.AF*cc.ag2
-demand$wpu.Delta.ag.cc.cm5a85.Mgal <- demand$wpu.Delta.ag.cc.cm5a85.AF*cc.ag2
+demand$wpu.Delta.ag.cc.ipsl45.Mgal <- demand$wpu.Delta.ag.cc.ipsl45.AF*cc.ag2
+demand$wpu.Delta.ag.cc.ipsl85.Mgal <- demand$wpu.Delta.ag.cc.ipsl85.AF*cc.ag2
 
 demand$wpu.Delta.ag.cc.had45.Mgal <- demand$wpu.Delta.ag.cc.had45.AF*cc.ag2
 demand$wpu.Delta.ag.cc.had85.Mgal <- demand$wpu.Delta.ag.cc.had85.AF*cc.ag2
 
 
 ## This is  ϕ  = (ϕnocc + ∆ϕcc):
-demand$wpu.ag.cc.cn45   <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cn45.Mgal
-demand$wpu.ag.cc.cn85   <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cn85.Mgal
+demand$wpu.ag.cc.cnrmc45   <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cnrmc45.Mgal
+demand$wpu.ag.cc.cnrmc85   <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cnrmc85.Mgal
 
-demand$wpu.ag.cc.esm45  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.esm45.Mgal
-demand$wpu.ag.cc.esm85  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.esm85.Mgal
+demand$wpu.ag.cc.nor45  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.nor45.Mgal
+demand$wpu.ag.cc.nor85  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.nor85.Mgal
 
-demand$wpu.ag.cc.cgcm45 <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cgcm45.Mgal
-demand$wpu.ag.cc.cgcm85 <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cgcm85.Mgal
+demand$wpu.ag.cc.mri45 <- demand$wpu.ag + demand$wpu.Delta.ag.cc.mri45.Mgal
+demand$wpu.ag.cc.mri85 <- demand$wpu.ag + demand$wpu.Delta.ag.cc.mri85.Mgal
 
-demand$wpu.ag.cc.cm5a45 <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cm5a45.Mgal
-demand$wpu.ag.cc.cm5a85 <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cm5a85.Mgal
+demand$wpu.ag.cc.ipsl45 <- demand$wpu.ag + demand$wpu.Delta.ag.cc.ipsl45.Mgal
+demand$wpu.ag.cc.ipsl85 <- demand$wpu.ag + demand$wpu.Delta.ag.cc.ipsl85.Mgal
 
 demand$wpu.ag.cc.had45  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.had45.Mgal
 demand$wpu.ag.cc.had85  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.had85.Mgal
@@ -558,17 +584,17 @@ demand$wpu.ag.cc.had85  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.had85.Mgal
 
 ## Finally, W  = A * ϕ * ∂
 
-demand$W.ag.cc.cn45   <-  demand$acres * demand$wpu.ag.cc.cn45 * cc.ag2
-demand$W.ag.cc.cn85   <-  demand$acres * demand$wpu.ag.cc.cn85 * cc.ag2
+demand$W.ag.cc.cnrmc45   <-  demand$acres * demand$wpu.ag.cc.cnrmc45 * cc.ag2
+demand$W.ag.cc.cnrmc85   <-  demand$acres * demand$wpu.ag.cc.cnrmc85 * cc.ag2
 
-demand$W.ag.cc.esm45  <-  demand$acres * demand$wpu.ag.cc.esm45 * cc.ag2
-demand$W.ag.cc.esm85  <-  demand$acres * demand$wpu.ag.cc.esm85 * cc.ag2
+demand$W.ag.cc.nor45  <-  demand$acres * demand$wpu.ag.cc.nor45 * cc.ag2
+demand$W.ag.cc.nor85  <-  demand$acres * demand$wpu.ag.cc.nor85 * cc.ag2
 
-demand$W.ag.cc.cgcm45 <-  demand$acres * demand$wpu.ag.cc.cgcm45 * cc.ag2
-demand$W.ag.cc.cgcm85 <-  demand$acres * demand$wpu.ag.cc.cgcm85 * cc.ag2 
+demand$W.ag.cc.mri45 <-  demand$acres * demand$wpu.ag.cc.mri45 * cc.ag2
+demand$W.ag.cc.mri85 <-  demand$acres * demand$wpu.ag.cc.mri85 * cc.ag2 
 
-demand$W.ag.cc.cm5a45 <-  demand$acres * demand$wpu.ag.cc.cm5a45 * cc.ag2
-demand$W.ag.cc.cm5a85 <-  demand$acres * demand$wpu.ag.cc.cm5a85 * cc.ag2
+demand$W.ag.cc.ipsl45 <-  demand$acres * demand$wpu.ag.cc.ipsl45 * cc.ag2
+demand$W.ag.cc.ipsl85 <-  demand$acres * demand$wpu.ag.cc.ipsl85 * cc.ag2
 
 demand$W.ag.cc.had45  <-  demand$acres * demand$wpu.ag.cc.had45 * cc.ag2
 demand$W.ag.cc.had85  <-  demand$acres * demand$wpu.ag.cc.had85 * cc.ag2
