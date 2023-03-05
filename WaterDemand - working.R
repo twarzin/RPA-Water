@@ -514,7 +514,7 @@ demand$W.dom.cc.had45   <- demand$pop*demand$wpu.dp.cc.had45
 demand$W.dom.cc.had85   <- demand$pop*demand$wpu.dp.cc.had85
 
 
-data.table::fwrite(demand, file="withdrawal_CC.csv")
+data.table::fwrite(demand, file="DPwithdrawal_CC.csv")
 
 
 # --- 3b. Agricultural Water Use with Climate Change: 
@@ -527,41 +527,43 @@ data.table::fwrite(demand, file="withdrawal_CC.csv")
 ## ϕnocc  = Withdrawals_t/Acres_t
 
 # In this section, we estimate this:
-##  ∆ϕcc  = ϑ (-∆P' + ˚ETp)/(γ)
+##  ∆ϕcc  = ϑ (-∆P' + ∆ETp)/(γ)
 ###    ϑ  = 0.0328, number of feet per cm
 ###   ∆P' = Change in effective precipitation (cm)
 ### ∆ETp  = Change in potential ET during growing season
 ###    γ  = Consumptive use portion, which we'll ignore for now
 
-# ϑ (- ∆P' + ETp)
+# ϑ (- ∆P' + ∆ETp)
 cc.ag1 <- 0.0328  # number of feet per cm
 cc.ag2 <- 893  # gallon-days per acre-foot
 
-# This is ∆wpu_cc in feet (-∆P' + ˚ETp)
-demand$wpu.Delta.ag.cc.cnrm45.ft <- cc.ag1*(-1*demand$deltaP.n.cn45.cm + demand$delta_pet_cnrm45)
-demand$wpu.Delta.ag.cc.cnrm85.ft <- cc.ag1*(-1*demand$deltaP.n.cn85.cm + demand$delta.spet)
+# Calculate ∆ϕcc in feet: ϑ(-∆P' + ∆ETp)
+demand$wpu.Delta.ag.cc.cnrm45.ft <- cc.ag1*(-1*demand$spChange.cnrmc45.cm + demand$pet_delta_cnrm45.cm)
+demand$wpu.Delta.ag.cc.cnrm85.ft <- cc.ag1*(-1*demand$spChange.cnrmc85.cm + demand$pet_delta_cnrm85.cm)
 
-demand$wpu.Delta.ag.cc.nor45.ft   <- cc.ag1*(-1*demand$deltaP.n.nor45.cm + demand$delta.spet)
-demand$wpu.Delta.ag.cc.nor85.ft   <- cc.ag1*(-1*demand$deltaP.n.nor85.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.nor45.ft   <- cc.ag1*(-1*demand$spChange.nor45.cm + demand$pet_delta_nor45.cm)
+demand$wpu.Delta.ag.cc.nor85.ft   <- cc.ag1*(-1*demand$spChange.nor85.cm + demand$pet_delta_nor85.cm)
 
-demand$wpu.Delta.ag.cc.mri45.ft  <- cc.ag1*(-1*demand$deltaP.n.mri45.cm + demand$delta.spet)
-demand$wpu.Delta.ag.cc.mri85.ft  <- cc.ag1*(-1*demand$deltaP.n.mri85.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.mri45.ft  <- cc.ag1*(-1*demand$spChange.mri45.cm + demand$pet_delta_mri45.cm)
+demand$wpu.Delta.ag.cc.mri85.ft  <- cc.ag1*(-1*demand$spChange.mri85.cm + demand$pet_delta_mri85.cm)
 
-demand$wpu.Delta.ag.cc.ipsl45.ft  <- cc.ag1*(-1*demand$deltaP.n.ipsl45.cm + demand$delta.spet)
-demand$wpu.Delta.ag.cc.ipsl85.ft  <- cc.ag1*(-1*demand$deltaP.n.ipsl85.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.ipsl45.ft  <- cc.ag1*(-1*demand$spChange.ipsl45.cm + demand$pet_delta_ipsl45.cm)
+demand$wpu.Delta.ag.cc.ipsl85.ft  <- cc.ag1*(-1*demand$spChange.ipsl85.cm + demand$pet_delta_ipsl85.cm)
 
-demand$wpu.Delta.ag.cc.had45.ft   <- cc.ag1*(-1*demand$deltaP.n.had45.cm + demand$delta.spet)
-demand$wpu.Delta.ag.cc.had85.ft   <- cc.ag1*(-1*demand$deltaP.n.had85.cm + demand$delta.spet)
+demand$wpu.Delta.ag.cc.had45.ft   <- cc.ag1*(-1*demand$spChange.had45.cm + demand$pet_delta_had45.cm)
+demand$wpu.Delta.ag.cc.had85.ft   <- cc.ag1*(-1*demand$spChange.had85.cm + demand$pet_delta_had85.cm)
 
 
 #   Divide by irrigated acres to get AF
 ##  Irrigated acres, acres, are in 1000s, so have to multiply by 1000
-##  This is ∆wpu_cc in Acre-Feet (-∆P' + ˚ETp)
+##  This is ∆wpu_cc in Acre-Feet (-∆P' + ∆ETp)
 
-################################### Question: divide by irrigated acres or by county acreage?
+#####################################################################################
+#####   Question for Travis: divide by irrigated acres or by county acreage?    #####
+#####################################################################################
 #----------
-demand$wpu.Delta.ag.cc.cnrmc45.AF   <-  demand$wpu.Delta.ag.cc.cnrmc45.ft/(demand$acres*1000)
-demand$wpu.Delta.ag.cc.cnrmc85.AF   <-  demand$wpu.Delta.ag.cc.cnrmc85.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.cnrm45.AF   <-  demand$wpu.Delta.ag.cc.cnrm45.ft/(demand$acres*1000)
+demand$wpu.Delta.ag.cc.cnrm85.AF   <-  demand$wpu.Delta.ag.cc.cnrm85.ft/(demand$acres*1000)
 
 demand$wpu.Delta.ag.cc.nor45.AF  <-  demand$wpu.Delta.ag.cc.nor45.ft/(demand$acres*1000)
 demand$wpu.Delta.ag.cc.nor85.AF  <-  demand$wpu.Delta.ag.cc.nor85.ft/(demand$acres*1000)
@@ -577,13 +579,10 @@ demand$wpu.Delta.ag.cc.had85.AF  <-  demand$wpu.Delta.ag.cc.had85.ft/(demand$acr
 
 
 
-#################### Question: what unit is wpu_nocc? If it's already in Mgal/day, then will add it after
-# converting AF units on ∆wpu_cc to Mgal/day
-
 ## This is  ∆ϕcc converted from AF to Mgal/day
 
-demand$wpu.Delta.ag.cc.cn45.Mgal <- demand$wpu.Delta.ag.cc.cn45.AF*cc.ag2
-demand$wpu.Delta.ag.cc.cn85.Mgal <- demand$wpu.Delta.ag.cc.cn85.AF*cc.ag2
+demand$wpu.Delta.ag.cc.cnrm45.Mgal <- demand$wpu.Delta.ag.cc.cnrm45.AF*cc.ag2
+demand$wpu.Delta.ag.cc.cnrm85.Mgal <- demand$wpu.Delta.ag.cc.cnrm85.AF*cc.ag2
 
 demand$wpu.Delta.ag.cc.mri45.Mgal <- demand$wpu.Delta.ag.cc.mri45.AF*cc.ag2
 demand$wpu.Delta.ag.cc.mri85.Mgal <- demand$wpu.Delta.ag.cc.mri85.AF*cc.ag2
@@ -599,8 +598,8 @@ demand$wpu.Delta.ag.cc.had85.Mgal <- demand$wpu.Delta.ag.cc.had85.AF*cc.ag2
 
 
 ## This is  ϕ  = (ϕnocc + ∆ϕcc):
-demand$wpu.ag.cc.cnrmc45   <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cnrmc45.Mgal
-demand$wpu.ag.cc.cnrmc85   <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cnrmc85.Mgal
+demand$wpu.ag.cc.cnrm45   <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cnrm45.Mgal
+demand$wpu.ag.cc.cnrm85   <- demand$wpu.ag + demand$wpu.Delta.ag.cc.cnrm85.Mgal
 
 demand$wpu.ag.cc.nor45  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.nor45.Mgal
 demand$wpu.ag.cc.nor85  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.nor85.Mgal
@@ -615,10 +614,10 @@ demand$wpu.ag.cc.had45  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.had45.Mgal
 demand$wpu.ag.cc.had85  <- demand$wpu.ag + demand$wpu.Delta.ag.cc.had85.Mgal
 
 
-## Finally, W  = A * ϕ * ∂
+## Finally, withdrawals = W = A * ϕ * ∂
 
-demand$W.ag.cc.cnrmc45   <-  demand$acres * demand$wpu.ag.cc.cnrmc45 * cc.ag2
-demand$W.ag.cc.cnrmc85   <-  demand$acres * demand$wpu.ag.cc.cnrmc85 * cc.ag2
+demand$W.ag.cc.cnrm45   <-  demand$acres * demand$wpu.ag.cc.cnrm45 * cc.ag2
+demand$W.ag.cc.cnrm85   <-  demand$acres * demand$wpu.ag.cc.cnrm85 * cc.ag2
 
 demand$W.ag.cc.nor45  <-  demand$acres * demand$wpu.ag.cc.nor45 * cc.ag2
 demand$W.ag.cc.nor85  <-  demand$acres * demand$wpu.ag.cc.nor85 * cc.ag2
@@ -632,8 +631,25 @@ demand$W.ag.cc.ipsl85 <-  demand$acres * demand$wpu.ag.cc.ipsl85 * cc.ag2
 demand$W.ag.cc.had45  <-  demand$acres * demand$wpu.ag.cc.had45 * cc.ag2
 demand$W.ag.cc.had85  <-  demand$acres * demand$wpu.ag.cc.had85 * cc.ag2
   
-write.csv(demand, file="demand-final.csv")
+write.csv(demand, file="DP_IR_withdrawals_CC.csv")
 
+
+##Industrial & Commercial (IC)
+
+#     W = I * ϕ * γ + ∆C
+
+##    W =   industrial withdrawals (Mgal/day)
+##    I =   total annual personal income in thousands of 2006 dollars
+##    ϕ =   gal./I  = withdrawal in gallons per day for IC uses per $1000 of annual personal income
+##    γ =   Consumptive use portion, which we'll ignore for now
+##    ∆C =  F * ϕfp = change in consumption attributable to meeting renewable fuel standards (no CC effects included in IC use)
+###         F   = Annual volume of fuel produced (gallons)
+###         ϕfp = level of water consumption per unit of fuel produced
+
+
+## Need data to calculate ∆C
+cc.ic <- 0  # ∆C fill in
+demand$W.ic.cc = (demand$inc * demand$wpu.ind) + cc.ic
 
 # Multiply wpu by percentage change in summer precip to get 
 # demands with climate impacts
@@ -646,6 +662,7 @@ write.csv(demand, file="demand-final.csv")
 # dcheck <- dcheck[,names(dcheck) %in% keeps]
 # dcheck$compare.dom <- dcheck$dom.cc / dcheck$dom.t
 # dcheck$compare.ag <- dcheck$ag.cc / dcheck$ag.t
+
 
 
 
