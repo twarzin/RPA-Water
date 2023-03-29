@@ -14,6 +14,8 @@ rm(list = ls())  # clears memory
 setwd("/Users/leslie/Dropbox/RPA-Water")  
 #E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 #setwd("D:/Demand model")
+# for Travis:
+setwd("C:/Users/twwarziniack/Documents/5_RPA/Demand model")
 
 # Set working directory to same location of the R file location
 # base.dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
@@ -82,7 +84,7 @@ acre.data <- acre.data %>%
 
 # combine projection data
 proj.data <- dplyr::inner_join(pop.inc, acre.data, by=c("fips", "year"))
-
+    
 ## This is population, income, and acreage projected through 2070:
 proj.data <- proj.data %>%
   select(fips, year, pop, ssp, inc, acres)
