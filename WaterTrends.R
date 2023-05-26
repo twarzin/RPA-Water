@@ -9,7 +9,7 @@ rm(list = ls())  # clears memory
 
 # Set working directory to file location
 # for Leslie: 
-setwd("/Users/leslie/Dropbox/RPA-Water")  
+# setwd("/Users/leslie/Dropbox/RPA-Water")  
 #E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 #setwd("D:/Demand model")
 # for Travis:
@@ -125,6 +125,9 @@ wd.2010 <- wd.2010 %>%
          'IN-WFrTo',
          'TO-WTotl')
 
+# Travis LEFT OFF here 
+
+
 wd.2015 <- wd.2015 %>%
   select(FIPS,
          'DO.WDelv',
@@ -139,6 +142,9 @@ wd.2015 <- wd.2015 %>%
          'PT.PSDel',
          'PT.CUsFr',
          'PT.Power')
+
+
+
 
 # FIPS codes are off between USGS data and population projections. Will need to adjust
 # population data later (outside of R) - (2023-02-06: not sure if this is still a problem?)
