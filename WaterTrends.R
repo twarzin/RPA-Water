@@ -95,7 +95,7 @@ wd.1995 <- wd.1995 %>%
          TotalPop,
          'PS-TOPop',
          'PS-WTotl',
-         'IR-WFrTo',
+         'IT-IrTot',
          'TO-WTotl')
 
 wd.2000 <- wd.2000 %>%
