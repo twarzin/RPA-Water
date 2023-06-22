@@ -5,6 +5,12 @@
 # US Forest Service
 # travis.w.warziniack@usda.gov
 
+# To do:
+# Read in data for domestic (public supply) and irrigation for each year
+# join by county
+# be able to select specific counties -- merge of list of counties
+
+
 rm(list = ls())  # clears memory
 
 # Set working directory to file location
@@ -143,7 +149,12 @@ wd.2015 <- wd.2015 %>%
          'PT.CUsFr',
          'PT.Power')
 
-
+#
+# 
+#### trash below here ######
+#
+#
+#
 
 
 # FIPS codes are off between USGS data and population projections. Will need to adjust
