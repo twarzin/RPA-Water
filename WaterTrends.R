@@ -10,16 +10,15 @@
 # join by county
 # be able to select specific counties -- merge of list of counties
 
-
 rm(list = ls())  # clears memory
 
 # Set working directory to file location
 # for Leslie: 
 # setwd("/Users/leslie/Dropbox/RPA-Water")  
 #E:/WaterDemand/WaterDemandProject/DataWaterDemand")
-#setwd("D:/Demand model")
+setwd("D:/5_RPA/Demand model")
 # for Travis:
-setwd("C:/Users/twwarziniack/Documents/5_RPA/Demand model")
+# setwd("C:/Users/twwarziniack/Documents/5_RPA/Demand model")
 
 # Set working directory to same location of the R file location
 # base.dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
@@ -52,22 +51,10 @@ so I will limit its use here not to distribe the original code
 #-------------------------------------------------------------------------------
 # Read Data ------------------------
 
-# Water withdrawals in 2015 from USGS (3,223 records):
-# Data fields:
-# DO.WDelv  Domestic, total use (withdrawals + deliveries), in Mgal/d
-# IN.WFrTo  Industrial, self-supplied total withdrawals, fresh, in Mgal/d
-# IR.WFrTo  Irrigation, total withdrawals, fresh, in Mgal/d
-# IR.CUsFr  Irrigation, total consumptive use, fresh, in Mgal/d
-# IR.IrTot  Irrigation, acres irrigated, total, in thousand acres
-# LI.WFrTo  Livestock, total withdrawals, fresh, in Mgal/d
-# AQ.WFrTo  Aquaculture, total withdrawals, fresh, in Mgal/d
-# MI.WFrTo  Mining, total withdrawals, fresh, in Mgal/d
-# PT.WFrTo  Thermoelectric, total withdrawals, fresh, in Mgal/d
-# PT.PSDel  Thermoelectric, deliveries from Public Supply, in Mgal/d
-# PT.CUsFr  Thermoelectric, total consumptive use, fresh, in Mgal/d
-# PT.Power  Thermoelectric, power generated, in gigawatt-hours
-
-## This is baseline (i.e., 2015) water demand, by sector:
+# This is baseline (i.e., 2015) water demand from USGS water circulars.
+# Unfortunately, all the data years have difference variables and naming conventions,
+# some have different number of observations. Users will have to consult the USGS
+# metadata for variable definitions. 
 
 wd.1985 <- read_excel("1_BaseData/USGS raw water use/us85co.xls")
 wd.1990 <- read_excel("1_BaseData/USGS raw water use/us90co.xls")
@@ -76,6 +63,10 @@ wd.2000 <- read_excel("1_BaseData/USGS raw water use/usco2000.xls")
 wd.2005 <- read_excel("1_BaseData/USGS raw water use/usco2005.xls")
 wd.2010 <- read_excel("1_BaseData/USGS raw water use/usco2010.xlsx")
 wd.2015 <- read.csv("1_BaseData/USGS2015.csv")
+
+# For now we are focusing on public water supply, irrigation, and total freshwater
+# withdrawals. Water use is in millions of gallons per day MGD and population is in 
+# thousands. 
 
 wd.1985 <- wd.1985 %>%
   select(scode,
@@ -101,7 +92,7 @@ wd.1995 <- wd.1995 %>%
          TotalPop,
          'PS-TOPop',
          'PS-WTotl',
-         'IT-IrTot',
+         'IR-WFrTo',
          'TO-WTotl')
 
 wd.2000 <- wd.2000 %>%
@@ -131,8 +122,90 @@ wd.2010 <- wd.2010 %>%
          'IN-WFrTo',
          'TO-WTotl')
 
-# Travis LEFT OFF here 
+wd.2015 <- wd.2015 %>%
+  select(FIPS,
+         'TP.TotPop',
+         'DO.WDelv',
+         'IN.WFrTo',
+         'IR.WFrTo',
+         'IR.CUsFr',
+         'IR.IrTot',
+         'LI.WFrTo',
+         'AQ.WFrTo',
+         'MI.WFrTo',
+         'PT.WFrTo',
+         'PT.PSDel',
+         'PT.CUsFr',
+         'PT.Power')
 
+# rename variables to be consistent across data years
+
+#population:
+wd.1985$pop <- wd.1985$`po-total`
+wd.1990$pop <- wd.1990$`po-total`
+wd.1995$pop <- wd.1995$TotalPop
+wd.2000$pop <- wd.2000$`TP-TotPop`
+wd.2005$pop <- wd.2005$`TP-TotPop`
+wd.2010$pop <- wd.2010$`TP-TotPop`
+wd.2015$pop <- wd.2015$TP.TotPop
+
+
+
+
+
+
+  select(scode,
+         area,
+         'po-total',
+         'ps-popto',
+         'ps-total',
+         'ir-frtot',
+         'to-total')
+
+wd.1990 <- wd.1990 %>%
+  select(scode,
+         area,
+         'po-total',
+         'ps-popto',
+         'ps-total',
+         'ir-frtot',
+         'to-total')
+
+wd.1995 <- wd.1995 %>%
+  select(StateCode,
+         CountyCode,
+         TotalPop,
+         'PS-TOPop',
+         'PS-WTotl',
+         'IR-WFrTo',
+         'TO-WTotl')
+
+wd.2000 <- wd.2000 %>%
+  select(STATEFIPS,
+         FIPS,
+         'TP-TotPop',
+         'PS-TOPop',
+         'PS-WFrTo',
+         'IN-WFrTo',
+         'TO-WTotl')
+
+wd.2005 <- wd.2005 %>%
+  select(STATEFIPS,
+         FIPS,
+         'TP-TotPop',
+         'PS-TOPop',
+         'PS-WFrTo',
+         'IN-WFrTo',
+         'TO-WTotl')
+
+wd.2010 <- wd.2010 %>%
+  select(STATEFIPS,
+         FIPS,
+         'TP-TotPop',
+         'PS-TOPop',
+         'PS-WFrTo',
+         'IN-WFrTo',
+         'TO-WTotl')
 
 wd.2015 <- wd.2015 %>%
   select(FIPS,
@@ -148,6 +221,35 @@ wd.2015 <- wd.2015 %>%
          'PT.PSDel',
          'PT.CUsFr',
          'PT.Power')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# graph public water supply
+
+
+
+
 
 #
 # 
