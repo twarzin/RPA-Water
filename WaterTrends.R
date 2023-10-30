@@ -68,12 +68,16 @@ wd.2015 <- read.csv("1_BaseData/USGS2015.csv")
 # withdrawals. Water use is in millions of gallons per day MGD and population is in 
 # thousands. 
 
+# Because we are looking at trends in use, not just trends in surface water use, 
+# pull total public freshwater, not just surface water, for example.
+
 wd.1985 <- wd.1985 %>%
   select(scode,
          area,
          'po-total',
          'ps-popto',
          'ps-total',
+         'ps-wswfr',
          'ir-frtot',
          'to-total')
 
@@ -83,6 +87,7 @@ wd.1990 <- wd.1990 %>%
          'po-total',
          'ps-popto',
          'ps-total',
+         'ps-wswfr',
          'ir-frtot',
          'to-total')
 
@@ -92,6 +97,7 @@ wd.1995 <- wd.1995 %>%
          TotalPop,
          'PS-TOPop',
          'PS-WTotl',
+         'PS-WSWFr',
          'IR-WFrTo',
          'TO-WTotl')
 
@@ -100,7 +106,7 @@ wd.2000 <- wd.2000 %>%
          FIPS,
          'TP-TotPop',
          'PS-TOPop',
-         'PS-WFrTo',
+         'PS-WSWFr',
          'IN-WFrTo',
          'TO-WTotl')
 
@@ -149,110 +155,16 @@ wd.2005$pop <- wd.2005$`TP-TotPop`
 wd.2010$pop <- wd.2010$`TP-TotPop`
 wd.2015$pop <- wd.2015$TP.TotPop
 
-
-
-
-
-
-  select(scode,
-         area,
-         'po-total',
-         'ps-popto',
-         'ps-total',
-         'ir-frtot',
-         'to-total')
-
-wd.1990 <- wd.1990 %>%
-  select(scode,
-         area,
-         'po-total',
-         'ps-popto',
-         'ps-total',
-         'ir-frtot',
-         'to-total')
-
-wd.1995 <- wd.1995 %>%
-  select(StateCode,
-         CountyCode,
-         TotalPop,
-         'PS-TOPop',
-         'PS-WTotl',
-         'IR-WFrTo',
-         'TO-WTotl')
-
-wd.2000 <- wd.2000 %>%
-  select(STATEFIPS,
-         FIPS,
-         'TP-TotPop',
-         'PS-TOPop',
-         'PS-WFrTo',
-         'IN-WFrTo',
-         'TO-WTotl')
-
-wd.2005 <- wd.2005 %>%
-  select(STATEFIPS,
-         FIPS,
-         'TP-TotPop',
-         'PS-TOPop',
-         'PS-WFrTo',
-         'IN-WFrTo',
-         'TO-WTotl')
-
-wd.2010 <- wd.2010 %>%
-  select(STATEFIPS,
-         FIPS,
-         'TP-TotPop',
-         'PS-TOPop',
-         'PS-WFrTo',
-         'IN-WFrTo',
-         'TO-WTotl')
-
-wd.2015 <- wd.2015 %>%
-  select(FIPS,
-         'DO.WDelv',
-         'IN.WFrTo',
-         'IR.WFrTo',
-         'IR.CUsFr',
-         'IR.IrTot',
-         'LI.WFrTo',
-         'AQ.WFrTo',
-         'MI.WFrTo',
-         'PT.WFrTo',
-         'PT.PSDel',
-         'PT.CUsFr',
-         'PT.Power')
+wd.1985$pubfr <- wd.1985$'ps-wswfr'
+wd.1990$pubfr <- wd.1990$'ps-wswfr'
+wd.1995$pubfr <- wd.1995$'PS-WSWFr'
+wd.2000$pubfr <- wd.2000$'PS-WFrTo'
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# graph public water supply
-
-
-
-
-
-#
-# 
 #### trash below here ######
 #
 #
