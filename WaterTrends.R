@@ -79,7 +79,8 @@ wd.1985 <- wd.1985 %>%
          'ps-total',
          'ps-wswfr',
          'ir-frtot',
-         'to-total')
+         'to-total'
+          )
 
 wd.1990 <- wd.1990 %>%
   select(scode,
@@ -89,7 +90,8 @@ wd.1990 <- wd.1990 %>%
          'ps-total',
          'ps-wswfr',
          'ir-frtot',
-         'to-total')
+         'to-total'
+         )
 
 wd.1995 <- wd.1995 %>%
   select(StateCode,
@@ -99,16 +101,19 @@ wd.1995 <- wd.1995 %>%
          'PS-WTotl',
          'PS-WSWFr',
          'IR-WFrTo',
-         'TO-WTotl')
+         'TO-WTotl'
+          )
 
 wd.2000 <- wd.2000 %>%
   select(STATEFIPS,
          FIPS,
          'TP-TotPop',
          'PS-TOPop',
+         'PS-WFrTo',
          'PS-WSWFr',
          'IN-WFrTo',
-         'TO-WTotl')
+         'TO-WTotl'
+          )
 
 wd.2005 <- wd.2005 %>%
   select(STATEFIPS,
@@ -117,7 +122,8 @@ wd.2005 <- wd.2005 %>%
          'PS-TOPop',
          'PS-WFrTo',
          'IN-WFrTo',
-         'TO-WTotl')
+         'TO-WTotl'
+          )
 
 wd.2010 <- wd.2010 %>%
   select(STATEFIPS,
@@ -132,6 +138,7 @@ wd.2015 <- wd.2015 %>%
   select(FIPS,
          'TP.TotPop',
          'DO.WDelv',
+         'PS.WFrTo',
          'IN.WFrTo',
          'IR.WFrTo',
          'IR.CUsFr',
@@ -155,10 +162,45 @@ wd.2005$pop <- wd.2005$`TP-TotPop`
 wd.2010$pop <- wd.2010$`TP-TotPop`
 wd.2015$pop <- wd.2015$TP.TotPop
 
-wd.1985$pubfr <- wd.1985$'ps-wswfr'
-wd.1990$pubfr <- wd.1990$'ps-wswfr'
-wd.1995$pubfr <- wd.1995$'PS-WSWFr'
+wd.1985$pubfr <- wd.1985$'ps-total'
+wd.1990$pubfr <- wd.1990$'ps-total'
+wd.1995$pubfr <- wd.1995$'PS-WTotl'
 wd.2000$pubfr <- wd.2000$'PS-WFrTo'
+wd.2005$pubfr <- wd.2005$'PS-WFrTo'
+wd.2010$pubfr <- wd.2010$'PS-WFrTo'
+wd.2015$pubfr <- wd.2015$'PS.WFrTo'
+
+wd.1985$year <- 1985
+wd.1990$year <- 1990
+wd.1995$year <- 1995
+wd.2000$year <- 2000
+wd.2005$year <- 2005
+wd.2010$year <- 2010
+wd.2015$year <- 2015
+
+wd.1985$fips <- paste(wd.1985$scode, wd.1985$area, sep="")
+wd.1990$fips <- paste(wd.1990$scode, wd.1990$area, sep="")
+wd.1995$fips <- paste(wd.1995$StateCode, wd.1995$CountyCode, sep="")
+wd.2000$fips <- wd.2000$FIPS
+wd.2005$fips <- wd.2005$FIPS
+wd.2010$fips <- wd.2010$FIPS
+wd.2015$fips <- wd.2015$FIPS
+
+wd.1985 <- wd.1985 %>% select(fips, year, pop, pubfr)
+wd.1990 <- wd.1990 %>% select(fips, year, pop, pubfr)
+wd.1995 <- wd.1995 %>% select(fips, year, pop, pubfr)
+wd.2000 <- wd.2000 %>% select(fips, year, pop, pubfr)
+wd.2005 <- wd.2005 %>% select(fips, year, pop, pubfr)
+wd.2010 <- wd.2010 %>% select(fips, year, pop, pubfr)
+wd.2015 <- wd.2015 %>% select(fips, year, pop, pubfr)
+
+wd <- rbind(wd.1985, wd.1990, wd.1995, wd.2000, wd.2005, wd.2010, wd.2015)
+
+
+# create data frame with all withdrawals and population 
+# I think I want to create a long-form dataset
+wd <- inner_join(wd.1985, wd.1990, wd.1995, by=c("scode","area"))
+
 
 
 
