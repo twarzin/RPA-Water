@@ -196,14 +196,34 @@ wd.2015 <- wd.2015 %>% select(fips, year, pop, pubfr)
 
 wd <- rbind(wd.1985, wd.1990, wd.1995, wd.2000, wd.2005, wd.2010, wd.2015)
 
+# some years of national totals, which throw off some of the calculations so 
+# dropping those observations
+wd <- wd[-(which(wd$fips %in% "NANA")),]
+wd <- wd[-(which(wd$fips %in% "NATOTAL")),]
 
-# create data frame with all withdrawals and population 
-# I think I want to create a long-form dataset
-wd <- inner_join(wd.1985, wd.1990, wd.1995, by=c("scode","area"))
+# calculate annual totals
+wd.annual <- wd %>% 
+  dplyr::select(year,pop, pubfr) %>%
+  dplyr::group_by(year) %>%
+  dplyr::summarise_all(sum,na.rm = T) %>% 
+  dplyr::ungroup() %>%
+  as.data.frame()
+
+wd.annual$perCapFr <- wd.annual$pubfr / wd.annual$pop
+
+# -- Projecting future trends in per capita water use --- 
+
+### PROBLEM: The 2015 data seems to drop the leading zero in fips
 
 
+# based on growth and decay rates from
+# Foti, Ramirez, Brown (2010) FS RPA Assessment TECHNICAL DOCUMENT TO SUPPORT WATER ASSESSMENT
 
+# Growth and decay rates for withdrawals per unit are taken from Tom Brown's work.
+# This original work calculated different values for eastern and
+# western United States
 
+growth <- read.csv("1_BaseData/WDGrowthCU.csv")
 
 
 
