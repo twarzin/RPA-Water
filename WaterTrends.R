@@ -12,10 +12,6 @@
 
 rm(list = ls())  # clears memory
 
-# Set working directory to file location
-# for Leslie: 
-# setwd("/Users/leslie/Dropbox/RPA-Water")  
-#E:/WaterDemand/WaterDemandProject/DataWaterDemand")
 setwd("D:/5_RPA/Demand model")
 # for Travis:
 # setwd("C:/Users/twwarziniack/Documents/5_RPA/Demand model")
