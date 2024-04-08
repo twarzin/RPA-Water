@@ -12,13 +12,12 @@
 
 rm(list = ls())  # clears memory
 
-setwd("D:/5_RPA/Demand model")
 # for Travis:
-# setwd("C:/Users/twwarziniack/Documents/5_RPA/Demand model")
+setwd("D:/5_RPA/Demand model")
 
 # Set working directory to same location of the R file location
 # base.dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
-#setwd(base.dir)
+# setwd(base.dir)
 
 library(tidyr)
 library(tibble)
@@ -68,7 +67,8 @@ wd.2015 <- read.csv("1_BaseData/USGS2015.csv")
 # pull total public freshwater, not just surface water, for example.
 
 wd.1985 <- wd.1985 %>%
-  select(scode,
+  select(state,
+         scode,
          area,
          'po-total',
          'ps-popto',
@@ -79,7 +79,8 @@ wd.1985 <- wd.1985 %>%
           )
 
 wd.1990 <- wd.1990 %>%
-  select(scode,
+  select(state,
+         scode,
          area,
          'po-total',
          'ps-popto',
@@ -90,7 +91,8 @@ wd.1990 <- wd.1990 %>%
          )
 
 wd.1995 <- wd.1995 %>%
-  select(StateCode,
+  select(State,
+         StateCode,
          CountyCode,
          TotalPop,
          'PS-TOPop',
@@ -101,7 +103,8 @@ wd.1995 <- wd.1995 %>%
           )
 
 wd.2000 <- wd.2000 %>%
-  select(STATEFIPS,
+  select(STATE,
+         STATEFIPS,
          FIPS,
          'TP-TotPop',
          'PS-TOPop',
@@ -112,7 +115,8 @@ wd.2000 <- wd.2000 %>%
           )
 
 wd.2005 <- wd.2005 %>%
-  select(STATEFIPS,
+  select(STATE,
+         STATEFIPS,
          FIPS,
          'TP-TotPop',
          'PS-TOPop',
@@ -122,7 +126,8 @@ wd.2005 <- wd.2005 %>%
           )
 
 wd.2010 <- wd.2010 %>%
-  select(STATEFIPS,
+  select(STATE,
+         STATEFIPS,
          FIPS,
          'TP-TotPop',
          'PS-TOPop',
@@ -131,7 +136,8 @@ wd.2010 <- wd.2010 %>%
          'TO-WTotl')
 
 wd.2015 <- wd.2015 %>%
-  select(FIPS,
+  select(STATE,
+         FIPS,
          'TP.TotPop',
          'DO.WDelv',
          'PS.WFrTo',
@@ -182,18 +188,25 @@ wd.2005$fips <- wd.2005$FIPS
 wd.2010$fips <- wd.2010$FIPS
 wd.2015$fips <- wd.2015$FIPS
 
-wd.1985 <- wd.1985 %>% select(fips, year, pop, pubfr)
-wd.1990 <- wd.1990 %>% select(fips, year, pop, pubfr)
-wd.1995 <- wd.1995 %>% select(fips, year, pop, pubfr)
-wd.2000 <- wd.2000 %>% select(fips, year, pop, pubfr)
-wd.2005 <- wd.2005 %>% select(fips, year, pop, pubfr)
-wd.2010 <- wd.2010 %>% select(fips, year, pop, pubfr)
-wd.2015 <- wd.2015 %>% select(fips, year, pop, pubfr)
+wd.1985$state <- wd.1985$state
+wd.1990$state <- wd.1990$state
+wd.1995$state <- wd.1995$State
+wd.2000$state <- wd.2000$STATE
+wd.2005$state <- wd.2005$STATE
+wd.2010$state <- wd.2010$STATE
+wd.2015$state <- wd.2015$STATE
+
+wd.1985 <- wd.1985 %>% select(state, fips, year, pop, pubfr)
+wd.1990 <- wd.1990 %>% select(state, fips, year, pop, pubfr)
+wd.1995 <- wd.1995 %>% select(state, fips, year, pop, pubfr)
+wd.2000 <- wd.2000 %>% select(state, fips, year, pop, pubfr)
+wd.2005 <- wd.2005 %>% select(state, fips, year, pop, pubfr)
+wd.2010 <- wd.2010 %>% select(state, fips, year, pop, pubfr)
+wd.2015 <- wd.2015 %>% select(state, fips, year, pop, pubfr)
 
 wd <- rbind(wd.1985, wd.1990, wd.1995, wd.2000, wd.2005, wd.2010, wd.2015)
 
-# some years of national totals, which throw off some of the calculations so 
-# dropping those observations
+# dropping national totals
 wd <- wd[-(which(wd$fips %in% "NANA")),]
 wd <- wd[-(which(wd$fips %in% "NATOTAL")),]
 
