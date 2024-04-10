@@ -59,6 +59,9 @@ wd.2005 <- read_excel("1_BaseData/USGS raw water use/usco2005.xls")
 wd.2010 <- read_excel("1_BaseData/USGS raw water use/usco2010.xlsx")
 wd.2015 <- read.csv("1_BaseData/USGS2015.csv")
 
+# read in file to match state and regions
+state_match <- read_excel("1_BaseData/state_match.xlsx")
+
 # For now we are focusing on public water supply, irrigation, and total freshwater
 # withdrawals. Water use is in millions of gallons per day MGD and population is in 
 # thousands. 
@@ -210,6 +213,22 @@ wd <- rbind(wd.1985, wd.1990, wd.1995, wd.2000, wd.2005, wd.2010, wd.2015)
 wd <- wd[-(which(wd$fips %in% "NANA")),]
 wd <- wd[-(which(wd$fips %in% "NATOTAL")),]
 
+wd <- merge(wd, state_match, by='state')
+
+wd$perCapFr <- wd$pubfr / wd$pop
+
+# sort first by fips
+wd <- sort(wd$fips)  ## not quite right
+
+
+wd$lagPC <- lag(wd$perCapFr, n=1L)
+
+# analyze trends across broad east/west divisions of the US
+east <- subset(wd, eastwest=="east")
+west <- subset(wd, eastwest=="west")
+
+
+
 # calculate annual totals
 wd.annual <- wd %>% 
   dplyr::select(year,pop, pubfr) %>%
@@ -218,7 +237,6 @@ wd.annual <- wd %>%
   dplyr::ungroup() %>%
   as.data.frame()
 
-wd.annual$perCapFr <- wd.annual$pubfr / wd.annual$pop
 
 # -- Projecting future trends in per capita water use --- 
 
