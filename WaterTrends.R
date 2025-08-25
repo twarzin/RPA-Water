@@ -3,7 +3,7 @@
 # use circulars. 
 # Travis Warziniack
 # US Forest Service
-# travis.w.warziniack@usda.gov
+# travis.warziniack@usda.gov
 
 # To do:
 # Read in data for domestic (public supply) and irrigation for each year
@@ -12,21 +12,21 @@
 
 rm(list = ls())  # clears memory
 
-# for Travis:
-setwd("D:/5_RPA/Demand model")
-
 # Set working directory to same location of the R file location
-# base.dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
-# setwd(base.dir)
+base.dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+setwd(base.dir)
 
 library(tidyr)
 library(tibble)
 library(ggplot2)
-library(reshape2)
+#library(reshape2)
 library(dplyr)  # Has the pipe operator %>%.
 library(data.table)
 # library(openxlsx)
 library(readxl)
+
+library(sf)
+library(dataRetrieval)
 
 # Notes for faster functions
 '
@@ -43,8 +43,26 @@ so I will limit its use here not to distribe the original code
 5) I replaced the for loop with a different login that runs in 3 min now instsead of 2 hr
 
 '
-#-------------------------------------------------------------------------------
-# Read Data ------------------------
+# ----- Read Data ------------------------
+
+# USGS moved to annual HUC12 water use data. This is for public supply:
+usgs_ps <- read.csv("data/PS_HUC12_SW_2000_2020.csv")
+
+# Stack columns
+stacked_ps <- cbind(usgs_ps[1:2], stack(usgs_ps[3:87022]))
+stacked_ps <- stacked_ps %>% rename(public = values, huc12 = ind)  
+
+# Annual data
+ps_annual <- stacked_ps %>%
+  group_by(huc12, Year) %>%
+  summarise(public = sum(public, na.rm=TRUE))
+ 
+ps.change <- ps_annual %>% 
+  summarise(diff = (last(public) - first(public))/first(public))
+ 
+
+
+#-- old below using county-level data--
 
 # This is baseline (i.e., 2015) water demand from USGS water circulars.
 # Unfortunately, all the data years have difference variables and naming conventions,
